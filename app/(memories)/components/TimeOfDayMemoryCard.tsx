@@ -1,0 +1,74 @@
+import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
+
+export interface TimeOfDayMemory {
+  id: string;
+  summary: string;
+  timeOfRecord: string;
+}
+
+interface TimeOfDayMemoryCardProps {
+  memory: TimeOfDayMemory;
+}
+
+export default function TimeOfDayMemoryCard({
+  memory,
+}: TimeOfDayMemoryCardProps) {
+  const handleSeeMore = () => {
+    // Do nothing
+  };
+
+  return (
+    <View style={styles.card}>
+      <View style={styles.content}>
+        <View style={styles.row}>
+          <Text style={styles.label}>Summary: </Text>
+          <Text style={styles.bold}>{memory.summary}</Text>
+        </View>
+
+        <View style={styles.row}>
+          <Text style={styles.label}>Time of Record: </Text>
+          <Text style={styles.bold}>{memory.timeOfRecord}</Text>
+        </View>
+
+        <TouchableOpacity onPress={handleSeeMore}>
+          <Text style={styles.seeMore}>See More ...</Text>
+        </TouchableOpacity>
+      </View>
+    </View>
+  );
+}
+
+const styles = StyleSheet.create({
+  card: {
+    backgroundColor: "#f5f5f5",
+    borderRadius: 12,
+    marginHorizontal: 16,
+    marginVertical: 8,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+  },
+  content: {
+    gap: 8,
+  },
+  row: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+  },
+  label: {
+    fontSize: 20,
+    color: "#666",
+    fontWeight: "bold",
+  },
+  bold: {
+    fontSize: 20,
+    fontWeight: "normal",
+    color: "#000",
+    flex: 1,
+  },
+  seeMore: {
+    fontSize: 20,
+    color: "#007AFF",
+    fontWeight: "500",
+    marginTop: 4,
+  },
+});
