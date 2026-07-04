@@ -7,7 +7,7 @@ import {
     TouchableOpacity,
     View,
 } from "react-native";
-import { OptionsMenuContext } from "../context/OptionsMenuContext";
+import { OptionsMenuContext } from "../../context/OptionsMenuContext";
 
 export default function OptionsMenu() {
   const { menuVisible, setMenuVisible } = useContext(OptionsMenuContext);

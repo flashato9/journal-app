@@ -21,6 +21,12 @@ export default function MemoriesLayout() {
           headerShown: false,
         }}
       />
+      <Stack.Screen
+        name="readmemory"
+        options={{
+          headerShown: false,
+        }}
+      />
     </Stack>
   );
 }

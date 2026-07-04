@@ -1,13 +1,14 @@
 import { useRouter } from "expo-router";
 import { useState } from "react";
 import {
-    StyleSheet,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import Header from "../components/Header";
 
 export default function RegisterScreen() {
   const [username, setUsername] = useState("");
@@ -27,6 +28,8 @@ export default function RegisterScreen() {
 
   return (
     <SafeAreaView style={styles.container}>
+      <Header title="" />
+
       <View style={styles.content}>
         <Text style={styles.title}>Create Account</Text>
 

@@ -1,14 +1,6 @@
-import { MaterialIcons } from "@expo/vector-icons";
-import { useContext } from "react";
-import {
-    FlatList,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    View,
-} from "react-native";
+import { FlatList, StyleSheet } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { OptionsMenuContext } from "../context/OptionsMenuContext";
+import Header from "../components/Header";
 import FullDayMemoryCard, {
     DailyMemorySummary,
 } from "./components/FullDayMemoryCard";
@@ -25,21 +17,9 @@ const SAMPLE_MEMORIES: DailyMemorySummary[] = [
 ];
 
 export default function AllMemoriesScreen() {
-  const { setMenuVisible } = useContext(OptionsMenuContext);
-
-  const handleOptions = () => {
-    setMenuVisible(true);
-  };
-
   return (
     <SafeAreaView style={styles.container}>
-      {/* Header */}
-      <View style={styles.header}>
-        <Text style={styles.headerTitle}>All Memories</Text>
-        <TouchableOpacity onPress={handleOptions}>
-          <MaterialIcons name="settings" size={28} color="#000" />
-        </TouchableOpacity>
-      </View>
+      <Header title="All Memories" />
 
       {/* Memories List */}
       <FlatList
@@ -56,20 +36,6 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: "#fff",
-  },
-  header: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    paddingHorizontal: 16,
-    paddingVertical: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: "#f0f0f0",
-  },
-  headerTitle: {
-    fontSize: 28,
-    fontWeight: "bold",
-    color: "#000",
   },
   listContent: {
     paddingVertical: 8,

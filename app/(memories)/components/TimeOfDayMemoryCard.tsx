@@ -1,3 +1,5 @@
+import { formatISO, parse } from "date-fns";
+import { useRouter } from "expo-router";
 import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
 
 export interface TimeOfDayMemory {
@@ -8,13 +10,46 @@ export interface TimeOfDayMemory {
 
 interface TimeOfDayMemoryCardProps {
   memory: TimeOfDayMemory;
+  day?: string;
+}
+
+// Helper function to combine day and formatted time into ISO datetime
+function combineDateTime(day: string, formattedTime: string): string {
+  // Parse the formatted time (e.g., "8:30 AM") into a date
+  // Format: "yyyy-MM-dd h:mm a" matches "2026-07-04 8:30 AM"
+  const parsedDate = parse(
+    `${day} ${formattedTime}`,
+    "yyyy-MM-dd h:mm a",
+    new Date(),
+  );
+  // Convert to ISO format
+  return formatISO(parsedDate);
 }
 
 export default function TimeOfDayMemoryCard({
   memory,
+  day = new Date().toISOString().split("T")[0],
 }: TimeOfDayMemoryCardProps) {
+  const router = useRouter();
+
   const handleSeeMore = () => {
-    // Do nothing
+    // Combine day and timeOfRecord into ISO datetime
+    console.log(
+      "handleSeeMore - day:",
+      day,
+      "timeOfRecord:",
+      memory.timeOfRecord,
+    );
+    const dateTimeOfRecord = combineDateTime(day, memory.timeOfRecord);
+    console.log("dateTimeOfRecord result:", dateTimeOfRecord);
+
+    router.push({
+      pathname: "/readmemory",
+      params: {
+        summary: memory.summary,
+        timeOfRecord: dateTimeOfRecord,
+      },
+    });
   };
 
   return (

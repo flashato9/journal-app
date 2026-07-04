@@ -1,6 +1,6 @@
 import { Stack } from "expo-router";
+import { OptionsMenuProvider } from "../context/OptionsMenuContext";
 import OptionsMenu from "./components/OptionsMenu";
-import { OptionsMenuProvider } from "./context/OptionsMenuContext";
 
 export default function RootLayout() {
   return (

@@ -1,6 +1,6 @@
 import { MaterialIcons } from "@expo/vector-icons";
 import { useLocalSearchParams, useRouter } from "expo-router";
-import { useContext, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import {
     FlatList,
     StyleSheet,
@@ -10,7 +10,7 @@ import {
     View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { OptionsMenuContext } from "../context/OptionsMenuContext";
+import Header from "../components/Header";
 import TimeOfDayMemoryCard, {
     TimeOfDayMemory,
 } from "./components/TimeOfDayMemoryCard";
@@ -70,7 +70,6 @@ async function fetchMemoriesForDay(dayId: string): Promise<TimeOfDayMemory[]> {
 export default function DayMemoriesScreen() {
   const { id, day } = useLocalSearchParams();
   const router = useRouter();
-  const { setMenuVisible } = useContext(OptionsMenuContext);
   const [memories, setMemories] = useState<TimeOfDayMemory[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -87,10 +86,6 @@ export default function DayMemoriesScreen() {
     loadMemories();
   }, [id]);
 
-  const handleOptions = () => {
-    setMenuVisible(true);
-  };
-
   const handleCreateMemory = () => {
     router.push("/(memories)/creatememory");
   };
@@ -101,26 +96,19 @@ export default function DayMemoriesScreen() {
 
   const headerTitle = day ? `${day} Memories` : "Today's Memories";
 
+  const actionIcons = (
+    <TouchableOpacity
+      onPress={handleCreateMemory}
+      onLongPress={handleCreateMemoryLongPress}
+      delayLongPress={500}
+    >
+      <MaterialIcons name="add" size={28} color="#000" />
+    </TouchableOpacity>
+  );
+
   return (
     <SafeAreaView style={styles.container}>
-      {/* Header */}
-      <View style={styles.header}>
-        <Text style={styles.headerTitle} numberOfLines={1} ellipsizeMode="tail">
-          {headerTitle}
-        </Text>
-        <View style={styles.headerIcons}>
-          <TouchableOpacity
-            onPress={handleCreateMemory}
-            onLongPress={handleCreateMemoryLongPress}
-            delayLongPress={500}
-          >
-            <MaterialIcons name="add" size={28} color="#000" />
-          </TouchableOpacity>
-          <TouchableOpacity onPress={handleOptions} style={styles.settingsIcon}>
-            <MaterialIcons name="settings" size={28} color="#000" />
-          </TouchableOpacity>
-        </View>
-      </View>
+      <Header title={headerTitle} actionIcons={actionIcons} />
 
       {/* Memories List */}
       <FlatList
@@ -144,31 +132,6 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: "#fff",
-  },
-  header: {
-    flexDirection: "row",
-    alignItems: "center",
-    paddingHorizontal: 16,
-    paddingVertical: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: "#f0f0f0",
-  },
-  headerTitle: {
-    fontSize: 28,
-    fontWeight: "bold",
-    color: "#000",
-    flex: 1,
-    flexShrink: 1,
-    minWidth: 0,
-  },
-  headerIcons: {
-    flexDirection: "row",
-    gap: 12,
-    alignItems: "center",
-    flexShrink: 0,
-  },
-  settingsIcon: {
-    marginLeft: 4,
   },
   listContent: {
     paddingVertical: 8,

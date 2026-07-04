@@ -1,6 +1,5 @@
-import { MaterialIcons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
-import { useContext, useState } from "react";
+import { useState } from "react";
 import {
   StyleSheet,
   Text,
@@ -9,13 +8,12 @@ import {
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { OptionsMenuContext } from "../context/OptionsMenuContext";
+import Header from "../components/Header";
 
 export default function LoginScreen() {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const router = useRouter();
-  const { setMenuVisible } = useContext(OptionsMenuContext);
 
   const handleLogin = () => {
     // TODO: Add authentication logic
@@ -27,18 +25,9 @@ export default function LoginScreen() {
     router.push("/(welcome)/register");
   };
 
-  const handleOptions = () => {
-    setMenuVisible(true);
-  };
-
   return (
     <SafeAreaView style={styles.container}>
-      {/* Header with Settings Icon */}
-      <View style={styles.topBar}>
-        <TouchableOpacity onPress={handleOptions}>
-          <MaterialIcons name="settings" size={28} color="#000" />
-        </TouchableOpacity>
-      </View>
+      <Header title="" />
 
       {/* Centered Login Content */}
       <View style={styles.content}>
@@ -77,13 +66,6 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: "#fff",
-  },
-  topBar: {
-    alignItems: "flex-end",
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: "#f0f0f0",
   },
   title: {
     fontSize: 28,
