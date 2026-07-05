@@ -22,7 +22,11 @@ export default function FullDayMemoryCard({ memory }: FullDayMemoryCardProps) {
   };
 
   return (
-    <View style={styles.card}>
+    <TouchableOpacity
+      onPress={handleSeeMore}
+      style={styles.card}
+      activeOpacity={0.7}
+    >
       <View style={styles.content}>
         <View style={styles.row}>
           <Text style={styles.label}>Summary: </Text>
@@ -38,7 +42,7 @@ export default function FullDayMemoryCard({ memory }: FullDayMemoryCardProps) {
           <Text style={styles.seeMore}>See More ...</Text>
         </TouchableOpacity>
       </View>
-    </View>
+    </TouchableOpacity>
   );
 }
 

@@ -1,3 +1,4 @@
+import * as LocalAuthentication from "expo-local-authentication";
 import { useRouter } from "expo-router";
 import * as SecureStore from "expo-secure-store";
 import { useContext, useState } from "react";
@@ -12,7 +13,56 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { AuthContext } from "../../context/AuthContext";
 import { insertUserIntoDB, isUserExists } from "../../services/database";
+import { startLocationTracking } from "../../services/locationService";
 import Header from "../components/Header";
+
+// Helper function to perform login with username and credential (password or token)
+const performLogin = async (
+  username: string,
+  credential: string,
+  setAuthUsername: (username: string) => void,
+  router: any,
+) => {
+  try {
+    const key = `login.${username}`;
+
+    // Check if username exists and credential matches
+    const storedCredential = await SecureStore.getItemAsync(key);
+
+    if (!storedCredential || storedCredential !== credential) {
+      Alert.alert("Login Failed", "Invalid username or password.");
+      return;
+    }
+
+    // Login successful - ensure user exists in database
+    console.log("Login successful:", { username });
+    try {
+      if (!isUserExists(username)) {
+        insertUserIntoDB(username);
+      }
+    } catch (dbError) {
+      console.error("Error creating user in database:", dbError);
+    }
+
+    // Store current username in SecureStore for location tracking
+    await SecureStore.setItemAsync("currentUsername", username);
+
+    // Start location tracking
+    try {
+      await startLocationTracking();
+      console.log("Location tracking started for user:", username);
+    } catch (locationError) {
+      console.error("Error starting location tracking:", locationError);
+      // Don't fail login if location tracking fails - just log it
+    }
+
+    setAuthUsername(username);
+    router.push("/(memories)/allmemories");
+  } catch (error) {
+    console.error("Error during login:", error);
+    Alert.alert("Login Failed", "An error occurred. Please try again.");
+  }
+};
 
 export default function LoginScreen() {
   const [username, setUsername] = useState("");
@@ -26,44 +76,63 @@ export default function LoginScreen() {
       return;
     }
 
-    try {
-      const key = `login.${username}`;
-
-      // Check if username exists and password matches
-      const storedPassword = await SecureStore.getItemAsync(key);
-
-      if (!storedPassword || storedPassword !== password) {
-        // Log which one is incorrect for debugging (server-side only)
-        if (!storedPassword) {
-          console.log("Username incorrect:", username);
-        } else {
-          console.log("Password incorrect for username:", username);
-        }
-
-        // Show generic error to user
-        Alert.alert("Login Failed", "Invalid username or password.");
-        return;
-      }
-
-      // Login successful - ensure user exists in database
-      console.log("Login successful:", { username });
-      try {
-        if (!isUserExists(username)) {
-          insertUserIntoDB(username);
-        }
-      } catch (dbError) {
-        console.error("Error creating user in database:", dbError);
-      }
-      setAuthUsername(username);
-      router.push("/(memories)/allmemories");
-    } catch (error) {
-      console.error("Error during login:", error);
-      Alert.alert("Login Failed", "An error occurred. Please try again.");
-    }
+    await performLogin(username, password, setAuthUsername, router);
   };
 
   const handleRegister = () => {
     router.push("/(welcome)/register");
+  };
+
+  const handleBiometricLogin = async () => {
+    try {
+      // Trigger biometric authentication
+      const authResult = await LocalAuthentication.authenticateAsync({
+        disableDeviceFallback: false,
+        promptMessage: "Scan your fingerprint to login",
+      });
+
+      if (authResult.success) {
+        // Retrieve the username associated with this fingerprint
+        const storedUsername =
+          await SecureStore.getItemAsync("biometric.username");
+
+        if (!storedUsername) {
+          Alert.alert(
+            "No Fingerprint Registration",
+            "No fingerprint registration found. Please register with fingerprint first.",
+          );
+          return;
+        }
+
+        // Retrieve the stored token for this username
+        const key = `login.${storedUsername}`;
+        const storedToken = await SecureStore.getItemAsync(key);
+
+        if (!storedToken) {
+          Alert.alert(
+            "No Fingerprint Registration",
+            "Fingerprint registration not found for this user.",
+          );
+          return;
+        }
+
+        // Use the helper function to complete login with username and token
+        await performLogin(
+          storedUsername,
+          storedToken,
+          setAuthUsername,
+          router,
+        );
+      } else {
+        Alert.alert(
+          "Fingerprint Failed",
+          "Fingerprint recognition failed. Please try again.",
+        );
+      }
+    } catch (error) {
+      console.error("Error during biometric login:", error);
+      Alert.alert("Login Failed", "An error occurred. Please try again.");
+    }
   };
 
   return (
@@ -93,6 +162,13 @@ export default function LoginScreen() {
 
         <TouchableOpacity style={styles.loginButton} onPress={handleLogin}>
           <Text style={styles.loginButtonText}>Login</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={styles.biometricButton}
+          onPress={handleBiometricLogin}
+        >
+          <Text style={styles.biometricButtonText}>Login with Fingerprint</Text>
         </TouchableOpacity>
 
         <TouchableOpacity onPress={handleRegister}>
@@ -138,6 +214,18 @@ const styles = StyleSheet.create({
     marginTop: 8,
   },
   loginButtonText: {
+    color: "#fff",
+    fontSize: 16,
+    fontWeight: "600",
+  },
+  biometricButton: {
+    backgroundColor: "#34C759",
+    paddingVertical: 12,
+    borderRadius: 8,
+    alignItems: "center",
+    marginTop: 8,
+  },
+  biometricButtonText: {
     color: "#fff",
     fontSize: 16,
     fontWeight: "600",

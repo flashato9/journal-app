@@ -15,6 +15,12 @@ export default function WelcomeLayout() {
           headerShown: false,
         }}
       />
+      <Stack.Screen
+        name="register-fingerprint"
+        options={{
+          headerShown: false,
+        }}
+      />
     </Stack>
   );
 }

@@ -1,16 +1,14 @@
 import { MaterialIcons } from "@expo/vector-icons";
 import { format } from "date-fns/format";
 import { formatISO } from "date-fns/formatISO";
+import * as Location from "expo-location";
 import { useRouter } from "expo-router";
 import { useContext, useEffect, useState } from "react";
 import {
+    ActivityIndicator,
     Alert,
-    ScrollView,
     StyleSheet,
-    Text,
-    TextInput,
     TouchableOpacity,
-    View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { AuthContext } from "../../context/AuthContext";
@@ -20,61 +18,77 @@ import {
     createTimeMemoryQA,
     getDayMemoryByUserIdAndDay,
     getUserIdByUsername,
+    insertLocation,
 } from "../../services/database";
 import Header from "../components/Header";
-import UploadImages from "./components/ImageGallery/UploadImages";
-import QuestionnaireCard, {
-    QuestionnaireItem,
-} from "./components/QuestionnaireCard";
+import MemoryForm, { MemoryFormState } from "./components/MemoryForm";
+import { QuestionnaireItem } from "./components/QuestionnaireCard";
 
-function formatTime(date: Date): string {
-  return format(date, "h:mmaa");
-}
-
-function formatDate(date: Date): string {
-  return format(date, "h:mmaa MMMM do, yyyy");
-}
-
-// Mock questionnaire data
-const MOCK_QUESTIONNAIRE: QuestionnaireItem[] = [
-  { id: "1", question: "How was your mood today?", answer: "" },
-  { id: "2", question: "What was the highlight of your day?", answer: "" },
-  { id: "3", question: "What challenges did you face?", answer: "" },
-  { id: "4", question: "Who did you spend time with?", answer: "" },
+// Default questionnaire with sensory prompts
+const DEFAULT_QUESTIONNAIRE: QuestionnaireItem[] = [
+  { id: "1", question: "What do you see?", answer: "" },
+  { id: "2", question: "What do you smell?", answer: "" },
+  { id: "3", question: "What do you taste?", answer: "" },
+  { id: "4", question: "What is the closest thing you can touch?", answer: "" },
+  { id: "5", question: "What does it feel like?", answer: "" },
+  { id: "6", question: "How does the temperature feel like?", answer: "" },
+  { id: "7", question: "Why did you decide to come here?", answer: "" },
 ];
 
 export default function CreateMemoryScreen() {
   const router = useRouter();
   const { username } = useContext(AuthContext);
-  const [currentTime, setCurrentTime] = useState<string>("");
-  const [summary, setSummary] = useState<string>("");
-  const [images, setImages] = useState<string[]>([]);
-  const [questionnaire, setQuestionnaire] =
-    useState<QuestionnaireItem[]>(MOCK_QUESTIONNAIRE);
   const [isSaving, setIsSaving] = useState(false);
+  const [memoryState, setMemoryState] = useState<MemoryFormState>({
+    dateTimeOfCapture: formatISO(new Date()),
+    summary: "",
+    location: "Loading",
+    images: [],
+    questionnaire: DEFAULT_QUESTIONNAIRE,
+    isEditable: true,
+  });
 
+  // Fetch location on mount
   useEffect(() => {
-    // Set initial time
-    setCurrentTime(formatDate(new Date()));
+    const getCurrentLocation = async () => {
+      try {
+        const { status } = await Location.requestForegroundPermissionsAsync();
+        if (status !== "granted") {
+          console.warn("Location permission not granted");
+          return;
+        }
 
-    // Update every minute
-    const interval = setInterval(() => {
-      setCurrentTime(formatDate(new Date()));
-    }, 60000);
+        const currentLocation = await Location.getCurrentPositionAsync({
+          accuracy: Location.Accuracy.Balanced,
+        });
 
-    return () => clearInterval(interval);
+        setMemoryState((prev) => ({
+          ...prev,
+          location: {
+            latitude: currentLocation.coords.latitude,
+            longitude: currentLocation.coords.longitude,
+            altitude: currentLocation.coords.altitude,
+          },
+        }));
+      } catch (error) {
+        console.error("Error getting location:", error);
+      }
+    };
+
+    getCurrentLocation();
   }, []);
 
   const handleSave = async () => {
     setIsSaving(true);
     try {
       if (!username) {
-        throw new Error("Username is not set in AuthContext");
+        console.warn("Username is not set in AuthContext - user session ended");
+        Alert.alert("Error", "User session has ended. Please log back in.");
+        return;
       }
 
-      if (!summary.trim()) {
+      if (!memoryState.summary.trim()) {
         Alert.alert("Validation Error", "Please enter a summary");
-        setIsSaving(false);
         return;
       }
 
@@ -93,29 +107,40 @@ export default function CreateMemoryScreen() {
         throw new Error(`Day memory not found for today: ${today}`);
       }
 
-      // Create TimeMemory with ISO datetime
-      const timeOfRecord = formatISO(new Date());
+      // Insert location if available
+      let locationId: number | undefined;
+      if (memoryState.location && typeof memoryState.location !== "string") {
+        locationId = insertLocation(
+          userId,
+          memoryState.location.latitude,
+          memoryState.location.longitude,
+          memoryState.location.altitude,
+        );
+        console.log("Created Location:", locationId);
+      }
+
       const timeMemoryId = createTimeMemory(
         dayMemory.id,
-        timeOfRecord,
-        summary,
+        memoryState.dateTimeOfCapture,
+        memoryState.summary,
+        locationId,
       );
       console.log("Created TimeMemory:", timeMemoryId);
 
       // Create TimeMemoryImages
-      for (const imageUri of images) {
+      for (const imageUri of memoryState.images) {
         createTimeMemoryImage(timeMemoryId, imageUri);
       }
-      console.log("Created TimeMemoryImages:", images.length);
+      console.log("Created TimeMemoryImages:", memoryState.images.length);
 
-      // Create TimeMemoryQA entries (only for non-empty answers)
-      for (const item of questionnaire) {
-        if (item.answer.trim()) {
-          createTimeMemoryQA(timeMemoryId, item.question, item.answer);
-        }
+      // Create TimeMemoryQA entries (all items, including empty answers)
+      for (const item of memoryState.questionnaire) {
+        createTimeMemoryQA(timeMemoryId, item.question, item.answer);
       }
-      const answeredCount = questionnaire.filter((q) => q.answer.trim()).length;
-      console.log("Created TimeMemoryQA entries:", answeredCount);
+      console.log(
+        "Created TimeMemoryQA entries:",
+        memoryState.questionnaire.length,
+      );
 
       Alert.alert("Success", "Memory saved successfully");
       router.back();
@@ -130,17 +155,7 @@ export default function CreateMemoryScreen() {
     }
   };
 
-  const handleImagesSelected = (newImages: string[]) => {
-    setImages(newImages);
-  };
-
-  const handleQuestionnaireChange = (id: string, answer: string) => {
-    setQuestionnaire((prev) =>
-      prev.map((item) => (item.id === id ? { ...item, answer } : item)),
-    );
-  };
-
-  const timeDisplay = formatTime(new Date());
+  const headerTitle = `Memory: ${format(new Date(memoryState.dateTimeOfCapture), "h:mmaa MMMM do, yyyy")}`;
 
   const actionIcons = (
     <TouchableOpacity
@@ -148,64 +163,18 @@ export default function CreateMemoryScreen() {
       disabled={isSaving}
       style={[styles.headerSaveButton, isSaving && styles.buttonDisabled]}
     >
-      <MaterialIcons
-        name="save"
-        size={28}
-        color={isSaving ? "#ccc" : "#007AFF"}
-      />
+      {isSaving ? (
+        <ActivityIndicator size="small" color="#007AFF" />
+      ) : (
+        <MaterialIcons name="save" size={28} color="#007AFF" />
+      )}
     </TouchableOpacity>
   );
 
   return (
     <SafeAreaView style={styles.container}>
-      <Header title={`Memory: ${currentTime}`} actionIcons={actionIcons} />
-
-      {/* Form Content */}
-      <ScrollView
-        style={styles.scrollView}
-        contentContainerStyle={styles.content}
-      >
-        {/* Summary Section */}
-        <View style={styles.inlineSection}>
-          <Text style={styles.inlineLabel}>Summary:</Text>
-          <TextInput
-            style={styles.inlineTextInput}
-            placeholder="What happened today?"
-            value={summary}
-            onChangeText={setSummary}
-            multiline
-            numberOfLines={4}
-            placeholderTextColor="#999"
-          />
-        </View>
-
-        {/* Time of Capture Section */}
-        <View style={styles.inlineSection}>
-          <Text style={styles.inlineLabel}>Time of Capture:</Text>
-          <Text style={styles.inlineTimeDisplay}>{timeDisplay}</Text>
-        </View>
-
-        {/* Images Section */}
-        <View style={styles.section}>
-          <Text style={styles.sectionLabel}>Images:</Text>
-          <UploadImages
-            images={images}
-            onImagesSelected={handleImagesSelected}
-          />
-        </View>
-
-        {/* Questionnaire Section */}
-        <View style={styles.section}>
-          <Text style={styles.sectionLabel}>Questionnaire:</Text>
-          {questionnaire.map((item) => (
-            <QuestionnaireCard
-              key={item.id}
-              item={item}
-              onChange={handleQuestionnaireChange}
-            />
-          ))}
-        </View>
-      </ScrollView>
+      <Header title={headerTitle} actionIcons={actionIcons} />
+      <MemoryForm storage={memoryState} onStorageChange={setMemoryState} />
     </SafeAreaView>
   );
 }
@@ -220,78 +189,5 @@ const styles = StyleSheet.create({
   },
   buttonDisabled: {
     opacity: 0.5,
-  },
-  scrollView: {
-    flex: 1,
-  },
-  content: {
-    paddingHorizontal: 16,
-    paddingVertical: 20,
-  },
-  section: {
-    marginBottom: 24,
-  },
-  sectionLabel: {
-    fontSize: 16,
-    fontWeight: "600",
-    color: "#000",
-    marginBottom: 8,
-  },
-  textInput: {
-    borderWidth: 1,
-    borderColor: "#e0e0e0",
-    borderRadius: 8,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    fontSize: 14,
-    color: "#000",
-    textAlignVertical: "top",
-  },
-  inlineSection: {
-    flexDirection: "row",
-    alignItems: "center",
-    marginBottom: 24,
-    gap: 4,
-  },
-  inlineLabel: {
-    fontSize: 16,
-    fontWeight: "600",
-    color: "#000",
-  },
-  inlineTextInput: {
-    flex: 1,
-    borderWidth: 1,
-    borderColor: "#e0e0e0",
-    borderRadius: 8,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    fontSize: 14,
-    color: "#000",
-    textAlignVertical: "top",
-  },
-  timeDisplay: {
-    fontSize: 16,
-    color: "#333",
-    fontWeight: "500",
-    paddingVertical: 8,
-  },
-  inlineTimeDisplay: {
-    flex: 1,
-    fontSize: 16,
-    color: "#333",
-    fontWeight: "500",
-  },
-  saveButton: {
-    backgroundColor: "#007AFF",
-    borderRadius: 8,
-    paddingVertical: 14,
-    alignItems: "center",
-    marginTop: 8,
-    marginBottom: 20,
-  },
-  saveButtonText: {
-    color: "#fff",
-    fontSize: 16,
-    fontWeight: "600",
   },
 });

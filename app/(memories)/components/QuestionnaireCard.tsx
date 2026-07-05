@@ -1,4 +1,5 @@
-import { StyleSheet, Text, TextInput, View } from "react-native";
+import { useState } from "react";
+import { StyleSheet, TextInput, View } from "react-native";
 
 export interface QuestionnaireItem {
   id: string;
@@ -9,17 +10,47 @@ export interface QuestionnaireItem {
 interface QuestionnaireCardProps {
   item: QuestionnaireItem;
   onChange: (id: string, answer: string) => void;
+  onQuestionChange?: (id: string, question: string) => void;
   isEditable?: boolean;
 }
 
 export default function QuestionnaireCard({
   item,
   onChange,
+  onQuestionChange,
   isEditable = true,
 }: QuestionnaireCardProps) {
+  const [isFocused, setIsFocused] = useState(false);
+
   return (
     <View style={styles.card}>
-      <Text style={styles.questionText}>{item.question}</Text>
+      {isEditable && isFocused ? (
+        <TextInput
+          style={styles.questionInput}
+          value={item.question}
+          onChangeText={(text) => onQuestionChange?.(item.id, text)}
+          onFocus={() => setIsFocused(true)}
+          onBlur={() => setIsFocused(false)}
+          numberOfLines={1}
+          maxLength={100}
+          placeholderTextColor="#999"
+          autoFocus
+          scrollEnabled={true}
+        />
+      ) : (
+        <TextInput
+          style={styles.questionText}
+          value={item.question}
+          onChangeText={(text) => onQuestionChange?.(item.id, text)}
+          onFocus={() => setIsFocused(true)}
+          onBlur={() => setIsFocused(false)}
+          editable={isEditable}
+          numberOfLines={1}
+          maxLength={100}
+          placeholderTextColor="#999"
+          scrollEnabled={true}
+        />
+      )}
       <TextInput
         style={[styles.input, !isEditable && styles.inputReadOnly]}
         placeholder="Your answer..."
@@ -49,6 +80,21 @@ const styles = StyleSheet.create({
     fontWeight: "600",
     color: "#000",
     marginBottom: 8,
+    borderWidth: 0,
+    padding: 0,
+    backgroundColor: "transparent",
+  },
+  questionInput: {
+    borderWidth: 1,
+    borderColor: "#007AFF",
+    borderRadius: 6,
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+    fontSize: 14,
+    fontWeight: "600",
+    color: "#000",
+    marginBottom: 8,
+    backgroundColor: "#fff",
   },
   input: {
     borderWidth: 1,

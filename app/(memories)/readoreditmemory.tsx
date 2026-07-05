@@ -7,12 +7,8 @@ import { useCallback, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
-  ScrollView,
   StyleSheet,
-  Text,
-  TextInput,
   TouchableOpacity,
-  View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import {
@@ -20,6 +16,7 @@ import {
   createTimeMemoryQA,
   deleteTimeMemoryImagesByTimeMemoryId,
   deleteTimeMemoryQAByTimeMemoryId,
+  getLocationById,
   getTimeMemoryById,
   getTimeMemoryImagesByTimeMemoryId,
   getTimeMemoryQAByTimeMemoryId,
@@ -27,18 +24,12 @@ import {
 } from "../../services/database";
 import { deleteImage } from "../../services/imageStorage";
 import Header from "../components/Header";
-import UploadImages from "./components/ImageGallery/UploadImages";
-import QuestionnaireCard, {
-  QuestionnaireItem,
-} from "./components/QuestionnaireCard";
-
-function formatTime(isoDatetime: string): string {
-  try {
-    return format(parseISO(isoDatetime), "h:mmaa");
-  } catch (error) {
-    return "Unknown time";
-  }
-}
+import LoadingIndicator from "../components/LoadingIndicator";
+import MemoryForm, {
+  LocationState,
+  MemoryFormState,
+} from "./components/MemoryForm";
+import { QuestionnaireItem } from "./components/QuestionnaireCard";
 
 function formatDate(isoDatetime: string): string {
   try {
@@ -48,54 +39,37 @@ function formatDate(isoDatetime: string): string {
   }
 }
 
-interface Memory {
-  id: number;
-  summary: string;
-  timeOfRecord: string; // ISO format datetime
-  images: string[]; // Array of image URIs
-  questionnaire: QuestionnaireItem[];
-}
-
 export default function ReadMemoryScreen() {
   const params = useLocalSearchParams();
   const router = useRouter();
-  const [memory, setMemory] = useState<Memory | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [isEditMode, setIsEditMode] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
-  const [editedSummary, setEditedSummary] = useState<string>("");
-  const [editedImages, setEditedImages] = useState<string[]>([]);
-  const [editedQuestionnaire, setEditedQuestionnaire] = useState<
-    QuestionnaireItem[]
-  >([]);
-
-  const handleEditMode = () => {
-    if (memory) {
-      setEditedSummary(memory.summary);
-      setEditedImages(memory.images);
-      setEditedQuestionnaire(memory.questionnaire);
-    }
-    setIsEditMode(true);
-  };
+  const [timeMemoryId, setTimeMemoryId] = useState<number | null>(null);
+  const [memoryState, setMemoryState] = useState<MemoryFormState>({
+    dateTimeOfCapture: "",
+    summary: "",
+    location: null,
+    images: [],
+    questionnaire: [],
+    isEditable: false,
+  });
 
   const handleSave = async () => {
     try {
       setIsSaving(true);
 
-      if (!memory) {
-        throw new Error("Memory data not loaded");
+      if (!timeMemoryId) {
+        throw new Error("Memory ID not found");
       }
 
       // Validate summary
-      if (!editedSummary.trim()) {
+      if (!memoryState.summary.trim()) {
         Alert.alert("Error", "Summary cannot be empty");
         return;
       }
 
-      const timeMemoryId = memory.id;
-
       // Update TimeMemory summary
-      updateTimeMemory(timeMemoryId, editedSummary);
+      updateTimeMemory(timeMemoryId, memoryState.summary);
 
       // Get old images to delete their files from storage
       const oldImages = getTimeMemoryImagesByTimeMemoryId(timeMemoryId);
@@ -115,26 +89,21 @@ export default function ReadMemoryScreen() {
       deleteTimeMemoryQAByTimeMemoryId(timeMemoryId);
 
       // Insert new images
-      editedImages.forEach((imageUri) => {
+      memoryState.images.forEach((imageUri) => {
         createTimeMemoryImage(timeMemoryId, imageUri);
       });
 
-      // Insert new QA records (only non-empty answers)
-      editedQuestionnaire.forEach((qa) => {
-        if (qa.answer.trim()) {
-          createTimeMemoryQA(timeMemoryId, qa.question, qa.answer);
-        }
+      // Insert new QA records (all items, including empty answers)
+      memoryState.questionnaire.forEach((qa) => {
+        createTimeMemoryQA(timeMemoryId, qa.question, qa.answer);
       });
 
-      // Update local state with saved changes
-      setMemory({
-        ...memory,
-        summary: editedSummary,
-        images: editedImages,
-        questionnaire: editedQuestionnaire,
-      });
+      // Exit edit mode
+      setMemoryState((prev) => ({
+        ...prev,
+        isEditable: false,
+      }));
 
-      setIsEditMode(false);
       Alert.alert("Success", "Memory updated successfully");
     } catch (error) {
       console.error("Error saving memory:", error);
@@ -147,14 +116,11 @@ export default function ReadMemoryScreen() {
     }
   };
 
-  const handleImagesSelected = (newImages: string[]) => {
-    setEditedImages(newImages);
-  };
-
-  const handleQuestionnaireChange = (id: string, answer: string) => {
-    setEditedQuestionnaire((prev) =>
-      prev.map((item) => (item.id === id ? { ...item, answer } : item)),
-    );
+  const handleEditMode = () => {
+    setMemoryState((prev) => ({
+      ...prev,
+      isEditable: true,
+    }));
   };
 
   useFocusEffect(
@@ -168,17 +134,18 @@ export default function ReadMemoryScreen() {
             throw new Error("Memory ID is missing");
           }
 
-          const timeMemoryId = parseInt(params.id as string, 10);
+          const id = parseInt(params.id as string, 10);
+          setTimeMemoryId(id);
 
           // Fetch TimeMemory record
-          const timeMemory = getTimeMemoryById(timeMemoryId);
+          const timeMemory = getTimeMemoryById(id);
           if (!timeMemory) {
             throw new Error("Memory not found");
           }
 
           // Fetch related images and QA records
-          const images = getTimeMemoryImagesByTimeMemoryId(timeMemoryId);
-          const qaRecords = getTimeMemoryQAByTimeMemoryId(timeMemoryId);
+          const images = getTimeMemoryImagesByTimeMemoryId(id);
+          const qaRecords = getTimeMemoryQAByTimeMemoryId(id);
 
           // Convert QA records to QuestionnaireItem format
           const questionnaire: QuestionnaireItem[] = qaRecords.map((qa) => ({
@@ -187,19 +154,33 @@ export default function ReadMemoryScreen() {
             answer: qa.answer,
           }));
 
-          const fetchedMemory: Memory = {
-            id: timeMemoryId,
+          // Fetch location if available
+          let location: LocationState = null;
+          if (timeMemory.locationId) {
+            const locationData = getLocationById(timeMemory.locationId);
+            if (locationData) {
+              location = {
+                latitude: locationData.latitude,
+                longitude: locationData.longitude,
+                altitude: locationData.altitude,
+              };
+            }
+          }
+
+          setMemoryState({
+            dateTimeOfCapture: timeMemory.timeOfRecord,
             summary: timeMemory.summary,
-            timeOfRecord: timeMemory.timeOfRecord,
+            location,
             images: images.map((img) => img.imageUri),
             questionnaire,
-          };
-
-          console.log("Fetched memory from database:", fetchedMemory);
-          setMemory(fetchedMemory);
+            isEditable: false,
+          });
         } catch (error) {
           console.error("Error loading memory:", error);
-          setMemory(null);
+          Alert.alert(
+            "Error",
+            error instanceof Error ? error.message : "Failed to load memory",
+          );
         } finally {
           setIsLoading(false);
         }
@@ -212,30 +193,18 @@ export default function ReadMemoryScreen() {
   if (isLoading) {
     return (
       <SafeAreaView style={styles.container}>
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color="#007AFF" />
-        </View>
+        <LoadingIndicator message="Loading memory..." />
       </SafeAreaView>
     );
   }
 
-  if (!memory) {
-    return (
-      <SafeAreaView style={styles.container}>
-        <Header title="Memory Not Found" />
-      </SafeAreaView>
-    );
-  }
+  const headerTitle = `Memory: ${formatDate(memoryState.dateTimeOfCapture)}`;
 
-  const headerTitle = `Memory: ${
-    memory.timeOfRecord ? formatDate(memory.timeOfRecord) : "No date"
-  }`;
-
-  const actionIcons = isEditMode ? (
+  const actionIcons = memoryState.isEditable ? (
     <TouchableOpacity
       onPress={handleSave}
-      style={[styles.headerButton, isSaving && { opacity: 0.5 }]}
       disabled={isSaving}
+      style={[styles.headerButton, isSaving && { opacity: 0.5 }]}
     >
       {isSaving ? (
         <ActivityIndicator size="small" color="#007AFF" />
@@ -252,58 +221,7 @@ export default function ReadMemoryScreen() {
   return (
     <SafeAreaView style={styles.container}>
       <Header title={headerTitle} actionIcons={actionIcons} />
-
-      {/* Content */}
-      <ScrollView
-        style={styles.scrollView}
-        contentContainerStyle={styles.content}
-      >
-        {/* Summary Section */}
-        <View style={styles.inlineSection}>
-          <Text style={styles.inlineLabel}>Summary:</Text>
-          <TextInput
-            style={[styles.readOnlyInput, !isEditMode && styles.inputReadOnly]}
-            value={isEditMode ? editedSummary : memory?.summary || ""}
-            onChangeText={isEditMode ? setEditedSummary : undefined}
-            editable={isEditMode}
-            multiline
-            numberOfLines={4}
-          />
-        </View>
-
-        {/* Time of Capture Section */}
-        <View style={styles.inlineSection}>
-          <Text style={styles.inlineLabel}>Time of Capture:</Text>
-          <Text style={styles.inlineTimeDisplay}>
-            {memory?.timeOfRecord ? formatTime(memory.timeOfRecord) : "No time"}
-          </Text>
-        </View>
-
-        {/* Images Section */}
-        <View style={styles.section}>
-          <Text style={styles.sectionLabel}>Images:</Text>
-          <UploadImages
-            images={isEditMode ? editedImages : memory?.images || []}
-            onImagesSelected={isEditMode ? handleImagesSelected : () => {}}
-            isEditable={isEditMode}
-          />
-        </View>
-
-        {/* Questionnaire Section */}
-        <View style={styles.section}>
-          <Text style={styles.sectionLabel}>Questionnaire:</Text>
-          {(isEditMode ? editedQuestionnaire : memory?.questionnaire || []).map(
-            (item) => (
-              <QuestionnaireCard
-                key={item.id}
-                item={item}
-                onChange={isEditMode ? handleQuestionnaireChange : () => {}}
-                isEditable={isEditMode}
-              />
-            ),
-          )}
-        </View>
-      </ScrollView>
+      <MemoryForm storage={memoryState} onStorageChange={setMemoryState} />
     </SafeAreaView>
   );
 }
@@ -313,60 +231,7 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: "#fff",
   },
-  loadingContainer: {
-    flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
-  },
   headerButton: {
     paddingHorizontal: 4,
-  },
-  scrollView: {
-    flex: 1,
-  },
-  content: {
-    paddingHorizontal: 16,
-    paddingVertical: 20,
-  },
-  section: {
-    marginBottom: 24,
-  },
-  sectionLabel: {
-    fontSize: 16,
-    fontWeight: "600",
-    color: "#000",
-    marginBottom: 8,
-  },
-  inlineSection: {
-    flexDirection: "row",
-    alignItems: "center",
-    marginBottom: 24,
-    gap: 4,
-  },
-  inlineLabel: {
-    fontSize: 16,
-    fontWeight: "600",
-    color: "#000",
-  },
-  readOnlyInput: {
-    flex: 1,
-    borderWidth: 1,
-    borderColor: "#e0e0e0",
-    borderRadius: 8,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    fontSize: 15,
-    color: "#333",
-    textAlignVertical: "top",
-  },
-  inputReadOnly: {
-    borderColor: "#f0f0f0",
-    backgroundColor: "#f9f9f9",
-  },
-  inlineTimeDisplay: {
-    flex: 1,
-    fontSize: 16,
-    color: "#333",
-    fontWeight: "500",
   },
 });

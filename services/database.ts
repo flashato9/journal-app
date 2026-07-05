@@ -35,11 +35,13 @@ export const initializeDatabase = async () => {
       CREATE TABLE IF NOT EXISTS TimeMemory (
         id INTEGER PRIMARY KEY,
         dayMemoryId INTEGER NOT NULL,
+        locationId INTEGER,
         timeOfRecord TEXT NOT NULL,
         summary TEXT NOT NULL,
         createdAt TEXT DEFAULT CURRENT_TIMESTAMP,
         lastUpdatedTime TEXT DEFAULT CURRENT_TIMESTAMP,
-        FOREIGN KEY(dayMemoryId) REFERENCES DayMemory(id)
+        FOREIGN KEY(dayMemoryId) REFERENCES DayMemory(id),
+        FOREIGN KEY(locationId) REFERENCES Location(id)
       );
     `);
 
@@ -65,6 +67,31 @@ export const initializeDatabase = async () => {
         FOREIGN KEY(timeMemoryId) REFERENCES TimeMemory(id)
       );
     `);
+
+    // Create Location table
+    db.execSync(`
+      CREATE TABLE IF NOT EXISTS Location (
+        id INTEGER PRIMARY KEY,
+        userId INTEGER NOT NULL,
+        latitude REAL NOT NULL,
+        longitude REAL NOT NULL,
+        altitude REAL,
+        createdDateTime TEXT DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY(userId) REFERENCES User(id)
+      );
+    `);
+
+    // ===== MIGRATIONS =====
+    // Add locationId column to TimeMemory if it doesn't exist
+    try {
+      db.execSync(`
+        ALTER TABLE TimeMemory ADD COLUMN locationId INTEGER REFERENCES Location(id);
+      `);
+      console.log("Migration: Added locationId column to TimeMemory");
+    } catch (migrationError) {
+      // Column already exists, ignore error
+      console.log("Migration: locationId column already exists");
+    }
 
     console.log("Database initialized successfully");
   } catch (error) {
@@ -140,6 +167,7 @@ export const createDayMemory = (
 interface TimeMemoryRecord {
   id: number;
   dayMemoryId: number;
+  locationId: number | null;
   timeOfRecord: string;
   summary: string;
   createdAt: string;
@@ -171,10 +199,11 @@ export const createTimeMemory = (
   dayMemoryId: number,
   timeOfRecord: string,
   summary: string,
+  locationId?: number,
 ): number => {
   const result = db.runSync(
-    "INSERT INTO TimeMemory (dayMemoryId, timeOfRecord, summary) VALUES (?, ?, ?)",
-    [dayMemoryId, timeOfRecord, summary],
+    "INSERT INTO TimeMemory (dayMemoryId, locationId, timeOfRecord, summary) VALUES (?, ?, ?, ?)",
+    [dayMemoryId, locationId || null, timeOfRecord, summary],
   );
   return result.lastInsertRowId;
 };
@@ -271,4 +300,43 @@ export const deleteTimeMemoryQAByTimeMemoryId = (
   timeMemoryId: number,
 ): void => {
   db.runSync("DELETE FROM TimeMemoryQA WHERE timeMemoryId = ?", [timeMemoryId]);
+};
+
+// ===== LOCATION OPERATIONS =====
+
+export const insertLocation = (
+  userId: number,
+  latitude: number,
+  longitude: number,
+  altitude: number | null,
+): number => {
+  const result = db.runSync(
+    "INSERT INTO Location (userId, latitude, longitude, altitude, createdDateTime) VALUES (?, ?, ?, ?, ?)",
+    [userId, latitude, longitude, altitude, new Date().toISOString()],
+  );
+  return result.lastInsertRowId;
+};
+
+export const getLocationsByUserId = (userId: number, limit: number = 100) => {
+  const result = db.getAllSync(
+    "SELECT * FROM Location WHERE userId = ? ORDER BY createdDateTime DESC LIMIT ?",
+    [userId, limit],
+  );
+  return result || [];
+};
+
+export const getLocationById = (
+  locationId: number,
+): {
+  id: number;
+  userId: number;
+  latitude: number;
+  longitude: number;
+  altitude: number | null;
+  createdDateTime: string;
+} | null => {
+  const result = db.getFirstSync("SELECT * FROM Location WHERE id = ?", [
+    locationId,
+  ]);
+  return result || null;
 };

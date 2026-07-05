@@ -120,6 +120,11 @@ export default function RegisterScreen() {
     router.push("/(welcome)/login");
   };
 
+  const handleBiometricRegister = () => {
+    console.log("Register with fingerprint clicked");
+    router.push("/(welcome)/register-fingerprint");
+  };
+
   return (
     <SafeAreaView style={styles.container}>
       <Header title="" />
@@ -161,6 +166,15 @@ export default function RegisterScreen() {
           activeOpacity={isRegisterEnabled ? 0.7 : 1}
         >
           <Text style={styles.registerButtonText}>Register</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={styles.biometricButton}
+          onPress={handleBiometricRegister}
+        >
+          <Text style={styles.biometricButtonText}>
+            Register with Fingerprint
+          </Text>
         </TouchableOpacity>
 
         <TouchableOpacity onPress={handleBackToLogin}>
@@ -220,6 +234,18 @@ const styles = StyleSheet.create({
     opacity: 0.6,
   },
   registerButtonText: {
+    color: "#fff",
+    fontSize: 16,
+    fontWeight: "600",
+  },
+  biometricButton: {
+    backgroundColor: "#34C759",
+    paddingVertical: 12,
+    borderRadius: 8,
+    alignItems: "center",
+    marginTop: 8,
+  },
+  biometricButtonText: {
     color: "#fff",
     fontSize: 16,
     fontWeight: "600",
