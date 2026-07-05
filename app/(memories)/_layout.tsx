@@ -22,7 +22,7 @@ export default function MemoriesLayout() {
         }}
       />
       <Stack.Screen
-        name="readmemory"
+        name="readoreditmemory"
         options={{
           headerShown: false,
         }}

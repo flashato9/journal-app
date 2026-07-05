@@ -11,6 +11,7 @@ import {
     TouchableOpacity,
     View,
 } from "react-native";
+import { saveImagePersistently } from "../../../../services/imageStorage";
 import LoadingIndicator from "../../../components/LoadingIndicator";
 import ImageCard from "./ImageCard";
 
@@ -110,8 +111,17 @@ export default function UploadImages({
           const newAssetIds = new Set(imageAssetIds);
           newAssetIds.add(assetId);
 
-          onImagesSelected([...images, asset.uri]);
-          setImageAssetIds(newAssetIds);
+          // Save image persistently
+          try {
+            const persistentPath = await saveImagePersistently(asset.uri);
+            onImagesSelected([...images, persistentPath]);
+            setImageAssetIds(newAssetIds);
+          } catch (error) {
+            console.error("Error saving image:", error);
+            Alert.alert("Error", "Failed to save image");
+            setTimeout(() => setIsLoading(false), 300);
+            return;
+          }
         }
         setTimeout(() => setIsLoading(false), 300);
       } else {
@@ -172,15 +182,25 @@ export default function UploadImages({
 
         console.log("Unique assets after filtering:", uniqueAssets.length);
 
-        // Add new unique images and enforce max 6 limit
-        const newImageUris = uniqueAssets.map((asset) => asset.uri);
-        let updatedImages = [...images, ...newImageUris];
-        // Enforce max 6 images
-        updatedImages = updatedImages.slice(0, MAX_IMAGES);
+        // Save images persistently
+        try {
+          const persistentPaths = await Promise.all(
+            uniqueAssets.map((asset) => saveImagePersistently(asset.uri)),
+          );
 
-        onImagesSelected(updatedImages);
-        setImageAssetIds(newAssetIds);
-        setTimeout(() => setIsLoading(false), 300);
+          // Add new unique images and enforce max 6 limit
+          let updatedImages = [...images, ...persistentPaths];
+          // Enforce max 6 images
+          updatedImages = updatedImages.slice(0, MAX_IMAGES);
+
+          onImagesSelected(updatedImages);
+          setImageAssetIds(newAssetIds);
+          setTimeout(() => setIsLoading(false), 300);
+        } catch (error) {
+          console.error("Error saving images:", error);
+          Alert.alert("Error", "Failed to save images");
+          setTimeout(() => setIsLoading(false), 300);
+        }
       } else {
         setIsLoading(false);
       }

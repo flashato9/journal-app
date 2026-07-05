@@ -1,82 +1,59 @@
 import { MaterialIcons } from "@expo/vector-icons";
 import { useFocusEffect } from "@react-navigation/native";
 import { format } from "date-fns/format";
+import { parseISO } from "date-fns/parseISO";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useCallback, useState } from "react";
 import {
-    ActivityIndicator,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View,
+  ActivityIndicator,
+  Alert,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import {
+  createTimeMemoryImage,
+  createTimeMemoryQA,
+  deleteTimeMemoryImagesByTimeMemoryId,
+  deleteTimeMemoryQAByTimeMemoryId,
+  getTimeMemoryById,
+  getTimeMemoryImagesByTimeMemoryId,
+  getTimeMemoryQAByTimeMemoryId,
+  updateTimeMemory,
+} from "../../services/database";
+import { deleteImage } from "../../services/imageStorage";
 import Header from "../components/Header";
 import UploadImages from "./components/ImageGallery/UploadImages";
 import QuestionnaireCard, {
-    QuestionnaireItem,
+  QuestionnaireItem,
 } from "./components/QuestionnaireCard";
 
-function formatTime(date: Date): string {
-  return format(date, "h:mmaa");
+function formatTime(isoDatetime: string): string {
+  try {
+    return format(parseISO(isoDatetime), "h:mmaa");
+  } catch (error) {
+    return "Unknown time";
+  }
 }
 
-function formatDate(date: Date): string {
-  return format(date, "h:mmaa MMMM do, yyyy");
+function formatDate(isoDatetime: string): string {
+  try {
+    return format(parseISO(isoDatetime), "h:mmaa MMMM do, yyyy");
+  } catch (error) {
+    return "Unknown date";
+  }
 }
 
 interface Memory {
+  id: number;
   summary: string;
   timeOfRecord: string; // ISO format datetime
   images: string[]; // Array of image URIs
   questionnaire: QuestionnaireItem[];
-}
-
-// Mock database fetch function
-async function fetchMemoryData(
-  summary: string,
-  timeOfRecord: string,
-): Promise<Memory> {
-  // Simulate network delay
-  await new Promise((resolve) => setTimeout(resolve, 500));
-
-  // timeOfRecord is now a complete ISO datetime passed from TimeOfDayMemoryCard
-  console.log("fetchMemoryData params:", { summary, timeOfRecord });
-
-  // Mock API call - in real app, this would query a database
-  return {
-    summary,
-    timeOfRecord,
-    images: [
-      require("../../assets/memories/fell_in_snow.jpg"),
-      require("../../assets/memories/i_kayak.jpg"),
-      require("../../assets/memories/tight_rope.jpg"),
-    ],
-    questionnaire: [
-      {
-        id: "1",
-        question: "How was your mood today?",
-        answer: "Feeling great! Had a productive day.",
-      },
-      {
-        id: "2",
-        question: "What was the highlight of your day?",
-        answer: "Completed an important project successfully.",
-      },
-      {
-        id: "3",
-        question: "What challenges did you face?",
-        answer: "Had to deal with some unexpected issues but managed well.",
-      },
-      {
-        id: "4",
-        question: "Who did you spend time with?",
-        answer: "Spent time with the team and had a great meeting.",
-      },
-    ],
-  };
 }
 
 export default function ReadMemoryScreen() {
@@ -85,6 +62,7 @@ export default function ReadMemoryScreen() {
   const [memory, setMemory] = useState<Memory | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isEditMode, setIsEditMode] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
   const [editedSummary, setEditedSummary] = useState<string>("");
   const [editedImages, setEditedImages] = useState<string[]>([]);
   const [editedQuestionnaire, setEditedQuestionnaire] = useState<
@@ -100,15 +78,72 @@ export default function ReadMemoryScreen() {
     setIsEditMode(true);
   };
 
-  const handleSave = () => {
-    if (memory) {
+  const handleSave = async () => {
+    try {
+      setIsSaving(true);
+
+      if (!memory) {
+        throw new Error("Memory data not loaded");
+      }
+
+      // Validate summary
+      if (!editedSummary.trim()) {
+        Alert.alert("Error", "Summary cannot be empty");
+        return;
+      }
+
+      const timeMemoryId = memory.id;
+
+      // Update TimeMemory summary
+      updateTimeMemory(timeMemoryId, editedSummary);
+
+      // Get old images to delete their files from storage
+      const oldImages = getTimeMemoryImagesByTimeMemoryId(timeMemoryId);
+
+      // Delete old image files from disk
+      await Promise.all(
+        oldImages.map((img) =>
+          deleteImage(img.imageUri).catch((error) => {
+            console.warn(`Failed to delete image file ${img.imageUri}:`, error);
+            // Don't throw - continue with other deletions
+          }),
+        ),
+      );
+
+      // Delete old images and QA records from database
+      deleteTimeMemoryImagesByTimeMemoryId(timeMemoryId);
+      deleteTimeMemoryQAByTimeMemoryId(timeMemoryId);
+
+      // Insert new images
+      editedImages.forEach((imageUri) => {
+        createTimeMemoryImage(timeMemoryId, imageUri);
+      });
+
+      // Insert new QA records (only non-empty answers)
+      editedQuestionnaire.forEach((qa) => {
+        if (qa.answer.trim()) {
+          createTimeMemoryQA(timeMemoryId, qa.question, qa.answer);
+        }
+      });
+
+      // Update local state with saved changes
       setMemory({
         ...memory,
         summary: editedSummary,
         images: editedImages,
         questionnaire: editedQuestionnaire,
       });
+
       setIsEditMode(false);
+      Alert.alert("Success", "Memory updated successfully");
+    } catch (error) {
+      console.error("Error saving memory:", error);
+      Alert.alert(
+        "Error",
+        error instanceof Error ? error.message : "Failed to save memory",
+      );
+    } finally {
+      setIsSaving(false);
     }
   };
 
@@ -127,20 +162,51 @@ export default function ReadMemoryScreen() {
       const loadMemory = async () => {
         try {
           setIsLoading(true);
-          const fetchedMemory = await fetchMemoryData(
-            (params.summary as string) || "",
-            (params.timeOfRecord as string) || "",
-          );
+
+          // Get timeMemoryId from params
+          if (!params.id) {
+            throw new Error("Memory ID is missing");
+          }
+
+          const timeMemoryId = parseInt(params.id as string, 10);
+
+          // Fetch TimeMemory record
+          const timeMemory = getTimeMemoryById(timeMemoryId);
+          if (!timeMemory) {
+            throw new Error("Memory not found");
+          }
+
+          // Fetch related images and QA records
+          const images = getTimeMemoryImagesByTimeMemoryId(timeMemoryId);
+          const qaRecords = getTimeMemoryQAByTimeMemoryId(timeMemoryId);
+
+          // Convert QA records to QuestionnaireItem format
+          const questionnaire: QuestionnaireItem[] = qaRecords.map((qa) => ({
+            id: qa.id.toString(),
+            question: qa.question,
+            answer: qa.answer,
+          }));
+
+          const fetchedMemory: Memory = {
+            id: timeMemoryId,
+            summary: timeMemory.summary,
+            timeOfRecord: timeMemory.timeOfRecord,
+            images: images.map((img) => img.imageUri),
+            questionnaire,
+          };
+
+          console.log("Fetched memory from database:", fetchedMemory);
           setMemory(fetchedMemory);
         } catch (error) {
           console.error("Error loading memory:", error);
+          setMemory(null);
         } finally {
           setIsLoading(false);
         }
       };
 
       loadMemory();
-    }, [params.summary, params.timeOfRecord]),
+    }, [params.id]),
   );
 
   if (isLoading) {
@@ -162,12 +228,20 @@ export default function ReadMemoryScreen() {
   }
 
   const headerTitle = `Memory: ${
-    memory.timeOfRecord ? formatDate(new Date(memory.timeOfRecord)) : "No date"
+    memory.timeOfRecord ? formatDate(memory.timeOfRecord) : "No date"
   }`;
 
   const actionIcons = isEditMode ? (
-    <TouchableOpacity onPress={handleSave} style={styles.headerButton}>
-      <MaterialIcons name="save" size={28} color="#007AFF" />
+    <TouchableOpacity
+      onPress={handleSave}
+      style={[styles.headerButton, isSaving && { opacity: 0.5 }]}
+      disabled={isSaving}
+    >
+      {isSaving ? (
+        <ActivityIndicator size="small" color="#007AFF" />
+      ) : (
+        <MaterialIcons name="save" size={28} color="#007AFF" />
+      )}
     </TouchableOpacity>
   ) : (
     <TouchableOpacity onPress={handleEditMode} style={styles.headerButton}>
@@ -201,9 +275,7 @@ export default function ReadMemoryScreen() {
         <View style={styles.inlineSection}>
           <Text style={styles.inlineLabel}>Time of Capture:</Text>
           <Text style={styles.inlineTimeDisplay}>
-            {memory?.timeOfRecord
-              ? formatTime(new Date(memory.timeOfRecord))
-              : "No time"}
+            {memory?.timeOfRecord ? formatTime(memory.timeOfRecord) : "No time"}
           </Text>
         </View>
 

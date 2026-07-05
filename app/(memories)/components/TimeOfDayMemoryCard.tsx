@@ -1,4 +1,5 @@
-import { formatISO, parse } from "date-fns";
+import { format } from "date-fns/format";
+import { parseISO } from "date-fns/parseISO";
 import { useRouter } from "expo-router";
 import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
 
@@ -13,17 +14,13 @@ interface TimeOfDayMemoryCardProps {
   day?: string;
 }
 
-// Helper function to combine day and formatted time into ISO datetime
-function combineDateTime(day: string, formattedTime: string): string {
-  // Parse the formatted time (e.g., "8:30 AM") into a date
-  // Format: "yyyy-MM-dd h:mm a" matches "2026-07-04 8:30 AM"
-  const parsedDate = parse(
-    `${day} ${formattedTime}`,
-    "yyyy-MM-dd h:mm a",
-    new Date(),
-  );
-  // Convert to ISO format
-  return formatISO(parsedDate);
+// Helper function to format ISO datetime for display
+function formatTimeOfRecord(isoDatetime: string): string {
+  try {
+    return format(parseISO(isoDatetime), "h:mmaa");
+  } catch (error) {
+    return "Unknown time";
+  }
 }
 
 export default function TimeOfDayMemoryCard({
@@ -33,21 +30,15 @@ export default function TimeOfDayMemoryCard({
   const router = useRouter();
 
   const handleSeeMore = () => {
-    // Combine day and timeOfRecord into ISO datetime
-    console.log(
-      "handleSeeMore - day:",
-      day,
-      "timeOfRecord:",
-      memory.timeOfRecord,
-    );
-    const dateTimeOfRecord = combineDateTime(day, memory.timeOfRecord);
-    console.log("dateTimeOfRecord result:", dateTimeOfRecord);
+    // Pass raw ISO datetime to readmemory
+    console.log("handleSeeMore - timeOfRecord (ISO):", memory.timeOfRecord);
 
     router.push({
-      pathname: "/readmemory",
+      pathname: "/readoreditmemory",
       params: {
         summary: memory.summary,
-        timeOfRecord: dateTimeOfRecord,
+        timeOfRecord: memory.timeOfRecord,
+        id: memory.id,
       },
     });
   };
@@ -62,7 +53,9 @@ export default function TimeOfDayMemoryCard({
 
         <View style={styles.row}>
           <Text style={styles.label}>Time of Record: </Text>
-          <Text style={styles.bold}>{memory.timeOfRecord}</Text>
+          <Text style={styles.bold}>
+            {formatTimeOfRecord(memory.timeOfRecord)}
+          </Text>
         </View>
 
         <TouchableOpacity onPress={handleSeeMore}>

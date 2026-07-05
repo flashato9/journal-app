@@ -1,0 +1,274 @@
+import * as SQLite from "expo-sqlite";
+
+const DATABASE_NAME = "journal.db";
+
+// Open/create database
+export const db = SQLite.openDatabaseSync(DATABASE_NAME);
+
+// Initialize tables
+export const initializeDatabase = async () => {
+  try {
+    // Create User table
+    db.execSync(`
+      CREATE TABLE IF NOT EXISTS User (
+        id INTEGER PRIMARY KEY,
+        username TEXT UNIQUE NOT NULL,
+        createdAt TEXT DEFAULT CURRENT_TIMESTAMP
+      );
+    `);
+
+    // Create DayMemory table
+    db.execSync(`
+      CREATE TABLE IF NOT EXISTS DayMemory (
+        id INTEGER PRIMARY KEY,
+        userId INTEGER NOT NULL,
+        day TEXT NOT NULL,
+        summary TEXT,
+        createdAt TEXT DEFAULT CURRENT_TIMESTAMP,
+        lastUpdatedTime TEXT DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY(userId) REFERENCES User(id)
+      );
+    `);
+
+    // Create TimeMemory table
+    db.execSync(`
+      CREATE TABLE IF NOT EXISTS TimeMemory (
+        id INTEGER PRIMARY KEY,
+        dayMemoryId INTEGER NOT NULL,
+        timeOfRecord TEXT NOT NULL,
+        summary TEXT NOT NULL,
+        createdAt TEXT DEFAULT CURRENT_TIMESTAMP,
+        lastUpdatedTime TEXT DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY(dayMemoryId) REFERENCES DayMemory(id)
+      );
+    `);
+
+    // Create TimeMemoryImage table
+    db.execSync(`
+      CREATE TABLE IF NOT EXISTS TimeMemoryImage (
+        id INTEGER PRIMARY KEY,
+        timeMemoryId INTEGER NOT NULL,
+        imageUri TEXT NOT NULL,
+        lastUpdatedTime TEXT DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY(timeMemoryId) REFERENCES TimeMemory(id)
+      );
+    `);
+
+    // Create TimeMemoryQA table (Question & Answer)
+    db.execSync(`
+      CREATE TABLE IF NOT EXISTS TimeMemoryQA (
+        id INTEGER PRIMARY KEY,
+        timeMemoryId INTEGER NOT NULL,
+        question TEXT NOT NULL,
+        answer TEXT NOT NULL,
+        lastUpdatedTime TEXT DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY(timeMemoryId) REFERENCES TimeMemory(id)
+      );
+    `);
+
+    console.log("Database initialized successfully");
+  } catch (error) {
+    console.error("Error initializing database:", error);
+  }
+};
+
+// ===== USER OPERATIONS =====
+
+export const isUserExists = (username: string): boolean => {
+  const result = db.getFirstSync<{ id: number }>(
+    "SELECT id FROM User WHERE username = ?",
+    [username],
+  );
+  return !!result;
+};
+
+export const insertUserIntoDB = (username: string): number => {
+  const result = db.runSync("INSERT INTO User (username) VALUES (?)", [
+    username,
+  ]);
+  return result.lastInsertRowId;
+};
+
+export const getUserIdByUsername = (username: string): number | null => {
+  const result = db.getFirstSync<{ id: number }>(
+    "SELECT id FROM User WHERE username = ?",
+    [username],
+  );
+  return result?.id || null;
+};
+
+// ===== DAY MEMORY OPERATIONS =====
+
+interface DayMemoryRecord {
+  id: number;
+  userId: number;
+  day: string;
+  summary: string;
+  createdAt: string;
+  lastUpdatedTime: string;
+}
+
+export const getDayMemoriesByUserId = (userId: number): DayMemoryRecord[] => {
+  const result = db.getAllSync<DayMemoryRecord>(
+    "SELECT * FROM DayMemory WHERE userId = ? ORDER BY day DESC",
+    [userId],
+  );
+  return result || [];
+};
+export const isDayMemoryExists = (userId: number, day: string): boolean => {
+  const result = db.getFirstSync<{ id: number }>(
+    "SELECT id FROM DayMemory WHERE userId = ? AND day = ?",
+    [userId, day],
+  );
+  return !!result;
+};
+
+export const createDayMemory = (
+  userId: number,
+  day: string,
+  summary: string = "Summary TBD",
+): number => {
+  const result = db.runSync(
+    "INSERT INTO DayMemory (userId, day, summary) VALUES (?, ?, ?)",
+    [userId, day, summary],
+  );
+  return result.lastInsertRowId;
+};
+
+// ===== TIME MEMORY OPERATIONS =====
+
+interface TimeMemoryRecord {
+  id: number;
+  dayMemoryId: number;
+  timeOfRecord: string;
+  summary: string;
+  createdAt: string;
+  lastUpdatedTime: string;
+}
+
+export const getTimeMemoriesByDayMemoryId = (
+  dayMemoryId: number,
+): TimeMemoryRecord[] => {
+  const result = db.getAllSync<TimeMemoryRecord>(
+    "SELECT * FROM TimeMemory WHERE dayMemoryId = ? ORDER BY timeOfRecord DESC",
+    [dayMemoryId],
+  );
+  return result || [];
+};
+
+export const getDayMemoryByUserIdAndDay = (
+  userId: number,
+  day: string,
+): { id: number } | null => {
+  const result = db.getFirstSync<{ id: number }>(
+    "SELECT id FROM DayMemory WHERE userId = ? AND day = ?",
+    [userId, day],
+  );
+  return result || null;
+};
+
+export const createTimeMemory = (
+  dayMemoryId: number,
+  timeOfRecord: string,
+  summary: string,
+): number => {
+  const result = db.runSync(
+    "INSERT INTO TimeMemory (dayMemoryId, timeOfRecord, summary) VALUES (?, ?, ?)",
+    [dayMemoryId, timeOfRecord, summary],
+  );
+  return result.lastInsertRowId;
+};
+
+export const createTimeMemoryImage = (
+  timeMemoryId: number,
+  imageUri: string,
+): number => {
+  const result = db.runSync(
+    "INSERT INTO TimeMemoryImage (timeMemoryId, imageUri) VALUES (?, ?)",
+    [timeMemoryId, imageUri],
+  );
+  return result.lastInsertRowId;
+};
+
+export const createTimeMemoryQA = (
+  timeMemoryId: number,
+  question: string,
+  answer: string,
+): number => {
+  const result = db.runSync(
+    "INSERT INTO TimeMemoryQA (timeMemoryId, question, answer) VALUES (?, ?, ?)",
+    [timeMemoryId, question, answer],
+  );
+  return result.lastInsertRowId;
+};
+
+// ===== GET TIME MEMORY DETAILS =====
+
+interface TimeMemoryImage {
+  id: number;
+  timeMemoryId: number;
+  imageUri: string;
+}
+
+interface TimeMemoryQA {
+  id: number;
+  timeMemoryId: number;
+  question: string;
+  answer: string;
+}
+
+export const getTimeMemoryById = (
+  timeMemoryId: number,
+): TimeMemoryRecord | null => {
+  const result = db.getFirstSync<TimeMemoryRecord>(
+    "SELECT * FROM TimeMemory WHERE id = ?",
+    [timeMemoryId],
+  );
+  return result || null;
+};
+
+export const getTimeMemoryImagesByTimeMemoryId = (
+  timeMemoryId: number,
+): TimeMemoryImage[] => {
+  const result = db.getAllSync<TimeMemoryImage>(
+    "SELECT * FROM TimeMemoryImage WHERE timeMemoryId = ?",
+    [timeMemoryId],
+  );
+  return result || [];
+};
+
+export const getTimeMemoryQAByTimeMemoryId = (
+  timeMemoryId: number,
+): TimeMemoryQA[] => {
+  const result = db.getAllSync<TimeMemoryQA>(
+    "SELECT * FROM TimeMemoryQA WHERE timeMemoryId = ?",
+    [timeMemoryId],
+  );
+  return result || [];
+};
+
+// ===== UPDATE TIME MEMORY DETAILS =====
+
+export const updateTimeMemory = (
+  timeMemoryId: number,
+  summary: string,
+): void => {
+  db.runSync(
+    "UPDATE TimeMemory SET summary = ?, lastUpdatedTime = ? WHERE id = ?",
+    [summary, new Date().toISOString(), timeMemoryId],
+  );
+};
+
+export const deleteTimeMemoryImagesByTimeMemoryId = (
+  timeMemoryId: number,
+): void => {
+  db.runSync("DELETE FROM TimeMemoryImage WHERE timeMemoryId = ?", [
+    timeMemoryId,
+  ]);
+};
+
+export const deleteTimeMemoryQAByTimeMemoryId = (
+  timeMemoryId: number,
+): void => {
+  db.runSync("DELETE FROM TimeMemoryQA WHERE timeMemoryId = ?", [timeMemoryId]);
+};

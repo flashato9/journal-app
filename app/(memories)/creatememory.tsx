@@ -1,8 +1,10 @@
 import { MaterialIcons } from "@expo/vector-icons";
 import { format } from "date-fns/format";
+import { formatISO } from "date-fns/formatISO";
 import { useRouter } from "expo-router";
-import { useEffect, useState } from "react";
+import { useContext, useEffect, useState } from "react";
 import {
+    Alert,
     ScrollView,
     StyleSheet,
     Text,
@@ -11,6 +13,14 @@ import {
     View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { AuthContext } from "../../context/AuthContext";
+import {
+    createTimeMemory,
+    createTimeMemoryImage,
+    createTimeMemoryQA,
+    getDayMemoryByUserIdAndDay,
+    getUserIdByUsername,
+} from "../../services/database";
 import Header from "../components/Header";
 import UploadImages from "./components/ImageGallery/UploadImages";
 import QuestionnaireCard, {
@@ -35,11 +45,13 @@ const MOCK_QUESTIONNAIRE: QuestionnaireItem[] = [
 
 export default function CreateMemoryScreen() {
   const router = useRouter();
+  const { username } = useContext(AuthContext);
   const [currentTime, setCurrentTime] = useState<string>("");
   const [summary, setSummary] = useState<string>("");
   const [images, setImages] = useState<string[]>([]);
   const [questionnaire, setQuestionnaire] =
     useState<QuestionnaireItem[]>(MOCK_QUESTIONNAIRE);
+  const [isSaving, setIsSaving] = useState(false);
 
   useEffect(() => {
     // Set initial time
@@ -53,14 +65,69 @@ export default function CreateMemoryScreen() {
     return () => clearInterval(interval);
   }, []);
 
-  const handleSave = () => {
-    console.log("Save memory:", {
-      summary,
-      images,
-      questionnaire,
-      timestamp: new Date(),
-    });
-    router.back();
+  const handleSave = async () => {
+    setIsSaving(true);
+    try {
+      if (!username) {
+        throw new Error("Username is not set in AuthContext");
+      }
+
+      if (!summary.trim()) {
+        Alert.alert("Validation Error", "Please enter a summary");
+        setIsSaving(false);
+        return;
+      }
+
+      // Get userId
+      const userId = getUserIdByUsername(username);
+      if (!userId) {
+        throw new Error(`User not found in database: ${username}`);
+      }
+
+      // Get today's date in YYYY-MM-DD format
+      const today = format(new Date(), "yyyy-MM-dd");
+
+      // Get dayMemoryId for today
+      const dayMemory = getDayMemoryByUserIdAndDay(userId, today);
+      if (!dayMemory) {
+        throw new Error(`Day memory not found for today: ${today}`);
+      }
+
+      // Create TimeMemory with ISO datetime
+      const timeOfRecord = formatISO(new Date());
+      const timeMemoryId = createTimeMemory(
+        dayMemory.id,
+        timeOfRecord,
+        summary,
+      );
+      console.log("Created TimeMemory:", timeMemoryId);
+
+      // Create TimeMemoryImages
+      for (const imageUri of images) {
+        createTimeMemoryImage(timeMemoryId, imageUri);
+      }
+      console.log("Created TimeMemoryImages:", images.length);
+
+      // Create TimeMemoryQA entries (only for non-empty answers)
+      for (const item of questionnaire) {
+        if (item.answer.trim()) {
+          createTimeMemoryQA(timeMemoryId, item.question, item.answer);
+        }
+      }
+      const answeredCount = questionnaire.filter((q) => q.answer.trim()).length;
+      console.log("Created TimeMemoryQA entries:", answeredCount);
+
+      Alert.alert("Success", "Memory saved successfully");
+      router.back();
+    } catch (error) {
+      console.error("Error saving memory:", error);
+      Alert.alert(
+        "Error",
+        error instanceof Error ? error.message : "Failed to save memory",
+      );
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   const handleImagesSelected = (newImages: string[]) => {
@@ -76,8 +143,16 @@ export default function CreateMemoryScreen() {
   const timeDisplay = formatTime(new Date());
 
   const actionIcons = (
-    <TouchableOpacity onPress={handleSave} style={styles.headerSaveButton}>
-      <MaterialIcons name="save" size={28} color="#007AFF" />
+    <TouchableOpacity
+      onPress={handleSave}
+      disabled={isSaving}
+      style={[styles.headerSaveButton, isSaving && styles.buttonDisabled]}
+    >
+      <MaterialIcons
+        name="save"
+        size={28}
+        color={isSaving ? "#ccc" : "#007AFF"}
+      />
     </TouchableOpacity>
   );
 
@@ -142,6 +217,9 @@ const styles = StyleSheet.create({
   },
   headerSaveButton: {
     marginRight: 16,
+  },
+  buttonDisabled: {
+    opacity: 0.5,
   },
   scrollView: {
     flex: 1,

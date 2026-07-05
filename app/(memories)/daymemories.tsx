@@ -1,6 +1,7 @@
 import { MaterialIcons } from "@expo/vector-icons";
+import { useFocusEffect } from "@react-navigation/native";
 import { useLocalSearchParams, useRouter } from "expo-router";
-import { useEffect, useState } from "react";
+import { useCallback, useState } from "react";
 import {
     FlatList,
     StyleSheet,
@@ -10,62 +11,11 @@ import {
     View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { getTimeMemoriesByDayMemoryId } from "../../services/database";
 import Header from "../components/Header";
 import TimeOfDayMemoryCard, {
     TimeOfDayMemory,
 } from "./components/TimeOfDayMemoryCard";
-
-// Mock API function
-async function fetchMemoriesForDay(dayId: string): Promise<TimeOfDayMemory[]> {
-  // Simulate API delay
-  await new Promise((resolve) => setTimeout(resolve, 300));
-
-  // Mock data based on day ID
-  const mockData: { [key: string]: TimeOfDayMemory[] } = {
-    "1": [
-      {
-        id: "1",
-        summary: "Morning coffee and meditation",
-        timeOfRecord: "8:30 AM",
-      },
-      { id: "2", summary: "Lunch with colleagues", timeOfRecord: "12:00 PM" },
-      { id: "3", summary: "Afternoon workout", timeOfRecord: "5:00 PM" },
-      {
-        id: "4",
-        summary: "Evening dinner with family",
-        timeOfRecord: "7:30 PM",
-      },
-    ],
-    "2": [
-      {
-        id: "5",
-        summary: "Early morning run",
-        timeOfRecord: "6:00 AM",
-      },
-      { id: "6", summary: "Breakfast with mom", timeOfRecord: "9:00 AM" },
-      { id: "7", summary: "Work meeting", timeOfRecord: "2:00 PM" },
-    ],
-    "3": [
-      {
-        id: "8",
-        summary: "Yoga class",
-        timeOfRecord: "7:00 AM",
-      },
-      { id: "9", summary: "Movie night", timeOfRecord: "8:00 PM" },
-    ],
-    "4": [
-      {
-        id: "10",
-        summary: "Mountain hiking trip",
-        timeOfRecord: "9:00 AM",
-      },
-      { id: "11", summary: "Sunset view", timeOfRecord: "6:30 PM" },
-      { id: "12", summary: "Dinner at restaurant", timeOfRecord: "8:00 PM" },
-    ],
-  };
-
-  return mockData[dayId] || [];
-}
 
 export default function DayMemoriesScreen() {
   const { id, day } = useLocalSearchParams();
@@ -73,18 +23,34 @@ export default function DayMemoriesScreen() {
   const [memories, setMemories] = useState<TimeOfDayMemory[]>([]);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    const loadMemories = async () => {
+  // Fetch time memories when screen is focused
+  useFocusEffect(
+    useCallback(() => {
       setLoading(true);
-      if (id) {
-        const data = await fetchMemoriesForDay(id as string);
-        setMemories(data);
-      }
-      setLoading(false);
-    };
+      try {
+        if (!id) {
+          throw new Error("Day memory ID is missing");
+        }
 
-    loadMemories();
-  }, [id]);
+        const dayMemoryId = parseInt(id as string, 10);
+        const timeMemories = getTimeMemoriesByDayMemoryId(dayMemoryId);
+
+        const memorySummaries = timeMemories.map((tm) => ({
+          id: tm.id.toString(),
+          summary: tm.summary,
+          timeOfRecord: tm.timeOfRecord,
+        }));
+
+        console.log("Fetched time memories:", memorySummaries);
+        setMemories(memorySummaries);
+      } catch (error) {
+        console.error("Error fetching time memories:", error);
+        setMemories([]);
+      } finally {
+        setLoading(false);
+      }
+    }, [id]),
+  );
 
   const handleCreateMemory = () => {
     router.push("/(memories)/creatememory");

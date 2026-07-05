@@ -1,6 +1,8 @@
 import { useRouter } from "expo-router";
-import { useState } from "react";
+import * as SecureStore from "expo-secure-store";
+import { useContext, useState } from "react";
 import {
+  Alert,
   StyleSheet,
   Text,
   TextInput,
@@ -8,17 +10,56 @@ import {
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { AuthContext } from "../../context/AuthContext";
+import { insertUserIntoDB, isUserExists } from "../../services/database";
 import Header from "../components/Header";
 
 export default function LoginScreen() {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const router = useRouter();
+  const { setUsername: setAuthUsername } = useContext(AuthContext);
 
-  const handleLogin = () => {
-    // TODO: Add authentication logic
-    console.log("Login attempt:", { username, password });
-    router.push("/(memories)/allmemories");
+  const handleLogin = async () => {
+    if (!username.trim() || !password.trim()) {
+      Alert.alert("Missing Fields", "Please enter both username and password.");
+      return;
+    }
+
+    try {
+      const key = `login.${username}`;
+
+      // Check if username exists and password matches
+      const storedPassword = await SecureStore.getItemAsync(key);
+
+      if (!storedPassword || storedPassword !== password) {
+        // Log which one is incorrect for debugging (server-side only)
+        if (!storedPassword) {
+          console.log("Username incorrect:", username);
+        } else {
+          console.log("Password incorrect for username:", username);
+        }
+
+        // Show generic error to user
+        Alert.alert("Login Failed", "Invalid username or password.");
+        return;
+      }
+
+      // Login successful - ensure user exists in database
+      console.log("Login successful:", { username });
+      try {
+        if (!isUserExists(username)) {
+          insertUserIntoDB(username);
+        }
+      } catch (dbError) {
+        console.error("Error creating user in database:", dbError);
+      }
+      setAuthUsername(username);
+      router.push("/(memories)/allmemories");
+    } catch (error) {
+      console.error("Error during login:", error);
+      Alert.alert("Login Failed", "An error occurred. Please try again.");
+    }
   };
 
   const handleRegister = () => {
