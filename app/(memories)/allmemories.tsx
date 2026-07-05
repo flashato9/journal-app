@@ -101,8 +101,8 @@ export default function AllMemoriesScreen() {
               // Clear auth context
               setUsername(null);
 
-              // Navigate to login
-              router.push("/(welcome)/login");
+              // Replace navigation to login (clears stack)
+              router.replace("/(welcome)/login");
             },
             style: "destructive",
           },

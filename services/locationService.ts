@@ -180,6 +180,17 @@ export const stopLocationTracking = async () => {
   }
 };
 
+export const isLocationTrackingActive = async (): Promise<boolean> => {
+  try {
+    const isTracking =
+      await TaskManager.isTaskRegisteredAsync(LOCATION_TASK_NAME);
+    return isTracking;
+  } catch (error) {
+    console.error("Error checking location tracking status:", error);
+    return false;
+  }
+};
+
 // ===== HELPER: GET USER ID FROM STORAGE =====
 
 const getUserIdFromStorage = async (): Promise<number | null> => {

@@ -1,13 +1,14 @@
 import { Stack } from "expo-router";
-import { useEffect, useState } from "react";
+import { useContext, useEffect, useState } from "react";
 import { View } from "react-native";
-import { AuthProvider } from "../context/AuthContext";
+import { AuthContext, AuthProvider } from "../context/AuthContext";
 import { OptionsMenuProvider } from "../context/OptionsMenuContext";
 import { initializeDatabase } from "../services/database";
 import LoadingIndicator from "./components/LoadingIndicator";
 import OptionsMenu from "./components/OptionsMenu";
 
-export default function RootLayout() {
+function RootLayoutContent() {
+  const { username } = useContext(AuthContext);
   const [isDbReady, setIsDbReady] = useState(false);
 
   useEffect(() => {
@@ -25,22 +26,31 @@ export default function RootLayout() {
   }
 
   return (
+    <Stack key={username ? "authenticated" : "unauthenticated"}>
+      {username ? (
+        <Stack.Screen
+          name="(memories)"
+          options={{
+            headerShown: false,
+          }}
+        />
+      ) : (
+        <Stack.Screen
+          name="(welcome)"
+          options={{
+            headerShown: false,
+          }}
+        />
+      )}
+    </Stack>
+  );
+}
+
+export default function RootLayout() {
+  return (
     <AuthProvider>
       <OptionsMenuProvider>
-        <Stack>
-          <Stack.Screen
-            name="(welcome)"
-            options={{
-              headerShown: false,
-            }}
-          />
-          <Stack.Screen
-            name="(memories)"
-            options={{
-              headerShown: false,
-            }}
-          />
-        </Stack>
+        <RootLayoutContent />
         <OptionsMenu />
       </OptionsMenuProvider>
     </AuthProvider>

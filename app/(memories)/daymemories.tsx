@@ -3,6 +3,7 @@ import { useFocusEffect } from "@react-navigation/native";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useCallback, useState } from "react";
 import {
+    Alert,
     FlatList,
     StyleSheet,
     Text,
@@ -11,8 +12,13 @@ import {
     View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { getTimeMemoriesByDayMemoryId } from "../../services/database";
+import {
+    getDayMemoryById,
+    getTimeMemoriesByDayMemoryId,
+    updateDayMemory,
+} from "../../services/database";
 import Header from "../components/Header";
+import SummaryCard from "./components/SummaryCard";
 import TimeOfDayMemoryCard, {
     TimeOfDayMemory,
 } from "./components/TimeOfDayMemoryCard";
@@ -22,6 +28,8 @@ export default function DayMemoriesScreen() {
   const router = useRouter();
   const [memories, setMemories] = useState<TimeOfDayMemory[]>([]);
   const [loading, setLoading] = useState(true);
+  const [dayMemoryId, setDayMemoryId] = useState<number | null>(null);
+  const [daySummary, setDaySummary] = useState<string>("");
 
   // Fetch time memories when screen is focused
   useFocusEffect(
@@ -33,6 +41,14 @@ export default function DayMemoriesScreen() {
         }
 
         const dayMemoryId = parseInt(id as string, 10);
+        setDayMemoryId(dayMemoryId);
+
+        // Fetch day memory to get summary
+        const dayMemory = getDayMemoryById(dayMemoryId);
+        if (dayMemory) {
+          setDaySummary(dayMemory.summary || "");
+        }
+
         const timeMemories = getTimeMemoriesByDayMemoryId(dayMemoryId);
 
         const memorySummaries = timeMemories.map((tm) => ({
@@ -60,6 +76,25 @@ export default function DayMemoriesScreen() {
     ToastAndroid.show("Insert new memory", ToastAndroid.SHORT);
   };
 
+  const handleSaveSummary = (newSummary: string) => {
+    try {
+      if (!dayMemoryId) {
+        throw new Error("Day memory ID not found");
+      }
+
+      // Update in database
+      updateDayMemory(dayMemoryId, newSummary);
+      setDaySummary(newSummary);
+      Alert.alert("Success", "Summary updated successfully");
+    } catch (error) {
+      console.error("Error saving summary:", error);
+      Alert.alert(
+        "Error",
+        error instanceof Error ? error.message : "Failed to save summary",
+      );
+    }
+  };
+
   const headerTitle = day ? `${day} Memories` : "Today's Memories";
 
   const actionIcons = (
@@ -75,6 +110,9 @@ export default function DayMemoriesScreen() {
   return (
     <SafeAreaView style={styles.container}>
       <Header title={headerTitle} actionIcons={actionIcons} />
+
+      {/* Summary Section */}
+      <SummaryCard initialText={daySummary} onSubmit={handleSaveSummary} />
 
       {/* Memories List */}
       <FlatList

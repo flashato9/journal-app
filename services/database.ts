@@ -162,6 +162,23 @@ export const createDayMemory = (
   return result.lastInsertRowId;
 };
 
+export const getDayMemoryById = (
+  dayMemoryId: number,
+): DayMemoryRecord | null => {
+  const result = db.getFirstSync<DayMemoryRecord>(
+    "SELECT * FROM DayMemory WHERE id = ?",
+    [dayMemoryId],
+  );
+  return result || null;
+};
+
+export const updateDayMemory = (dayMemoryId: number, summary: string): void => {
+  db.runSync("UPDATE DayMemory SET summary = ? WHERE id = ?", [
+    summary,
+    dayMemoryId,
+  ]);
+};
+
 // ===== TIME MEMORY OPERATIONS =====
 
 interface TimeMemoryRecord {
@@ -335,8 +352,13 @@ export const getLocationById = (
   altitude: number | null;
   createdDateTime: string;
 } | null => {
-  const result = db.getFirstSync("SELECT * FROM Location WHERE id = ?", [
-    locationId,
-  ]);
+  const result = db.getFirstSync<{
+    id: number;
+    userId: number;
+    latitude: number;
+    longitude: number;
+    altitude: number | null;
+    createdDateTime: string;
+  }>("SELECT * FROM Location WHERE id = ?", [locationId]);
   return result || null;
 };
