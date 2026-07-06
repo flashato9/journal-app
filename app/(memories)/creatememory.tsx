@@ -27,12 +27,13 @@ import { QuestionnaireItem } from "./components/QuestionnaireCard";
 // Default questionnaire with sensory prompts
 const DEFAULT_QUESTIONNAIRE: QuestionnaireItem[] = [
   { id: "1", question: "What do you see?", answer: "" },
-  { id: "2", question: "What do you smell?", answer: "" },
-  { id: "3", question: "What do you taste?", answer: "" },
-  { id: "4", question: "What is the closest thing you can touch?", answer: "" },
-  { id: "5", question: "What does it feel like?", answer: "" },
-  { id: "6", question: "How does the temperature feel like?", answer: "" },
-  { id: "7", question: "Why did you decide to come here?", answer: "" },
+  { id: "2", question: "What do you hear?", answer: "" },
+  { id: "3", question: "What do you smell?", answer: "" },
+  { id: "4", question: "What do you taste?", answer: "" },
+  { id: "5", question: "What is the closest thing you can touch?", answer: "" },
+  { id: "6", question: "What does it feel like?", answer: "" },
+  { id: "7", question: "How does the temperature feel like?", answer: "" },
+  { id: "8", question: "Why did you decide to come here?", answer: "" },
 ];
 
 export default function CreateMemoryScreen() {
