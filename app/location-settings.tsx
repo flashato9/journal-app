@@ -5,6 +5,7 @@ import {
     TextInput,
     TouchableOpacity,
     View,
+    ActivityIndicator,
 } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { AuthContext } from "../context/AuthContext";
@@ -27,6 +28,7 @@ export default function LocationSettingsScreen() {
   const [restSeconds, setRestSeconds] = useState("10");
   const [saved, setSaved] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [isSaving, setIsSaving] = useState(false);
 
   useEffect(() => {
     loadSettings();
@@ -70,15 +72,18 @@ export default function LocationSettingsScreen() {
   };
 
   const saveSettings = async () => {
+    setIsSaving(true);
     try {
       if (!username) {
         console.warn("No username provided");
+        setIsSaving(false);
         return;
       }
 
       const userId = getUserIdByUsername(username as string);
       if (!userId) {
         console.warn("Could not find user ID");
+        setIsSaving(false);
         return;
       }
 
@@ -115,6 +120,7 @@ export default function LocationSettingsScreen() {
       }, 1500);
     } catch (error) {
       console.error("Error saving location settings:", error);
+      setIsSaving(false);
     }
   };
 
@@ -181,12 +187,17 @@ export default function LocationSettingsScreen() {
 
         {/* Save Button */}
         <TouchableOpacity
-          style={[styles.saveButton, saved && styles.savedButton]}
+          style={[styles.saveButton, saved && styles.savedButton, isSaving && styles.savingButton]}
           onPress={saveSettings}
+          disabled={isSaving}
         >
-          <Text style={styles.saveButtonText}>
-            {saved ? "✅ Saved" : "💾 Save Settings"}
-          </Text>
+          {isSaving ? (
+            <ActivityIndicator size="small" color="#fff" />
+          ) : (
+            <Text style={styles.saveButtonText}>
+              {saved ? "✅ Saved" : "💾 Save Settings"}
+            </Text>
+          )}
         </TouchableOpacity>
       </View>
     </View>
@@ -239,6 +250,10 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     alignItems: "center",
     marginTop: 16,
+  },
+  savingButton: {
+    backgroundColor: "#0051D5",
+    opacity: 0.8,
   },
   savedButton: {
     backgroundColor: "#34C759",
