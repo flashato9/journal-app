@@ -30,6 +30,19 @@ export const initializeDatabase = async () => {
       );
     `);
 
+    // Create Location table (MUST be before TimeMemory since TimeMemory references it)
+    db.execSync(`
+      CREATE TABLE IF NOT EXISTS Location (
+        id INTEGER PRIMARY KEY,
+        userId INTEGER NOT NULL,
+        latitude REAL NOT NULL,
+        longitude REAL NOT NULL,
+        altitude REAL,
+        createdDateTime TEXT DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY(userId) REFERENCES User(id)
+      );
+    `);
+
     // Create TimeMemory table
     db.execSync(`
       CREATE TABLE IF NOT EXISTS TimeMemory (
@@ -68,19 +81,6 @@ export const initializeDatabase = async () => {
       );
     `);
 
-    // Create Location table
-    db.execSync(`
-      CREATE TABLE IF NOT EXISTS Location (
-        id INTEGER PRIMARY KEY,
-        userId INTEGER NOT NULL,
-        latitude REAL NOT NULL,
-        longitude REAL NOT NULL,
-        altitude REAL,
-        createdDateTime TEXT DEFAULT CURRENT_TIMESTAMP,
-        FOREIGN KEY(userId) REFERENCES User(id)
-      );
-    `);
-
     // Create Notification table
     db.execSync(`
       CREATE TABLE IF NOT EXISTS Notification (
@@ -91,18 +91,6 @@ export const initializeDatabase = async () => {
         FOREIGN KEY(userId) REFERENCES User(id)
       );
     `);
-
-    // ===== MIGRATIONS =====
-    // Add locationId column to TimeMemory if it doesn't exist
-    try {
-      db.execSync(`
-        ALTER TABLE TimeMemory ADD COLUMN locationId INTEGER REFERENCES Location(id);
-      `);
-      console.log("Migration: Added locationId column to TimeMemory");
-    } catch (migrationError) {
-      // Column already exists, ignore error
-      console.log("Migration: locationId column already exists");
-    }
 
     console.log("Database initialized successfully");
   } catch (error) {
