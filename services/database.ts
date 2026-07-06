@@ -92,6 +92,20 @@ export const initializeDatabase = async () => {
       );
     `);
 
+    // Create LocationSettings table
+    db.execSync(`
+      CREATE TABLE IF NOT EXISTS LocationSettings (
+        id INTEGER PRIMARY KEY,
+        userId INTEGER NOT NULL UNIQUE,
+        fetchFrequency INTEGER DEFAULT 10,
+        notificationThreshold REAL DEFAULT 1,
+        restThreshold INTEGER DEFAULT 10,
+        createdAt TEXT DEFAULT CURRENT_TIMESTAMP,
+        lastUpdatedTime TEXT DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY(userId) REFERENCES User(id)
+      );
+    `);
+
     console.log("Database initialized successfully");
   } catch (error) {
     console.error("Error initializing database:", error);
@@ -447,4 +461,54 @@ export const getLatestNotification = (
     [userId, notificationMessage],
   );
   return result || null;
+};
+
+// ===== LOCATION SETTINGS OPERATIONS =====
+
+export const getLocationSettingsByUserId = (
+  userId: number,
+): {
+  id: number;
+  userId: number;
+  fetchFrequency: number;
+  notificationThreshold: number;
+  restThreshold: number;
+  createdAt: string;
+  lastUpdatedTime: string;
+} | null => {
+  const result = db.getFirstSync<{
+    id: number;
+    userId: number;
+    fetchFrequency: number;
+    notificationThreshold: number;
+    restThreshold: number;
+    createdAt: string;
+    lastUpdatedTime: string;
+  }>("SELECT * FROM LocationSettings WHERE userId = ?", [userId]);
+  return result || null;
+};
+
+export const createLocationSettings = (
+  userId: number,
+  fetchFrequency: number = 10,
+  notificationThreshold: number = 1,
+  restThreshold: number = 10,
+): number => {
+  const result = db.runSync(
+    "INSERT INTO LocationSettings (userId, fetchFrequency, notificationThreshold, restThreshold, createdAt, lastUpdatedTime) VALUES (?, ?, ?, ?, ?, ?)",
+    [userId, fetchFrequency, notificationThreshold, restThreshold, new Date().toISOString(), new Date().toISOString()],
+  );
+  return result.lastInsertRowId;
+};
+
+export const updateLocationSettings = (
+  userId: number,
+  fetchFrequency: number,
+  notificationThreshold: number,
+  restThreshold: number,
+): void => {
+  db.runSync(
+    "UPDATE LocationSettings SET fetchFrequency = ?, notificationThreshold = ?, restThreshold = ?, lastUpdatedTime = ? WHERE userId = ?",
+    [fetchFrequency, notificationThreshold, restThreshold, new Date().toISOString(), userId],
+  );
 };

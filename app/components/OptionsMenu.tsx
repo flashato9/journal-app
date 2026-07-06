@@ -9,8 +9,8 @@ import {
     TouchableOpacity,
     View,
 } from "react-native";
-import { OptionsMenuContext } from "../../context/OptionsMenuContext";
 import { AuthContext } from "../../context/AuthContext";
+import { OptionsMenuContext } from "../../context/OptionsMenuContext";
 import { isLocationTrackingActive } from "../../services/locationService";
 
 export default function OptionsMenu() {
@@ -32,7 +32,7 @@ export default function OptionsMenu() {
 
   const handleLocationSettings = () => {
     setMenuVisible(false);
-    router.push("/location-settings");
+    router.push({ pathname: "/location-settings", params: { username } });
   };
 
   const handleExitApp = () => {
@@ -49,7 +49,9 @@ export default function OptionsMenu() {
       isStatus: true,
     },
     { label: "Debug Logs", onPress: handleDebugLogs },
-    ...(username ? [{ label: "Location Settings", onPress: handleLocationSettings }] : []),
+    ...(username
+      ? [{ label: "Location Settings", onPress: handleLocationSettings }]
+      : []),
     { label: "Exit App", onPress: handleExitApp },
   ];
 

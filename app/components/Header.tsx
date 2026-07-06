@@ -31,7 +31,13 @@ export default function Header({
   };
 
   return (
-    <View style={[styles.header, useSafeArea && { paddingTop: insets.top }, containerStyle]}>
+    <View
+      style={[
+        styles.header,
+        useSafeArea && { paddingTop: insets.top },
+        containerStyle,
+      ]}
+    >
       <Text style={styles.headerTitle}>{title}</Text>
       {actionIcons && (
         <View style={styles.actionIconsWrapper}>{actionIcons}</View>

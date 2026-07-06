@@ -1,18 +1,32 @@
-import { View, StyleSheet, Text, TextInput, TouchableOpacity } from "react-native";
+import { useContext, useEffect, useState } from "react";
+import {
+    StyleSheet,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    View,
+} from "react-native";
+import { useLocalSearchParams, useRouter } from "expo-router";
+import { AuthContext } from "../context/AuthContext";
+import { 
+  getUserIdByUsername, 
+  getLocationSettingsByUserId, 
+  createLocationSettings,
+  updateLocationSettings,
+} from "../services/database";
+import { stopLocationTracking, startLocationTracking } from "../services/locationService";
 import Header from "./components/Header";
-import { useState, useEffect } from "react";
-import * as SecureStore from "expo-secure-store";
-
-const DEFAULT_FETCH_FREQUENCY = "10"; // seconds
-const DEFAULT_DISTANCE_THRESHOLD = "1"; // meters
-const DEFAULT_REST_SECONDS = "10"; // seconds
 
 export default function LocationSettingsScreen() {
-  const [fetchFrequency, setFetchFrequency] = useState(DEFAULT_FETCH_FREQUENCY);
-  const [distanceThreshold, setDistanceThreshold] =
-    useState(DEFAULT_DISTANCE_THRESHOLD);
-  const [restSeconds, setRestSeconds] = useState(DEFAULT_REST_SECONDS);
+  const router = useRouter();
+  const { username } = useLocalSearchParams();
+  const { locationSettings, setLocationSettings } = useContext(AuthContext);
+
+  const [fetchFrequency, setFetchFrequency] = useState("10");
+  const [distanceThreshold, setDistanceThreshold] = useState("1");
+  const [restSeconds, setRestSeconds] = useState("10");
   const [saved, setSaved] = useState(false);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     loadSettings();
@@ -20,46 +34,100 @@ export default function LocationSettingsScreen() {
 
   const loadSettings = async () => {
     try {
-      const frequency = await SecureStore.getItemAsync(
-        "locationFetchFrequency",
-      );
-      const distance = await SecureStore.getItemAsync(
-        "locationDistanceThreshold",
-      );
-      const rest = await SecureStore.getItemAsync("locationRestSeconds");
+      if (!username) {
+        console.warn("No username provided");
+        setLoading(false);
+        return;
+      }
 
-      if (frequency) setFetchFrequency(frequency);
-      if (distance) setDistanceThreshold(distance);
-      if (rest) setRestSeconds(rest);
+      const userId = getUserIdByUsername(username as string);
+      if (!userId) {
+        console.warn("Could not find user ID");
+        setLoading(false);
+        return;
+      }
+
+      let settings = getLocationSettingsByUserId(userId);
+      
+      // If settings don't exist, create dummy settings
+      if (!settings) {
+        console.log("Creating default location settings");
+        createLocationSettings(userId, 10, 1, 10);
+        settings = getLocationSettingsByUserId(userId);
+      }
+
+      if (settings) {
+        setFetchFrequency(settings.fetchFrequency.toString());
+        setDistanceThreshold(settings.notificationThreshold.toString());
+        setRestSeconds(settings.restThreshold.toString());
+      }
+
+      setLoading(false);
     } catch (error) {
       console.error("Error loading location settings:", error);
+      setLoading(false);
     }
   };
 
   const saveSettings = async () => {
     try {
-      await SecureStore.setItemAsync(
-        "locationFetchFrequency",
-        fetchFrequency,
-      );
-      await SecureStore.setItemAsync(
-        "locationDistanceThreshold",
-        distanceThreshold,
-      );
-      await SecureStore.setItemAsync("locationRestSeconds", restSeconds);
+      if (!username) {
+        console.warn("No username provided");
+        return;
+      }
 
-      console.log("📍 Location settings saved:", {
-        fetchFrequency,
-        distanceThreshold,
-        restSeconds,
+      const userId = getUserIdByUsername(username as string);
+      if (!userId) {
+        console.warn("Could not find user ID");
+        return;
+      }
+
+      const fetchFreq = parseInt(fetchFrequency) || 10;
+      const distThreshold = parseFloat(distanceThreshold) || 1;
+      const restThresh = parseInt(restSeconds) || 10;
+
+      // Update database
+      updateLocationSettings(userId, fetchFreq, distThreshold, restThresh);
+      console.log("📍 Location settings saved to database:", {
+        fetchFreq,
+        distThreshold,
+        restThresh,
       });
+
+      // Update AuthContext
+      setLocationSettings({
+        fetchFrequency: fetchFreq,
+        notificationThreshold: distThreshold,
+        restThreshold: restThresh,
+      });
+
+      // Stop and restart location tracking with new settings
+      await stopLocationTracking();
+      await startLocationTracking();
+      console.log("✅ Location tracking restarted with new settings");
 
       setSaved(true);
       setTimeout(() => setSaved(false), 2000);
+
+      // Navigate back after a short delay
+      setTimeout(() => {
+        router.back();
+      }, 1500);
     } catch (error) {
       console.error("Error saving location settings:", error);
     }
   };
+
+  if (loading) {
+    return (
+      <View style={styles.container}>
+        <Header title="Location Settings" useSafeArea={true} />
+        <View style={styles.loadingContainer}>
+          <Text>Loading settings...</Text>
+        </View>
+      </View>
+    );
+  }
 
   return (
     <View style={styles.container}>
@@ -77,11 +145,11 @@ export default function LocationSettingsScreen() {
             keyboardType="number-pad"
           />
           <Text style={styles.description}>
-            How often to check and log location to database (10 = every 10 seconds). Location is always recorded.
+            How often to check and log location to database. Location is always recorded.
           </Text>
         </View>
 
-        {/* Distance Threshold */}
+        {/* Notification Threshold */}
         <View style={styles.setting}>
           <Text style={styles.label}>Notification Threshold (meters)</Text>
           <TextInput
@@ -96,9 +164,9 @@ export default function LocationSettingsScreen() {
           </Text>
         </View>
 
-        {/* Rest Seconds */}
+        {/* Rest Threshold */}
         <View style={styles.setting}>
-          <Text style={styles.label}>Rest Seconds</Text>
+          <Text style={styles.label}>Rest Threshold (seconds)</Text>
           <TextInput
             style={styles.input}
             value={restSeconds}
@@ -107,7 +175,7 @@ export default function LocationSettingsScreen() {
             keyboardType="number-pad"
           />
           <Text style={styles.description}>
-            Time interval for background location checks
+            How long to wait since last location before sending a notification
           </Text>
         </View>
 
@@ -129,6 +197,11 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: "#fff",
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
   },
   content: {
     flex: 1,

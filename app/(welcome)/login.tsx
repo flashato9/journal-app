@@ -12,7 +12,13 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { AuthContext } from "../../context/AuthContext";
-import { insertUserIntoDB, isUserExists } from "../../services/database";
+import {
+  insertUserIntoDB,
+  isUserExists,
+  getUserIdByUsername,
+  getLocationSettingsByUserId,
+  createLocationSettings,
+} from "../../services/database";
 import { startLocationTracking } from "../../services/locationService";
 import Header from "../components/Header";
 
@@ -21,6 +27,7 @@ const performLogin = async (
   username: string,
   credential: string,
   setAuthUsername: (username: string) => void,
+  setLocationSettings: any,
   router: any,
 ) => {
   try {
@@ -42,6 +49,25 @@ const performLogin = async (
       }
     } catch (dbError) {
       console.error("Error creating user in database:", dbError);
+    }
+
+    // Get userId and fetch/create LocationSettings
+    const userId = getUserIdByUsername(username);
+    if (userId) {
+      let settings = getLocationSettingsByUserId(userId);
+      if (!settings) {
+        // Create dummy settings (10, 1, 10)
+        createLocationSettings(userId, 10, 1, 10);
+        settings = getLocationSettingsByUserId(userId);
+      }
+      if (settings) {
+        setLocationSettings({
+          fetchFrequency: settings.fetchFrequency,
+          notificationThreshold: settings.notificationThreshold,
+          restThreshold: settings.restThreshold,
+        });
+        console.log("Location settings loaded:", settings);
+      }
     }
 
     // Store current username in SecureStore for location tracking
@@ -68,7 +94,7 @@ export default function LoginScreen() {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const router = useRouter();
-  const { setUsername: setAuthUsername } = useContext(AuthContext);
+  const { setUsername: setAuthUsername, setLocationSettings } = useContext(AuthContext);
 
   const handleLogin = async () => {
     if (!username.trim() || !password.trim()) {
@@ -76,7 +102,7 @@ export default function LoginScreen() {
       return;
     }
 
-    await performLogin(username, password, setAuthUsername, router);
+    await performLogin(username, password, setAuthUsername, setLocationSettings, router);
   };
 
   const handleRegister = () => {
@@ -121,6 +147,7 @@ export default function LoginScreen() {
           storedUsername,
           storedToken,
           setAuthUsername,
+          setLocationSettings,
           router,
         );
       } else {

@@ -3,12 +3,13 @@ import * as SecureStore from "expo-secure-store";
 import * as TaskManager from "expo-task-manager";
 import { getDistance } from "geolib";
 import {
-  getUserIdByUsername,
-  insertLocation,
-  getLatestLocation,
-  getLatestTimeMemoryWithLocation,
-  insertNotification,
-  getLatestNotification,
+    getLatestLocation,
+    getLatestNotification,
+    getLatestTimeMemoryWithLocation,
+    getUserIdByUsername,
+    insertLocation,
+    insertNotification,
+    getLocationSettingsByUserId,
 } from "./database";
 
 // Skip notifications in development mode (Expo Go doesn't support them well)
@@ -58,11 +59,16 @@ const stage1DistanceFilter = (
 
 // ===== HELPER: Stage 2 - Notification Threshold Check =====
 
-const stage2NotificationThresholdCheck = async (
+const stage2NotificationThresholdCheck = (
   userId: number,
   currentLat: number,
   currentLon: number,
-): Promise<{ shouldProceed: boolean; distanceFromMemory: number; threshold: number }> => {
+  notificationThreshold: number,
+): {
+  shouldProceed: boolean;
+  distanceFromMemory: number;
+  threshold: number;
+} => {
   const latestMemory = getLatestTimeMemoryWithLocation(userId);
   if (!latestMemory || !latestMemory.latitude || !latestMemory.longitude) {
     console.log(
@@ -79,23 +85,25 @@ const stage2NotificationThresholdCheck = async (
     { latitude: currentLat, longitude: currentLon },
   );
 
-  const notificationThresholdStr =
-    await SecureStore.getItemAsync("locationDistanceThreshold");
-  const notificationThreshold = notificationThresholdStr
-    ? parseFloat(notificationThresholdStr)
-    : 1;
-
   if (distanceFromMemory <= notificationThreshold) {
     console.log(
       `⏭️  Distance ${distanceFromMemory.toFixed(2)}m <= threshold ${notificationThreshold}m, no notification`,
     );
-    return { shouldProceed: false, distanceFromMemory, threshold: notificationThreshold };
+    return {
+      shouldProceed: false,
+      distanceFromMemory,
+      threshold: notificationThreshold,
+    };
   }
 
   console.log(
     `⚠️  Distance ${distanceFromMemory.toFixed(2)}m > threshold ${notificationThreshold}m, checking rest period`,
   );
-  return { shouldProceed: true, distanceFromMemory, threshold: notificationThreshold };
+  return {
+    shouldProceed: true,
+    distanceFromMemory,
+    threshold: notificationThreshold,
+  };
 };
 
 // ===== HELPER: Stage 3 - Rest Period + Duplicate Prevention =====
@@ -104,12 +112,8 @@ const stage3RestPeriodAndNotify = async (
   userId: number,
   distanceFromMemory: number,
   notificationThreshold: number,
+  restThreshold: number,
 ): Promise<void> => {
-  const restSecondsStr = await SecureStore.getItemAsync(
-    "locationRestSeconds",
-  );
-  const restSeconds = restSecondsStr ? parseInt(restSecondsStr) : 10;
-
   const latestLocationWithTime = getLatestLocation(userId);
   if (!latestLocationWithTime) {
     console.log(`⏭️  No location to check rest period`);
@@ -122,25 +126,22 @@ const stage3RestPeriodAndNotify = async (
   const currentTime = new Date().getTime();
   const timeSinceLastLocation = (currentTime - lastLocationTime) / 1000; // seconds
 
-  if (timeSinceLastLocation <= restSeconds) {
+  if (timeSinceLastLocation <= restThreshold) {
     console.log(
-      `⏭️  Only ${timeSinceLastLocation.toFixed(1)}s passed < ${restSeconds}s rest period`,
+      `⏭️  Only ${timeSinceLastLocation.toFixed(1)}s passed < ${restThreshold}s rest period`,
     );
     return;
   }
 
   console.log(
-    `✓ ${timeSinceLastLocation.toFixed(1)}s > ${restSeconds}s rest period, ready to notify`,
+    `✓ ${timeSinceLastLocation.toFixed(1)}s > ${restThreshold}s rest period, ready to notify`,
   );
 
   // Build notification message
   const notificationMessage = `Hey we noticed you're on a break and you have traveled more than ${notificationThreshold} meters since your last memory. Exactly - ${distanceFromMemory.toFixed(1)} meters.`;
 
   // Check for duplicate notification within 5 minutes
-  const latestNotification = getLatestNotification(
-    userId,
-    notificationMessage,
-  );
+  const latestNotification = getLatestNotification(userId, notificationMessage);
   if (latestNotification) {
     const notificationTime = new Date(latestNotification.createdAt).getTime();
     const timeSinceNotification = (currentTime - notificationTime) / 1000; // seconds
@@ -200,6 +201,13 @@ TaskManager.defineTask(LOCATION_TASK_NAME, async ({ data, error }) => {
           return;
         }
 
+        // Fetch location settings from database
+        const settings = getLocationSettingsByUserId(userId);
+        if (!settings) {
+          console.warn("❌ No location settings found for user");
+          return;
+        }
+
         const currentLat = location.coords.latitude;
         const currentLon = location.coords.longitude;
         const currentAlt = location.coords.altitude;
@@ -212,18 +220,30 @@ TaskManager.defineTask(LOCATION_TASK_NAME, async ({ data, error }) => {
         }
 
         insertLocation(userId, currentLat, currentLon, currentAlt);
-        console.log(`✅ Location recorded: ${currentLat.toFixed(4)}, ${currentLon.toFixed(4)}`);
+        console.log(
+          `✅ Location recorded: ${currentLat.toFixed(4)}, ${currentLon.toFixed(4)}`,
+        );
 
         // Stage 2: Notification Threshold Check
         const { shouldProceed, distanceFromMemory, threshold } =
-          await stage2NotificationThresholdCheck(userId, currentLat, currentLon);
-        
+          stage2NotificationThresholdCheck(
+            userId,
+            currentLat,
+            currentLon,
+            settings.notificationThreshold,
+          );
+
         if (!shouldProceed) {
           return;
         }
 
         // Stage 3: Rest Period + Duplicate Prevention
-        await stage3RestPeriodAndNotify(userId, distanceFromMemory, threshold);
+        await stage3RestPeriodAndNotify(
+          userId,
+          distanceFromMemory,
+          threshold,
+          settings.restThreshold,
+        );
       } catch (error) {
         console.error("❌ Error in location task:", error);
       }
@@ -259,12 +279,14 @@ export const startLocationTracking = async () => {
       throw new Error("Background location permission not granted");
     }
 
-    // Read fetch frequency from SecureStore (in seconds, convert to ms)
-    const fetchFrequencyStr =
-      await SecureStore.getItemAsync("locationFetchFrequency");
-    const fetchFrequencySeconds = fetchFrequencyStr
-      ? parseInt(fetchFrequencyStr)
-      : 10;
+    // Read fetch frequency from database (in seconds, convert to ms)
+    const userId = await getUserIdFromStorage();
+    if (!userId) {
+      throw new Error("Could not determine user ID for location tracking");
+    }
+
+    const settings = getLocationSettingsByUserId(userId);
+    const fetchFrequencySeconds = settings ? settings.fetchFrequency : 10;
     const fetchFrequencyMs = fetchFrequencySeconds * 1000;
 
     console.log(
