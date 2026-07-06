@@ -49,6 +49,12 @@ function RootLayoutContent() {
           headerShown: false,
         }}
       />
+      <Stack.Screen
+        name="location-settings"
+        options={{
+          headerShown: false,
+        }}
+      />
     </Stack>
   );
 }

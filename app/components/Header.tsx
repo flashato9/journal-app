@@ -7,7 +7,6 @@ import {
     View,
     ViewStyle,
 } from "react-native";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { OptionsMenuContext } from "../../context/OptionsMenuContext";
 
 interface HeaderProps {
@@ -22,14 +21,18 @@ export default function Header({
   containerStyle,
 }: HeaderProps) {
   const { setMenuVisible } = useContext(OptionsMenuContext);
-  const insets = useSafeAreaInsets();
 
   const handleOptions = () => {
     setMenuVisible(true);
   };
 
   return (
-    <View style={[styles.header, { paddingTop: insets.top }, containerStyle]}>
+    <View
+      style={[
+        styles.header,
+        containerStyle,
+      ]}
+    >
       <Text style={styles.headerTitle}>{title}</Text>
       {actionIcons && (
         <View style={styles.actionIconsWrapper}>{actionIcons}</View>

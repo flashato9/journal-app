@@ -28,6 +28,11 @@ export default function OptionsMenu() {
     router.push("/debug-logs");
   };
 
+  const handleLocationSettings = () => {
+    setMenuVisible(false);
+    router.push("/location-settings");
+  };
+
   const handleExitApp = () => {
     setMenuVisible(false);
     BackHandler.exitApp();
@@ -41,6 +46,7 @@ export default function OptionsMenu() {
       isStatus: true,
     },
     { label: "Debug Logs", onPress: handleDebugLogs },
+    { label: "Location Settings", onPress: handleLocationSettings },
     { label: "Exit App", onPress: handleExitApp },
   ];
 
