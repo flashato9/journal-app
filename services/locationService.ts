@@ -364,10 +364,11 @@ export const startLocationTracking = async () => {
     );
 
     // Start location updates with user-configured frequency
+    // timeInterval: Updates at this interval (milliseconds)
+    // distanceInterval: Minimum distance in meters between updates (removed to avoid blocking timeInterval)
     await Location.startLocationUpdatesAsync(LOCATION_TASK_NAME, {
       accuracy: Location.Accuracy.Balanced,
       timeInterval: fetchFrequencyMs,
-      distanceInterval: 1, // Trigger on 1+ meter movement (will be filtered in Stage 1)
     });
 
     console.log(`✅ Location.startLocationUpdatesAsync() completed`);
