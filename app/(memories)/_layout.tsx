@@ -2,31 +2,11 @@ import { Stack } from "expo-router";
 
 export default function MemoriesLayout() {
   return (
-    <Stack>
-      <Stack.Screen
-        name="allmemories"
-        options={{
-          headerShown: false,
-        }}
-      />
-      <Stack.Screen
-        name="daymemories"
-        options={{
-          headerShown: false,
-        }}
-      />
-      <Stack.Screen
-        name="creatememory"
-        options={{
-          headerShown: false,
-        }}
-      />
-      <Stack.Screen
-        name="readoreditmemory"
-        options={{
-          headerShown: false,
-        }}
-      />
+    <Stack screenOptions={{ headerShown: false }}>
+      <Stack.Screen name="allmemories" />
+      <Stack.Screen name="daymemories" />
+      <Stack.Screen name="creatememory" />
+      <Stack.Screen name="readoreditmemory" />
     </Stack>
   );
 }

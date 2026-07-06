@@ -4,6 +4,7 @@ import { View } from "react-native";
 import { AuthContext, AuthProvider } from "../context/AuthContext";
 import { OptionsMenuProvider } from "../context/OptionsMenuContext";
 import { initializeDatabase } from "../services/database";
+import { initializeLogger } from "../services/logger";
 import LoadingIndicator from "./components/LoadingIndicator";
 import OptionsMenu from "./components/OptionsMenu";
 
@@ -42,11 +43,22 @@ function RootLayoutContent() {
           }}
         />
       )}
+      <Stack.Screen
+        name="debug-logs"
+        options={{
+          headerShown: false,
+        }}
+      />
     </Stack>
   );
 }
 
 export default function RootLayout() {
+  useEffect(() => {
+    // Initialize file-based logging for testing
+    initializeLogger();
+  }, []);
+
   return (
     <AuthProvider>
       <OptionsMenuProvider>

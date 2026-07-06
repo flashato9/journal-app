@@ -1,4 +1,5 @@
 import { MaterialCommunityIcons } from "@expo/vector-icons";
+import { useRouter } from "expo-router";
 import { useContext } from "react";
 import {
     BackHandler,
@@ -12,6 +13,7 @@ import { OptionsMenuContext } from "../../context/OptionsMenuContext";
 import { isLocationTrackingActive } from "../../services/locationService";
 
 export default function OptionsMenu() {
+  const router = useRouter();
   const { menuVisible, setMenuVisible, locationTrackingActive } =
     useContext(OptionsMenuContext);
 
@@ -19,6 +21,11 @@ export default function OptionsMenu() {
     // Check location tracking status when menu becomes visible
     const isActive = await isLocationTrackingActive();
     console.log("Location tracking active:", isActive);
+  };
+
+  const handleDebugLogs = () => {
+    setMenuVisible(false);
+    router.push("/debug-logs");
   };
 
   const handleExitApp = () => {
@@ -33,6 +40,7 @@ export default function OptionsMenu() {
       disabled: true,
       isStatus: true,
     },
+    { label: "Debug Logs", onPress: handleDebugLogs },
     { label: "Exit App", onPress: handleExitApp },
   ];
 
