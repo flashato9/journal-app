@@ -182,89 +182,129 @@ const stage3RestPeriodAndNotify = async (
 
 // Register background location task
 TaskManager.defineTask(LOCATION_TASK_NAME, async ({ data, error }) => {
-  if (error) {
-    console.error("❌ Location tracking error:", error);
-    return;
-  }
+  try {
+    if (error) {
+      console.error("❌ Location tracking error:", error);
+      return;
+    }
 
-  if (data) {
+    if (!data) {
+      console.warn("⚠️  No data passed to location task");
+      return;
+    }
+
     const { locations } = data as {
       locations: Location.LocationObject[];
     };
-    const location = locations[0];
 
-    if (location) {
-      try {
-        console.log(
-          `📍 Location check at ${new Date().toISOString()} - lat: ${location.coords.latitude.toFixed(4)}, lon: ${location.coords.longitude.toFixed(4)}`,
-        );
-
-        const userId = await getUserIdFromStorage();
-        if (!userId) {
-          console.error("❌ No user ID found - cannot process location");
-          return;
-        }
-
-        console.log(`👤 User ID: ${userId}`);
-
-        // Fetch location settings from database
-        const settings = getLocationSettingsByUserId(userId);
-        if (!settings) {
-          console.error("❌ No location settings found for user - cannot process");
-          return;
-        }
-
-        console.log(
-          `⚙️  Settings - fetchFreq: ${settings.fetchFrequency}s, notifThresh: ${settings.notificationThreshold}m, restThresh: ${settings.restThreshold}s`,
-        );
-
-        const currentLat = location.coords.latitude;
-        const currentLon = location.coords.longitude;
-        const currentAlt = location.coords.altitude;
-
-        // Stage 1: Distance Filter
-        if (!stage1DistanceFilter(userId, currentLat, currentLon)) {
-          console.log("⏭️  Stage 1 filter blocked - location too close");
-          return;
-        }
-
-        insertLocation(userId, currentLat, currentLon, currentAlt);
-        console.log(
-          `✅ Location recorded: ${currentLat.toFixed(4)}, ${currentLon.toFixed(4)}`,
-        );
-
-        // Stage 2: Notification Threshold Check
-        const { shouldProceed, distanceFromMemory, threshold } =
-          stage2NotificationThresholdCheck(
-            userId,
-            currentLat,
-            currentLon,
-            settings.notificationThreshold,
-          );
-
-        if (!shouldProceed) {
-          console.log("⏭️  Stage 2 check blocked - not enough distance from memory");
-          return;
-        }
-
-        // Stage 3: Rest Period + Duplicate Prevention
-        await stage3RestPeriodAndNotify(
-          userId,
-          distanceFromMemory,
-          threshold,
-          settings.restThreshold,
-        );
-      } catch (error) {
-        console.error("❌ CRITICAL: Error in location task:", error);
-        if (error instanceof Error) {
-          console.error("❌ Error stack:", error.stack);
-        }
-      }
-    } else {
+    if (!locations || locations.length === 0) {
       console.warn("⚠️  No location data in task");
+      return;
     }
-  } else {
-    console.warn("⚠️  No data passed to location task");
+
+    const location = locations[0];
+    console.log(
+      `📍 Location check at ${new Date().toISOString()} - lat: ${location.coords.latitude.toFixed(4)}, lon: ${location.coords.longitude.toFixed(4)}`,
+    );
+
+    let userId: number | null = null;
+    try {
+      userId = await getUserIdFromStorage();
+    } catch (err) {
+      console.error("❌ Failed to get user ID:", err);
+      return;
+    }
+
+    if (!userId) {
+      console.error("❌ No user ID found - cannot process location");
+      return;
+    }
+
+    console.log(`👤 User ID: ${userId}`);
+
+    let settings: any = null;
+    try {
+      settings = getLocationSettingsByUserId(userId);
+    } catch (err) {
+      console.error("❌ Failed to fetch location settings:", err);
+      return;
+    }
+
+    if (!settings) {
+      console.error("❌ No location settings found for user - cannot process");
+      return;
+    }
+
+    console.log(
+      `⚙️  Settings - fetchFreq: ${settings.fetchFrequency}s, notifThresh: ${settings.notificationThreshold}m, restThresh: ${settings.restThreshold}s`,
+    );
+
+    const currentLat = location.coords.latitude;
+    const currentLon = location.coords.longitude;
+    const currentAlt = location.coords.altitude;
+
+    // Stage 1: Distance Filter
+    let stage1Result = false;
+    try {
+      stage1Result = stage1DistanceFilter(userId, currentLat, currentLon);
+    } catch (err) {
+      console.error("❌ Error in stage 1 filter:", err);
+      return;
+    }
+
+    if (!stage1Result) {
+      console.log("⏭️  Stage 1 filter blocked - location too close");
+      return;
+    }
+
+    // Insert location
+    try {
+      insertLocation(userId, currentLat, currentLon, currentAlt);
+      console.log(
+        `✅ Location recorded: ${currentLat.toFixed(4)}, ${currentLon.toFixed(4)}`,
+      );
+    } catch (err) {
+      console.error("❌ Failed to insert location:", err);
+      return;
+    }
+
+    // Stage 2: Notification Threshold Check
+    let stage2Result: any = null;
+    try {
+      stage2Result = stage2NotificationThresholdCheck(
+        userId,
+        currentLat,
+        currentLon,
+        settings.notificationThreshold,
+      );
+    } catch (err) {
+      console.error("❌ Error in stage 2 check:", err);
+      return;
+    }
+
+    const { shouldProceed, distanceFromMemory, threshold } = stage2Result;
+
+    if (!shouldProceed) {
+      console.log("⏭️  Stage 2 check blocked - not enough distance from memory");
+      return;
+    }
+
+    // Stage 3: Rest Period + Duplicate Prevention
+    try {
+      await stage3RestPeriodAndNotify(
+        userId,
+        distanceFromMemory,
+        threshold,
+        settings.restThreshold,
+      );
+    } catch (err) {
+      console.error("❌ Error in stage 3:", err);
+    }
+  } catch (error) {
+    console.error("❌ CRITICAL: Unhandled error in location task:", error);
+    if (error instanceof Error) {
+      console.error("❌ Error stack:", error.stack);
+    }
   }
 });
 
@@ -317,7 +357,10 @@ export const startLocationTracking = async () => {
     const fetchFrequencyMs = fetchFrequencySeconds * 1000;
 
     console.log(
-      `▶️  Starting location tracking with ${fetchFrequencySeconds}s (${fetchFrequencyMs}ms) fetch frequency`,
+      `▶️  Starting location tracking with fetchFrequency=${fetchFrequencySeconds}s`,
+    );
+    console.log(
+      `⏱️  Configuration: timeInterval=${fetchFrequencyMs}ms, distanceInterval=1m, accuracy=Balanced`,
     );
 
     // Start location updates with user-configured frequency
@@ -327,11 +370,17 @@ export const startLocationTracking = async () => {
       distanceInterval: 1, // Trigger on 1+ meter movement (will be filtered in Stage 1)
     });
 
+    console.log(`✅ Location.startLocationUpdatesAsync() completed`);
+
     const isNowTracking =
       await TaskManager.isTaskRegisteredAsync(LOCATION_TASK_NAME);
     console.log(
-      `✅ Location tracking started (verified: ${isNowTracking ? "ACTIVE" : "NOT ACTIVE"})`
+      `✅ Location tracking status verified: ${isNowTracking ? "✓ ACTIVE" : "✗ NOT ACTIVE"}`,
     );
+
+    if (!isNowTracking) {
+      console.error("❌ WARNING: Tracking was not registered after start!");
+    }
   } catch (error) {
     console.error("❌ Error starting location tracking:", error);
     throw error;
@@ -340,9 +389,11 @@ export const startLocationTracking = async () => {
 
 export const stopLocationTracking = async () => {
   try {
+    console.log(`⏸️  Attempting to stop location tracking...`);
     const isTracking =
       await TaskManager.isTaskRegisteredAsync(LOCATION_TASK_NAME);
     if (isTracking) {
+      console.log(`📍 Task is registered, stopping...`);
       await Location.stopLocationUpdatesAsync(LOCATION_TASK_NAME);
       console.log("🛑 Location tracking stopped");
     } else {
