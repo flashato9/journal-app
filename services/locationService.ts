@@ -195,27 +195,36 @@ TaskManager.defineTask(LOCATION_TASK_NAME, async ({ data, error }) => {
 
     if (location) {
       try {
+        console.log(
+          `📍 Location check at ${new Date().toISOString()} - lat: ${location.coords.latitude.toFixed(4)}, lon: ${location.coords.longitude.toFixed(4)}`,
+        );
+
         const userId = await getUserIdFromStorage();
         if (!userId) {
-          console.warn("❌ No user ID found");
+          console.error("❌ No user ID found - cannot process location");
           return;
         }
+
+        console.log(`👤 User ID: ${userId}`);
 
         // Fetch location settings from database
         const settings = getLocationSettingsByUserId(userId);
         if (!settings) {
-          console.warn("❌ No location settings found for user");
+          console.error("❌ No location settings found for user - cannot process");
           return;
         }
+
+        console.log(
+          `⚙️  Settings - fetchFreq: ${settings.fetchFrequency}s, notifThresh: ${settings.notificationThreshold}m, restThresh: ${settings.restThreshold}s`,
+        );
 
         const currentLat = location.coords.latitude;
         const currentLon = location.coords.longitude;
         const currentAlt = location.coords.altitude;
 
-        console.log(`📍 Location check at ${new Date().toISOString()}`);
-
         // Stage 1: Distance Filter
         if (!stage1DistanceFilter(userId, currentLat, currentLon)) {
+          console.log("⏭️  Stage 1 filter blocked - location too close");
           return;
         }
 
@@ -234,6 +243,7 @@ TaskManager.defineTask(LOCATION_TASK_NAME, async ({ data, error }) => {
           );
 
         if (!shouldProceed) {
+          console.log("⏭️  Stage 2 check blocked - not enough distance from memory");
           return;
         }
 
@@ -245,9 +255,16 @@ TaskManager.defineTask(LOCATION_TASK_NAME, async ({ data, error }) => {
           settings.restThreshold,
         );
       } catch (error) {
-        console.error("❌ Error in location task:", error);
+        console.error("❌ CRITICAL: Error in location task:", error);
+        if (error instanceof Error) {
+          console.error("❌ Error stack:", error.stack);
+        }
       }
+    } else {
+      console.warn("⚠️  No location data in task");
     }
+  } else {
+    console.warn("⚠️  No data passed to location task");
   }
 });
 
@@ -255,6 +272,16 @@ TaskManager.defineTask(LOCATION_TASK_NAME, async ({ data, error }) => {
 
 export const startLocationTracking = async () => {
   try {
+    // Check if already tracking
+    const alreadyTracking =
+      await TaskManager.isTaskRegisteredAsync(LOCATION_TASK_NAME);
+    if (alreadyTracking) {
+      console.log("⚠️  Location tracking already active, stopping first...");
+      await stopLocationTracking();
+      // Add small delay to ensure clean restart
+      await new Promise((resolve) => setTimeout(resolve, 500));
+    }
+
     // Request notification permission only in production
     if (SEND_NOTIFICATIONS) {
       try {
@@ -290,7 +317,7 @@ export const startLocationTracking = async () => {
     const fetchFrequencyMs = fetchFrequencySeconds * 1000;
 
     console.log(
-      `📍 Starting location tracking with ${fetchFrequencySeconds}s fetch frequency`,
+      `▶️  Starting location tracking with ${fetchFrequencySeconds}s (${fetchFrequencyMs}ms) fetch frequency`,
     );
 
     // Start location updates with user-configured frequency
@@ -300,7 +327,11 @@ export const startLocationTracking = async () => {
       distanceInterval: 1, // Trigger on 1+ meter movement (will be filtered in Stage 1)
     });
 
-    console.log("✅ Location tracking started");
+    const isNowTracking =
+      await TaskManager.isTaskRegisteredAsync(LOCATION_TASK_NAME);
+    console.log(
+      `✅ Location tracking started (verified: ${isNowTracking ? "ACTIVE" : "NOT ACTIVE"})`
+    );
   } catch (error) {
     console.error("❌ Error starting location tracking:", error);
     throw error;
@@ -313,10 +344,12 @@ export const stopLocationTracking = async () => {
       await TaskManager.isTaskRegisteredAsync(LOCATION_TASK_NAME);
     if (isTracking) {
       await Location.stopLocationUpdatesAsync(LOCATION_TASK_NAME);
-      console.log("Location tracking stopped");
+      console.log("🛑 Location tracking stopped");
+    } else {
+      console.log("⚠️  Location tracking was not active");
     }
   } catch (error) {
-    console.error("Error stopping location tracking:", error);
+    console.error("❌ Error stopping location tracking:", error);
     throw error;
   }
 };
