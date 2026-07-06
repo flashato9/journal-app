@@ -25,6 +25,158 @@ const getNotificationsModule = async () => {
 
 const LOCATION_TASK_NAME = "background-location-task";
 
+// ===== HELPER: Stage 1 - Distance Filter (1m threshold) =====
+
+const stage1DistanceFilter = (
+  userId: number,
+  currentLat: number,
+  currentLon: number,
+): boolean => {
+  const latestDbLocation = getLatestLocation(userId);
+  if (!latestDbLocation) {
+    console.log(`📍 First location recorded`);
+    return true; // No previous location, proceed to recording
+  }
+
+  const distanceFrom1mFilter = getDistance(
+    {
+      latitude: latestDbLocation.latitude,
+      longitude: latestDbLocation.longitude,
+    },
+    { latitude: currentLat, longitude: currentLon },
+  );
+
+  if (distanceFrom1mFilter <= 1) {
+    console.log(
+      `⏭️  Distance ${distanceFrom1mFilter.toFixed(2)}m <= 1m, skipping record`,
+    );
+    return false; // Skip recording
+  }
+
+  return true; // Record this location
+};
+
+// ===== HELPER: Stage 2 - Notification Threshold Check =====
+
+const stage2NotificationThresholdCheck = async (
+  userId: number,
+  currentLat: number,
+  currentLon: number,
+): Promise<{ shouldProceed: boolean; distanceFromMemory: number; threshold: number }> => {
+  const latestMemory = getLatestTimeMemoryWithLocation(userId);
+  if (!latestMemory || !latestMemory.latitude || !latestMemory.longitude) {
+    console.log(
+      `⏭️  No previous memory with location, skipping notification check`,
+    );
+    return { shouldProceed: false, distanceFromMemory: 0, threshold: 0 };
+  }
+
+  const distanceFromMemory = getDistance(
+    {
+      latitude: latestMemory.latitude,
+      longitude: latestMemory.longitude,
+    },
+    { latitude: currentLat, longitude: currentLon },
+  );
+
+  const notificationThresholdStr =
+    await SecureStore.getItemAsync("locationDistanceThreshold");
+  const notificationThreshold = notificationThresholdStr
+    ? parseFloat(notificationThresholdStr)
+    : 1;
+
+  if (distanceFromMemory <= notificationThreshold) {
+    console.log(
+      `⏭️  Distance ${distanceFromMemory.toFixed(2)}m <= threshold ${notificationThreshold}m, no notification`,
+    );
+    return { shouldProceed: false, distanceFromMemory, threshold: notificationThreshold };
+  }
+
+  console.log(
+    `⚠️  Distance ${distanceFromMemory.toFixed(2)}m > threshold ${notificationThreshold}m, checking rest period`,
+  );
+  return { shouldProceed: true, distanceFromMemory, threshold: notificationThreshold };
+};
+
+// ===== HELPER: Stage 3 - Rest Period + Duplicate Prevention =====
+
+const stage3RestPeriodAndNotify = async (
+  userId: number,
+  distanceFromMemory: number,
+  notificationThreshold: number,
+): Promise<void> => {
+  const restSecondsStr = await SecureStore.getItemAsync(
+    "locationRestSeconds",
+  );
+  const restSeconds = restSecondsStr ? parseInt(restSecondsStr) : 10;
+
+  const latestLocationWithTime = getLatestLocation(userId);
+  if (!latestLocationWithTime) {
+    console.log(`⏭️  No location to check rest period`);
+    return;
+  }
+
+  const lastLocationTime = new Date(
+    latestLocationWithTime.createdDateTime,
+  ).getTime();
+  const currentTime = new Date().getTime();
+  const timeSinceLastLocation = (currentTime - lastLocationTime) / 1000; // seconds
+
+  if (timeSinceLastLocation <= restSeconds) {
+    console.log(
+      `⏭️  Only ${timeSinceLastLocation.toFixed(1)}s passed < ${restSeconds}s rest period`,
+    );
+    return;
+  }
+
+  console.log(
+    `✓ ${timeSinceLastLocation.toFixed(1)}s > ${restSeconds}s rest period, ready to notify`,
+  );
+
+  // Build notification message
+  const notificationMessage = `Hey we noticed you're on a break and you have traveled more than ${notificationThreshold} meters since your last memory. Exactly - ${distanceFromMemory.toFixed(1)} meters.`;
+
+  // Check for duplicate notification within 5 minutes
+  const latestNotification = getLatestNotification(
+    userId,
+    notificationMessage,
+  );
+  if (latestNotification) {
+    const notificationTime = new Date(latestNotification.createdAt).getTime();
+    const timeSinceNotification = (currentTime - notificationTime) / 1000; // seconds
+
+    if (timeSinceNotification < 300) {
+      // 300 seconds = 5 minutes
+      console.log(
+        `🔄 Duplicate notification skipped (${timeSinceNotification.toFixed(0)}s < 5min)`,
+      );
+      return;
+    }
+  }
+
+  // Send notification
+  console.log(`📬 Sending notification: ${notificationMessage}`);
+  insertNotification(userId, notificationMessage);
+
+  if (SEND_NOTIFICATIONS) {
+    try {
+      const Notifications = await getNotificationsModule();
+      await Notifications.scheduleNotificationAsync({
+        content: {
+          title: "You're on a break!",
+          body: notificationMessage,
+        },
+        trigger: null,
+      });
+    } catch (notifError) {
+      console.warn(
+        "⚠️  Could not send notification from background task:",
+        notifError,
+      );
+    }
+  }
+};
+
 // ===== BACKGROUND TASK REGISTRATION =====
 
 // Register background location task
@@ -54,135 +206,24 @@ TaskManager.defineTask(LOCATION_TASK_NAME, async ({ data, error }) => {
 
         console.log(`📍 Location check at ${new Date().toISOString()}`);
 
-        // ===== STAGE 1: Distance Filter (1m threshold) =====
-        const latestDbLocation = getLatestLocation(userId);
-        if (latestDbLocation) {
-          const distanceFrom1mFilter = getDistance(
-            {
-              latitude: latestDbLocation.latitude,
-              longitude: latestDbLocation.longitude,
-            },
-            { latitude: currentLat, longitude: currentLon },
-          );
-
-          if (distanceFrom1mFilter <= 1) {
-            console.log(
-              `⏭️  Distance ${distanceFrom1mFilter.toFixed(2)}m <= 1m, skipping record`,
-            );
-            return;
-          }
+        // Stage 1: Distance Filter
+        if (!stage1DistanceFilter(userId, currentLat, currentLon)) {
+          return;
         }
 
-        // Record new location
         insertLocation(userId, currentLat, currentLon, currentAlt);
         console.log(`✅ Location recorded: ${currentLat.toFixed(4)}, ${currentLon.toFixed(4)}`);
 
-        // ===== STAGE 2: Notification Threshold Check =====
-        const latestMemory = getLatestTimeMemoryWithLocation(userId);
-        if (!latestMemory || !latestMemory.latitude || !latestMemory.longitude) {
-          console.log(
-            `⏭️  No previous memory with location, skipping notification check`,
-          );
+        // Stage 2: Notification Threshold Check
+        const { shouldProceed, distanceFromMemory, threshold } =
+          await stage2NotificationThresholdCheck(userId, currentLat, currentLon);
+        
+        if (!shouldProceed) {
           return;
         }
 
-        const distanceFromMemory = getDistance(
-          {
-            latitude: latestMemory.latitude,
-            longitude: latestMemory.longitude,
-          },
-          { latitude: currentLat, longitude: currentLon },
-        );
-
-        // Get notification threshold from SecureStore
-        const notificationThresholdStr =
-          await SecureStore.getItemAsync("locationDistanceThreshold");
-        const notificationThreshold = notificationThresholdStr
-          ? parseFloat(notificationThresholdStr)
-          : 1;
-
-        if (distanceFromMemory <= notificationThreshold) {
-          console.log(
-            `⏭️  Distance ${distanceFromMemory.toFixed(2)}m <= threshold ${notificationThreshold}m, no notification`,
-          );
-          return;
-        }
-
-        console.log(
-          `⚠️  Distance ${distanceFromMemory.toFixed(2)}m > threshold ${notificationThreshold}m, checking rest period`,
-        );
-
-        // ===== STAGE 3: Rest Period + Duplicate Prevention =====
-        const restSecondsStr = await SecureStore.getItemAsync(
-          "locationRestSeconds",
-        );
-        const restSeconds = restSecondsStr ? parseInt(restSecondsStr) : 10;
-
-        const latestLocationWithTime = getLatestLocation(userId);
-        if (!latestLocationWithTime) {
-          console.log(`⏭️  No location to check rest period`);
-          return;
-        }
-
-        const lastLocationTime = new Date(
-          latestLocationWithTime.createdDateTime,
-        ).getTime();
-        const currentTime = new Date().getTime();
-        const timeSinceLastLocation = (currentTime - lastLocationTime) / 1000; // seconds
-
-        if (timeSinceLastLocation <= restSeconds) {
-          console.log(
-            `⏭️  Only ${timeSinceLastLocation.toFixed(1)}s passed < ${restSeconds}s rest period`,
-          );
-          return;
-        }
-
-        console.log(
-          `✓ ${timeSinceLastLocation.toFixed(1)}s > ${restSeconds}s rest period, ready to notify`,
-        );
-
-        // Build notification message
-        const notificationMessage = `Hey we noticed you're on a break and you have traveled more than ${notificationThreshold} meters since your last memory. Exactly - ${distanceFromMemory.toFixed(1)} meters.`;
-
-        // Check for duplicate notification within 5 minutes
-        const latestNotification = getLatestNotification(
-          userId,
-          notificationMessage,
-        );
-        if (latestNotification) {
-          const notificationTime = new Date(latestNotification.createdAt).getTime();
-          const timeSinceNotification = (currentTime - notificationTime) / 1000; // seconds
-
-          if (timeSinceNotification < 300) {
-            // 300 seconds = 5 minutes
-            console.log(
-              `🔄 Duplicate notification skipped (${timeSinceNotification.toFixed(0)}s < 5min)`,
-            );
-            return;
-          }
-        }
-
-        // Send notification
-        console.log(`📬 Sending notification: ${notificationMessage}`);
-        insertNotification(userId, notificationMessage);
-
-        if (SEND_NOTIFICATIONS) {
-          try {
-            const Notifications = await getNotificationsModule();
-            await Notifications.scheduleNotificationAsync({
-              content: {
-                title: "You're on a break!",
-                body: notificationMessage,
-              },
-              trigger: null,
-            });
-          } catch (notifError) {
-            console.warn(
-              "⚠️  Could not send notification from background task:",
-              notifError,
-            );
-          }
-        }
+        // Stage 3: Rest Period + Duplicate Prevention
+        await stage3RestPeriodAndNotify(userId, distanceFromMemory, threshold);
       } catch (error) {
         console.error("❌ Error in location task:", error);
       }
