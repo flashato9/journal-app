@@ -1,21 +1,24 @@
+import { useLocalSearchParams, useRouter } from "expo-router";
 import { useContext, useEffect, useState } from "react";
 import {
+    ActivityIndicator,
     StyleSheet,
     Text,
     TextInput,
     TouchableOpacity,
     View,
-    ActivityIndicator,
 } from "react-native";
-import { useLocalSearchParams, useRouter } from "expo-router";
 import { AuthContext } from "../context/AuthContext";
-import { 
-  getUserIdByUsername, 
-  getLocationSettingsByUserId, 
-  createLocationSettings,
-  updateLocationSettings,
+import {
+    createLocationSettings,
+    getLocationSettingsByUserId,
+    getUserIdByUsername,
+    updateLocationSettings,
 } from "../services/database";
-import { stopLocationTracking, startLocationTracking } from "../services/locationService";
+import {
+    startLocationTracking,
+    stopLocationTracking,
+} from "../services/locationService";
 import Header from "./components/Header";
 
 export default function LocationSettingsScreen() {
@@ -50,7 +53,7 @@ export default function LocationSettingsScreen() {
       }
 
       let settings = getLocationSettingsByUserId(userId);
-      
+
       // If settings don't exist, create dummy settings
       if (!settings) {
         console.log("Creating default location settings");
@@ -151,7 +154,8 @@ export default function LocationSettingsScreen() {
             keyboardType="number-pad"
           />
           <Text style={styles.description}>
-            How often to check and log location to database. Location is always recorded.
+            How often to check and log location to database. Location is always
+            recorded.
           </Text>
         </View>
 
@@ -166,7 +170,8 @@ export default function LocationSettingsScreen() {
             keyboardType="decimal-pad"
           />
           <Text style={styles.description}>
-            Minimum distance to move before sending a notification. Locations are always recorded in database.
+            Minimum distance to move before sending a notification. Locations
+            are always recorded in database.
           </Text>
         </View>
 
@@ -187,7 +192,11 @@ export default function LocationSettingsScreen() {
 
         {/* Save Button */}
         <TouchableOpacity
-          style={[styles.saveButton, saved && styles.savedButton, isSaving && styles.savingButton]}
+          style={[
+            styles.saveButton,
+            saved && styles.savedButton,
+            isSaving && styles.savingButton,
+          ]}
           onPress={saveSettings}
           disabled={isSaving}
         >

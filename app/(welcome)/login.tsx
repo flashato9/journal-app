@@ -13,11 +13,11 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { AuthContext } from "../../context/AuthContext";
 import {
+  createLocationSettings,
+  getLocationSettingsByUserId,
+  getUserIdByUsername,
   insertUserIntoDB,
   isUserExists,
-  getUserIdByUsername,
-  getLocationSettingsByUserId,
-  createLocationSettings,
 } from "../../services/database";
 import { startLocationTracking } from "../../services/locationService";
 import Header from "../components/Header";
@@ -94,7 +94,8 @@ export default function LoginScreen() {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const router = useRouter();
-  const { setUsername: setAuthUsername, setLocationSettings } = useContext(AuthContext);
+  const { setUsername: setAuthUsername, setLocationSettings } =
+    useContext(AuthContext);
 
   const handleLogin = async () => {
     if (!username.trim() || !password.trim()) {
@@ -102,7 +103,13 @@ export default function LoginScreen() {
       return;
     }
 
-    await performLogin(username, password, setAuthUsername, setLocationSettings, router);
+    await performLogin(
+      username,
+      password,
+      setAuthUsername,
+      setLocationSettings,
+      router,
+    );
   };
 
   const handleRegister = () => {

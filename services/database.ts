@@ -496,7 +496,14 @@ export const createLocationSettings = (
 ): number => {
   const result = db.runSync(
     "INSERT INTO LocationSettings (userId, fetchFrequency, notificationThreshold, restThreshold, createdAt, lastUpdatedTime) VALUES (?, ?, ?, ?, ?, ?)",
-    [userId, fetchFrequency, notificationThreshold, restThreshold, new Date().toISOString(), new Date().toISOString()],
+    [
+      userId,
+      fetchFrequency,
+      notificationThreshold,
+      restThreshold,
+      new Date().toISOString(),
+      new Date().toISOString(),
+    ],
   );
   return result.lastInsertRowId;
 };
@@ -509,6 +516,12 @@ export const updateLocationSettings = (
 ): void => {
   db.runSync(
     "UPDATE LocationSettings SET fetchFrequency = ?, notificationThreshold = ?, restThreshold = ?, lastUpdatedTime = ? WHERE userId = ?",
-    [fetchFrequency, notificationThreshold, restThreshold, new Date().toISOString(), userId],
+    [
+      fetchFrequency,
+      notificationThreshold,
+      restThreshold,
+      new Date().toISOString(),
+      userId,
+    ],
   );
 };

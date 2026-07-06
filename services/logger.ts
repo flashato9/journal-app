@@ -69,8 +69,10 @@ export const readLogs = async (): Promise<string> => {
 
 export const clearLogs = async (): Promise<void> => {
   try {
+    // Delete the file
     await logFile.delete();
-    console.log("Logs cleared");
+    // Recreate it as empty
+    await logFile.write("");
   } catch (error) {
     console.error("Failed to clear logs:", error);
   }

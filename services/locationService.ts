@@ -6,10 +6,10 @@ import {
     getLatestLocation,
     getLatestNotification,
     getLatestTimeMemoryWithLocation,
+    getLocationSettingsByUserId,
     getUserIdByUsername,
     insertLocation,
     insertNotification,
-    getLocationSettingsByUserId,
 } from "./database";
 
 // Skip notifications in development mode (Expo Go doesn't support them well)
@@ -180,16 +180,26 @@ const stage3RestPeriodAndNotify = async (
 
 // ===== BACKGROUND TASK REGISTRATION =====
 
+let taskInvocationCount = 0;
+
 // Register background location task
 TaskManager.defineTask(LOCATION_TASK_NAME, async ({ data, error }) => {
+  taskInvocationCount++;
+  const invocationId = taskInvocationCount;
+  const timestamp = new Date().toISOString();
+
+  console.log(`\n${"=".repeat(70)}`);
+  console.log(`🔵 BACKGROUND TASK INVOCATION #${invocationId} at ${timestamp}`);
+  console.log(`${"=".repeat(70)}`);
+
   try {
     if (error) {
-      console.error("❌ Location tracking error:", error);
+      console.error(`❌ [#${invocationId}] Location tracking error:`, error);
       return;
     }
 
     if (!data) {
-      console.warn("⚠️  No data passed to location task");
+      console.warn(`⚠️  [#${invocationId}] No data passed to location task`);
       return;
     }
 
@@ -198,13 +208,16 @@ TaskManager.defineTask(LOCATION_TASK_NAME, async ({ data, error }) => {
     };
 
     if (!locations || locations.length === 0) {
-      console.warn("⚠️  No location data in task");
+      console.warn(`⚠️  [#${invocationId}] No location data in task`);
       return;
     }
 
+    console.log(
+      `✅ [#${invocationId}] Received ${locations.length} location(s)`,
+    );
     const location = locations[0];
     console.log(
-      `📍 Location check at ${new Date().toISOString()} - lat: ${location.coords.latitude.toFixed(4)}, lon: ${location.coords.longitude.toFixed(4)}`,
+      `📍 [#${invocationId}] Location: lat=${location.coords.latitude.toFixed(4)}, lon=${location.coords.longitude.toFixed(4)}`,
     );
 
     let userId: number | null = null;
@@ -285,7 +298,9 @@ TaskManager.defineTask(LOCATION_TASK_NAME, async ({ data, error }) => {
     const { shouldProceed, distanceFromMemory, threshold } = stage2Result;
 
     if (!shouldProceed) {
-      console.log("⏭️  Stage 2 check blocked - not enough distance from memory");
+      console.log(
+        "⏭️  Stage 2 check blocked - not enough distance from memory",
+      );
       return;
     }
 
@@ -298,13 +313,20 @@ TaskManager.defineTask(LOCATION_TASK_NAME, async ({ data, error }) => {
         settings.restThreshold,
       );
     } catch (err) {
-      console.error("❌ Error in stage 3:", err);
+      console.error(`❌ [#${invocationId}] Error in stage 3:`, err);
     }
+
+    console.log(`\n✅ [#${invocationId}] Task completed successfully`);
+    console.log(`${"=".repeat(70)}\n`);
   } catch (error) {
-    console.error("❌ CRITICAL: Unhandled error in location task:", error);
+    console.error(
+      `❌ [#${invocationId}] CRITICAL: Unhandled error in location task:`,
+      error,
+    );
     if (error instanceof Error) {
-      console.error("❌ Error stack:", error.stack);
+      console.error(`❌ [#${invocationId}] Error stack:`, error.stack);
     }
+    console.log(`${"=".repeat(70)}\n`);
   }
 });
 
@@ -315,6 +337,10 @@ export const startLocationTracking = async () => {
     // Check if already tracking
     const alreadyTracking =
       await TaskManager.isTaskRegisteredAsync(LOCATION_TASK_NAME);
+    console.log(
+      `🔍 Task registration check: ${alreadyTracking ? "ALREADY ACTIVE" : "NOT ACTIVE"}`,
+    );
+
     if (alreadyTracking) {
       console.log("⚠️  Location tracking already active, stopping first...");
       await stopLocationTracking();
@@ -337,14 +363,18 @@ export const startLocationTracking = async () => {
 
     // Request both foreground and background location permissions
     const fgStatus = await Location.requestForegroundPermissionsAsync();
+    console.log(`📍 Foreground location permission: ${fgStatus.status}`);
     if (fgStatus.status !== "granted") {
       throw new Error("Foreground location permission not granted");
     }
 
     const bgStatus = await Location.requestBackgroundPermissionsAsync();
+    console.log(`📍 Background location permission: ${bgStatus.status}`);
     if (bgStatus.status !== "granted") {
       throw new Error("Background location permission not granted");
     }
+
+    console.log(`✅ All location permissions granted`);
 
     // Read fetch frequency from database (in seconds, convert to ms)
     const userId = await getUserIdFromStorage();
@@ -357,18 +387,18 @@ export const startLocationTracking = async () => {
     const fetchFrequencyMs = fetchFrequencySeconds * 1000;
 
     console.log(
-      `▶️  Starting location tracking with fetchFrequency=${fetchFrequencySeconds}s`,
-    );
-    console.log(
-      `⏱️  Configuration: timeInterval=${fetchFrequencyMs}ms, distanceInterval=1m, accuracy=Balanced`,
+      `▶️  Starting location tracking: fetchFrequency=${fetchFrequencySeconds}s (${fetchFrequencyMs}ms)`,
     );
 
     // Start location updates with user-configured frequency
     // timeInterval: Updates at this interval (milliseconds)
-    // distanceInterval: Minimum distance in meters between updates (removed to avoid blocking timeInterval)
+    // distanceInterval: Also trigger on this much movement (meters)
+    // Task fires when EITHER condition is met (whichever comes first)
     await Location.startLocationUpdatesAsync(LOCATION_TASK_NAME, {
-      accuracy: Location.Accuracy.Balanced,
+      accuracy: Location.Accuracy.High,
       timeInterval: fetchFrequencyMs,
+      distanceInterval: 10,
+      mayShowUserSettingsDialog: true,
     });
 
     console.log(`✅ Location.startLocationUpdatesAsync() completed`);

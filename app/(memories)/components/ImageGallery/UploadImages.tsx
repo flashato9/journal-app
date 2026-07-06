@@ -89,7 +89,7 @@ export default function UploadImages({
       const result = await ImagePicker.launchCameraAsync({
         allowsEditing: false,
         aspect: [1, 1],
-        quality: 0.8,
+        quality: 1,
       });
 
       if (!result.canceled) {
@@ -148,7 +148,7 @@ export default function UploadImages({
         mediaTypes: ["images"],
         allowsMultipleSelection: true,
         selectionLimit: Math.max(0, MAX_IMAGES - images.length),
-        quality: 0.8,
+        quality: 1,
       });
 
       if (!result.canceled) {

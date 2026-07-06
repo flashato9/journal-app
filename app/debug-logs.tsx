@@ -16,18 +16,36 @@ export default function DebugLogsScreen() {
   const scrollViewRef = useRef<ScrollView>(null);
   const [logs, setLogs] = useState<string>("");
   const [loading, setLoading] = useState(true);
+  const lastInteractionRef = useRef<number>(Date.now());
 
   useEffect(() => {
     loadLogs();
   }, []);
 
-  const loadLogs = async () => {
+  // Auto-refresh logs every 5 seconds if no button pressed
+  useEffect(() => {
+    const interval = setInterval(() => {
+      const timeSinceLastInteraction = Date.now() - lastInteractionRef.current;
+      // Only auto-refresh if no button was pressed in the last 5 seconds
+      if (timeSinceLastInteraction >= 5000) {
+        loadLogs();
+      }
+    }, 5000);
+
+    return () => clearInterval(interval);
+  }, []);
+
+  const loadLogs = async (isManual: boolean = false) => {
     try {
-      console.log("📋 Loading debug logs...");
+      if (isManual) {
+        console.log("📋 Loading debug logs...");
+      }
       setLoading(true);
       const logContent = await readLogs();
       setLogs(logContent || "No logs yet");
-      console.log("✅ Debug logs loaded successfully");
+      if (isManual) {
+        console.log("✅ Debug logs loaded successfully");
+      }
       setTimeout(
         () => scrollViewRef.current?.scrollToEnd({ animated: true }),
         100,
@@ -41,6 +59,7 @@ export default function DebugLogsScreen() {
   };
 
   const handleClearLogs = async () => {
+    lastInteractionRef.current = Date.now();
     try {
       await clearLogs();
       setLogs("Logs cleared");
@@ -51,6 +70,7 @@ export default function DebugLogsScreen() {
   };
 
   const handleExportLogs = async () => {
+    lastInteractionRef.current = Date.now();
     try {
       console.log("📤 Exporting logs...");
       const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
@@ -80,7 +100,10 @@ export default function DebugLogsScreen() {
       <View style={styles.buttonContainer}>
         <TouchableOpacity
           style={[styles.button, styles.refreshButton]}
-          onPress={loadLogs}
+          onPress={() => {
+            lastInteractionRef.current = Date.now();
+            loadLogs(true);
+          }}
         >
           <Text style={styles.buttonText}>Refresh</Text>
         </TouchableOpacity>

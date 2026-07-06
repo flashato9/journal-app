@@ -22,10 +22,13 @@ export const AuthContext = createContext<AuthContextType>({
 
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [username, setUsername] = useState<string | null>(null);
-  const [locationSettings, setLocationSettings] = useState<LocationSettings | null>(null);
+  const [locationSettings, setLocationSettings] =
+    useState<LocationSettings | null>(null);
 
   return (
-    <AuthContext.Provider value={{ username, setUsername, locationSettings, setLocationSettings }}>
+    <AuthContext.Provider
+      value={{ username, setUsername, locationSettings, setLocationSettings }}
+    >
       {children}
     </AuthContext.Provider>
   );
