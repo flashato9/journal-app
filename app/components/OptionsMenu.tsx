@@ -10,12 +10,14 @@ import {
     View,
 } from "react-native";
 import { OptionsMenuContext } from "../../context/OptionsMenuContext";
+import { AuthContext } from "../../context/AuthContext";
 import { isLocationTrackingActive } from "../../services/locationService";
 
 export default function OptionsMenu() {
   const router = useRouter();
   const { menuVisible, setMenuVisible, locationTrackingActive } =
     useContext(OptionsMenuContext);
+  const { username } = useContext(AuthContext);
 
   const handleMenuShow = async () => {
     // Check location tracking status when menu becomes visible
@@ -38,6 +40,7 @@ export default function OptionsMenu() {
     BackHandler.exitApp();
   };
 
+  // Build menu options - Location Settings only available when logged in
   const menuOptions = [
     {
       label: `Location Tracking: ${locationTrackingActive ? "Online" : "Offline"}`,
@@ -46,7 +49,7 @@ export default function OptionsMenu() {
       isStatus: true,
     },
     { label: "Debug Logs", onPress: handleDebugLogs },
-    { label: "Location Settings", onPress: handleLocationSettings },
+    ...(username ? [{ label: "Location Settings", onPress: handleLocationSettings }] : []),
     { label: "Exit App", onPress: handleExitApp },
   ];
 
