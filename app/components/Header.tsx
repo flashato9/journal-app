@@ -7,32 +7,31 @@ import {
     View,
     ViewStyle,
 } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { OptionsMenuContext } from "../../context/OptionsMenuContext";
 
 interface HeaderProps {
   title: string;
   actionIcons?: React.ReactNode;
   containerStyle?: ViewStyle;
+  useSafeArea?: boolean;
 }
 
 export default function Header({
   title,
   actionIcons,
   containerStyle,
+  useSafeArea,
 }: HeaderProps) {
   const { setMenuVisible } = useContext(OptionsMenuContext);
+  const insets = useSafeAreaInsets();
 
   const handleOptions = () => {
     setMenuVisible(true);
   };
 
   return (
-    <View
-      style={[
-        styles.header,
-        containerStyle,
-      ]}
-    >
+    <View style={[styles.header, useSafeArea && { paddingTop: insets.top }, containerStyle]}>
       <Text style={styles.headerTitle}>{title}</Text>
       {actionIcons && (
         <View style={styles.actionIconsWrapper}>{actionIcons}</View>
@@ -50,7 +49,7 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     alignItems: "center",
     paddingHorizontal: 16,
-    paddingVertical: 16,
+    paddingVertical: 8,
     borderBottomWidth: 1,
     borderBottomColor: "#f0f0f0",
     gap: 16,

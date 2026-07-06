@@ -69,7 +69,7 @@ export default function DebugLogsScreen() {
 
   return (
     <View style={styles.container}>
-      <Header title="Debug Logs" />
+      <Header title="Debug Logs" useSafeArea={true} />
 
       {/* Logs Content */}
       <ScrollView ref={scrollViewRef} style={styles.logsContainer}>

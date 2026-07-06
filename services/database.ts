@@ -81,6 +81,17 @@ export const initializeDatabase = async () => {
       );
     `);
 
+    // Create Notification table
+    db.execSync(`
+      CREATE TABLE IF NOT EXISTS Notification (
+        id INTEGER PRIMARY KEY,
+        userId INTEGER NOT NULL,
+        notificationMessage TEXT NOT NULL,
+        createdAt TEXT DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY(userId) REFERENCES User(id)
+      );
+    `);
+
     // ===== MIGRATIONS =====
     // Add locationId column to TimeMemory if it doesn't exist
     try {
@@ -360,5 +371,92 @@ export const getLocationById = (
     altitude: number | null;
     createdDateTime: string;
   }>("SELECT * FROM Location WHERE id = ?", [locationId]);
+  return result || null;
+};
+
+// ===== LATEST LOCATION QUERY =====
+
+export const getLatestLocation = (
+  userId: number,
+): {
+  id: number;
+  userId: number;
+  latitude: number;
+  longitude: number;
+  altitude: number | null;
+  createdDateTime: string;
+} | null => {
+  const result = db.getFirstSync<{
+    id: number;
+    userId: number;
+    latitude: number;
+    longitude: number;
+    altitude: number | null;
+    createdDateTime: string;
+  }>(
+    "SELECT * FROM Location WHERE userId = ? ORDER BY createdDateTime DESC LIMIT 1",
+    [userId],
+  );
+  return result || null;
+};
+
+// ===== LATEST TIME MEMORY WITH LOCATION =====
+
+export const getLatestTimeMemoryWithLocation = (
+  userId: number,
+): {
+  timeMemoryId: number;
+  locationId: number | null;
+  latitude: number | null;
+  longitude: number | null;
+  createdAt: string;
+} | null => {
+  const result = db.getFirstSync<{
+    timeMemoryId: number;
+    locationId: number | null;
+    latitude: number | null;
+    longitude: number | null;
+    createdAt: string;
+  }>(
+    `SELECT 
+      tm.id as timeMemoryId,
+      tm.locationId,
+      l.latitude,
+      l.longitude,
+      tm.createdAt
+    FROM TimeMemory tm
+    LEFT JOIN Location l ON tm.locationId = l.id
+    WHERE tm.dayMemoryId IN (
+      SELECT id FROM DayMemory WHERE userId = ?
+    )
+    ORDER BY tm.createdAt DESC LIMIT 1`,
+    [userId],
+  );
+  return result || null;
+};
+
+// ===== NOTIFICATION OPERATIONS =====
+
+export const insertNotification = (
+  userId: number,
+  notificationMessage: string,
+): number => {
+  const result = db.runSync(
+    "INSERT INTO Notification (userId, notificationMessage, createdAt) VALUES (?, ?, ?)",
+    [userId, notificationMessage, new Date().toISOString()],
+  );
+  return result.lastInsertRowId;
+};
+
+export const getLatestNotification = (
+  userId: number,
+  notificationMessage: string,
+): { id: number; createdAt: string } | null => {
+  const result = db.getFirstSync<{ id: number; createdAt: string }>(
+    `SELECT id, createdAt FROM Notification 
+     WHERE userId = ? AND notificationMessage = ? 
+     ORDER BY createdAt DESC LIMIT 1`,
+    [userId, notificationMessage],
+  );
   return result || null;
 };

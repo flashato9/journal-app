@@ -3,9 +3,9 @@ import Header from "./components/Header";
 import { useState, useEffect } from "react";
 import * as SecureStore from "expo-secure-store";
 
-const DEFAULT_FETCH_FREQUENCY = "10000"; // milliseconds
+const DEFAULT_FETCH_FREQUENCY = "10"; // seconds
 const DEFAULT_DISTANCE_THRESHOLD = "1"; // meters
-const DEFAULT_REST_SECONDS = "60"; // seconds
+const DEFAULT_REST_SECONDS = "10"; // seconds
 
 export default function LocationSettingsScreen() {
   const [fetchFrequency, setFetchFrequency] = useState(DEFAULT_FETCH_FREQUENCY);
@@ -63,27 +63,27 @@ export default function LocationSettingsScreen() {
 
   return (
     <View style={styles.container}>
-      <Header title="Location Settings" />
+      <Header title="Location Settings" useSafeArea={true} />
 
       <View style={styles.content}>
         {/* Fetch Frequency */}
         <View style={styles.setting}>
-          <Text style={styles.label}>Fetch Frequency (ms)</Text>
+          <Text style={styles.label}>Fetch Frequency (seconds)</Text>
           <TextInput
             style={styles.input}
             value={fetchFrequency}
             onChangeText={setFetchFrequency}
-            placeholder="Enter milliseconds"
+            placeholder="Enter seconds"
             keyboardType="number-pad"
           />
           <Text style={styles.description}>
-            How often to check for location updates (1000 = 1 second)
+            How often to check and log location to database (10 = every 10 seconds). Location is always recorded.
           </Text>
         </View>
 
         {/* Distance Threshold */}
         <View style={styles.setting}>
-          <Text style={styles.label}>Distance Threshold (meters)</Text>
+          <Text style={styles.label}>Notification Threshold (meters)</Text>
           <TextInput
             style={styles.input}
             value={distanceThreshold}
@@ -92,7 +92,7 @@ export default function LocationSettingsScreen() {
             keyboardType="decimal-pad"
           />
           <Text style={styles.description}>
-            Minimum distance to move before recording a new location
+            Minimum distance to move before sending a notification. Locations are always recorded in database.
           </Text>
         </View>
 

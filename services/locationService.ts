@@ -2,7 +2,14 @@ import * as Location from "expo-location";
 import * as SecureStore from "expo-secure-store";
 import * as TaskManager from "expo-task-manager";
 import { getDistance } from "geolib";
-import { getUserIdByUsername, insertLocation } from "./database";
+import {
+  getUserIdByUsername,
+  insertLocation,
+  getLatestLocation,
+  getLatestTimeMemoryWithLocation,
+  insertNotification,
+  getLatestNotification,
+} from "./database";
 
 // Skip notifications in development mode (Expo Go doesn't support them well)
 const SEND_NOTIFICATIONS = !__DEV__;
@@ -18,15 +25,12 @@ const getNotificationsModule = async () => {
 
 const LOCATION_TASK_NAME = "background-location-task";
 
-// Store last known location for distance calculation
-let lastLocation: { latitude: number; longitude: number } | null = null;
-
 // ===== BACKGROUND TASK REGISTRATION =====
 
-// Register background location task (runs every minute in foreground and background)
+// Register background location task
 TaskManager.defineTask(LOCATION_TASK_NAME, async ({ data, error }) => {
   if (error) {
-    console.error("Location tracking error:", error);
+    console.error("❌ Location tracking error:", error);
     return;
   }
 
@@ -39,86 +43,148 @@ TaskManager.defineTask(LOCATION_TASK_NAME, async ({ data, error }) => {
     if (location) {
       try {
         const userId = await getUserIdFromStorage();
-        if (userId) {
-          insertLocation(
-            userId,
-            location.coords.latitude,
-            location.coords.longitude,
-            location.coords.altitude,
+        if (!userId) {
+          console.warn("❌ No user ID found");
+          return;
+        }
+
+        const currentLat = location.coords.latitude;
+        const currentLon = location.coords.longitude;
+        const currentAlt = location.coords.altitude;
+
+        console.log(`📍 Location check at ${new Date().toISOString()}`);
+
+        // ===== STAGE 1: Distance Filter (1m threshold) =====
+        const latestDbLocation = getLatestLocation(userId);
+        if (latestDbLocation) {
+          const distanceFrom1mFilter = getDistance(
+            {
+              latitude: latestDbLocation.latitude,
+              longitude: latestDbLocation.longitude,
+            },
+            { latitude: currentLat, longitude: currentLon },
           );
-          console.log("Location saved:", {
-            latitude: location.coords.latitude,
-            longitude: location.coords.longitude,
-            altitude: location.coords.altitude,
-            accuracy: location.coords.accuracy,
-            altitudeAccuracy: location.coords.altitudeAccuracy,
-            heading: location.coords.heading,
-            speed: location.coords.speed,
-            timestamp: location.timestamp,
-            userId: userId,
-          });
 
-          // Calculate distance from last location
-          if (lastLocation) {
-            const distance = getDistance(
-              {
-                latitude: lastLocation.latitude,
-                longitude: lastLocation.longitude,
-              },
-              {
-                latitude: location.coords.latitude,
-                longitude: location.coords.longitude,
-              },
+          if (distanceFrom1mFilter <= 1) {
+            console.log(
+              `⏭️  Distance ${distanceFrom1mFilter.toFixed(2)}m <= 1m, skipping record`,
             );
+            return;
+          }
+        }
 
-            // Only consider movement if distance exceeds GPS accuracy (filter out noise)
-            const gpsAccuracy = location.coords.accuracy || 10; // Default 10m if unavailable
-            if (distance > gpsAccuracy) {
-              if (SEND_NOTIFICATIONS) {
-                // Production: Send notification
-                try {
-                  const Notifications = await getNotificationsModule();
-                  await Notifications.scheduleNotificationAsync({
-                    content: {
-                      title: "Location Updated",
-                      body: `Moved ${distance.toFixed(1)}m • Lat: ${location.coords.latitude.toFixed(4)}, Lon: ${location.coords.longitude.toFixed(4)}`,
-                    },
-                    trigger: null,
-                  });
-                } catch (notifError) {
-                  console.warn(
-                    "Could not send notification from background task:",
-                    notifError,
-                  );
-                }
-              } else {
-                // Development: Log distance
-                console.log(
-                  `📍 Distance moved: ${distance.toFixed(2)}m (accuracy: ${gpsAccuracy.toFixed(1)}m)`,
-                );
-              }
+        // Record new location
+        insertLocation(userId, currentLat, currentLon, currentAlt);
+        console.log(`✅ Location recorded: ${currentLat.toFixed(4)}, ${currentLon.toFixed(4)}`);
 
-              // Update last known location
-              lastLocation = {
-                latitude: location.coords.latitude,
-                longitude: location.coords.longitude,
-              };
-            } else {
-              // GPS noise detected, don't update position
-              console.log(
-                `📍 GPS noise: ${distance.toFixed(2)}m (within accuracy: ${gpsAccuracy.toFixed(1)}m)`,
-              );
-            }
-          } else {
-            // First location, just store it
-            lastLocation = {
-              latitude: location.coords.latitude,
-              longitude: location.coords.longitude,
-            };
+        // ===== STAGE 2: Notification Threshold Check =====
+        const latestMemory = getLatestTimeMemoryWithLocation(userId);
+        if (!latestMemory || !latestMemory.latitude || !latestMemory.longitude) {
+          console.log(
+            `⏭️  No previous memory with location, skipping notification check`,
+          );
+          return;
+        }
+
+        const distanceFromMemory = getDistance(
+          {
+            latitude: latestMemory.latitude,
+            longitude: latestMemory.longitude,
+          },
+          { latitude: currentLat, longitude: currentLon },
+        );
+
+        // Get notification threshold from SecureStore
+        const notificationThresholdStr =
+          await SecureStore.getItemAsync("locationDistanceThreshold");
+        const notificationThreshold = notificationThresholdStr
+          ? parseFloat(notificationThresholdStr)
+          : 1;
+
+        if (distanceFromMemory <= notificationThreshold) {
+          console.log(
+            `⏭️  Distance ${distanceFromMemory.toFixed(2)}m <= threshold ${notificationThreshold}m, no notification`,
+          );
+          return;
+        }
+
+        console.log(
+          `⚠️  Distance ${distanceFromMemory.toFixed(2)}m > threshold ${notificationThreshold}m, checking rest period`,
+        );
+
+        // ===== STAGE 3: Rest Period + Duplicate Prevention =====
+        const restSecondsStr = await SecureStore.getItemAsync(
+          "locationRestSeconds",
+        );
+        const restSeconds = restSecondsStr ? parseInt(restSecondsStr) : 10;
+
+        const latestLocationWithTime = getLatestLocation(userId);
+        if (!latestLocationWithTime) {
+          console.log(`⏭️  No location to check rest period`);
+          return;
+        }
+
+        const lastLocationTime = new Date(
+          latestLocationWithTime.createdDateTime,
+        ).getTime();
+        const currentTime = new Date().getTime();
+        const timeSinceLastLocation = (currentTime - lastLocationTime) / 1000; // seconds
+
+        if (timeSinceLastLocation <= restSeconds) {
+          console.log(
+            `⏭️  Only ${timeSinceLastLocation.toFixed(1)}s passed < ${restSeconds}s rest period`,
+          );
+          return;
+        }
+
+        console.log(
+          `✓ ${timeSinceLastLocation.toFixed(1)}s > ${restSeconds}s rest period, ready to notify`,
+        );
+
+        // Build notification message
+        const notificationMessage = `Hey we noticed you're on a break and you have traveled more than ${notificationThreshold} meters since your last memory. Exactly - ${distanceFromMemory.toFixed(1)} meters.`;
+
+        // Check for duplicate notification within 5 minutes
+        const latestNotification = getLatestNotification(
+          userId,
+          notificationMessage,
+        );
+        if (latestNotification) {
+          const notificationTime = new Date(latestNotification.createdAt).getTime();
+          const timeSinceNotification = (currentTime - notificationTime) / 1000; // seconds
+
+          if (timeSinceNotification < 300) {
+            // 300 seconds = 5 minutes
+            console.log(
+              `🔄 Duplicate notification skipped (${timeSinceNotification.toFixed(0)}s < 5min)`,
+            );
+            return;
+          }
+        }
+
+        // Send notification
+        console.log(`📬 Sending notification: ${notificationMessage}`);
+        insertNotification(userId, notificationMessage);
+
+        if (SEND_NOTIFICATIONS) {
+          try {
+            const Notifications = await getNotificationsModule();
+            await Notifications.scheduleNotificationAsync({
+              content: {
+                title: "You're on a break!",
+                body: notificationMessage,
+              },
+              trigger: null,
+            });
+          } catch (notifError) {
+            console.warn(
+              "⚠️  Could not send notification from background task:",
+              notifError,
+            );
           }
         }
       } catch (error) {
-        console.error("Error saving location:", error);
+        console.error("❌ Error in location task:", error);
       }
     }
   }
@@ -135,7 +201,7 @@ export const startLocationTracking = async () => {
         await Notifications.requestPermissionsAsync();
       } catch (notifError) {
         console.warn(
-          "Notification permission request failed (non-blocking):",
+          "⚠️  Notification permission request failed (non-blocking):",
           notifError,
         );
       }
@@ -152,16 +218,28 @@ export const startLocationTracking = async () => {
       throw new Error("Background location permission not granted");
     }
 
-    // Start location updates (every 1+ meter movement or every 10 seconds)
+    // Read fetch frequency from SecureStore (in seconds, convert to ms)
+    const fetchFrequencyStr =
+      await SecureStore.getItemAsync("locationFetchFrequency");
+    const fetchFrequencySeconds = fetchFrequencyStr
+      ? parseInt(fetchFrequencyStr)
+      : 10;
+    const fetchFrequencyMs = fetchFrequencySeconds * 1000;
+
+    console.log(
+      `📍 Starting location tracking with ${fetchFrequencySeconds}s fetch frequency`,
+    );
+
+    // Start location updates with user-configured frequency
     await Location.startLocationUpdatesAsync(LOCATION_TASK_NAME, {
       accuracy: Location.Accuracy.Balanced,
-      timeInterval: 10000, // Every 10 seconds
-      distanceInterval: 1, // Trigger on 1+ meter movement
+      timeInterval: fetchFrequencyMs,
+      distanceInterval: 1, // Trigger on 1+ meter movement (will be filtered in Stage 1)
     });
 
-    console.log("Location tracking started");
+    console.log("✅ Location tracking started");
   } catch (error) {
-    console.error("Error starting location tracking:", error);
+    console.error("❌ Error starting location tracking:", error);
     throw error;
   }
 };
