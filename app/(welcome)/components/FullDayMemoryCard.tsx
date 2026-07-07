@@ -16,7 +16,7 @@ export default function FullDayMemoryCard({ memory }: FullDayMemoryCardProps) {
 
   const handleSeeMore = () => {
     router.push({
-      pathname: "/(welcome)/daymemories",
+      pathname: "/(memories)/daymemories",
       params: { id: memory.id },
     });
   };
