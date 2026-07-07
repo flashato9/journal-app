@@ -5,20 +5,20 @@ import * as Location from "expo-location";
 import { useRouter } from "expo-router";
 import { useContext, useEffect, useState } from "react";
 import {
-    ActivityIndicator,
-    Alert,
-    StyleSheet,
-    TouchableOpacity,
+  ActivityIndicator,
+  Alert,
+  StyleSheet,
+  TouchableOpacity,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { AuthContext } from "../../context/AuthContext";
 import {
-    createTimeMemory,
-    createTimeMemoryImage,
-    createTimeMemoryQA,
-    getDayMemoryByUserIdAndDay,
-    getUserIdByUsername,
-    insertLocation,
+  createTimeMemory,
+  createTimeMemoryImage,
+  createTimeMemoryQA,
+  getDayMemoryByUserIdAndDay,
+  getUserIdByUsername,
+  insertLocation,
 } from "../../services/database";
 import Header from "../components/Header";
 import MemoryForm, { MemoryFormState } from "./components/MemoryForm";

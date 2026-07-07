@@ -1,48 +1,70 @@
+import Constants, { ExecutionEnvironment } from "expo-constants";
 import * as Location from "expo-location";
 import * as SecureStore from "expo-secure-store";
 import * as TaskManager from "expo-task-manager";
 import { getDistance } from "geolib";
+import { Platform } from "react-native";
 import {
-    getLatestLocation,
-    getLatestNotification,
-    getLatestTimeMemoryWithLocation,
-    getLocationSettingsByUserId,
-    getUserIdByUsername,
-    insertLocation,
-    insertNotification,
+  getLatestLocation,
+  getLatestNotification,
+  getLatestTimeMemoryWithLocation,
+  getLocationSettingsByUserId,
+  getUserIdByUsername,
+  insertLocation,
+  insertNotification,
 } from "./database";
 
-// Skip notifications in development mode (Expo Go doesn't support them well)
-const SEND_NOTIFICATIONS = !__DEV__;
+// Local notifications are unavailable only in Expo Go (SDK 53+); dev and
+// production builds support them. Background location requires a dev build
+// anyway, so this is effectively always true where tracking works.
+const SEND_NOTIFICATIONS =
+  Constants.executionEnvironment !== ExecutionEnvironment.StoreClient;
 
-// Lazy load notifications only in production to avoid module initialization errors in Expo Go
+// Lazy load notifications to avoid module initialization errors in Expo Go
 let NotificationsModule: any = null;
 const getNotificationsModule = async () => {
   if (!NotificationsModule) {
     NotificationsModule = await import("expo-notifications");
+    // Without a handler, notifications that arrive while the app is
+    // foregrounded are not displayed at all
+    NotificationsModule.setNotificationHandler({
+      handleNotification: async () => ({
+        shouldPlaySound: true,
+        shouldSetBadge: false,
+        shouldShowBanner: true,
+        shouldShowList: true,
+      }),
+    });
   }
   return NotificationsModule;
 };
 
 const LOCATION_TASK_NAME = "background-location-task";
 
+// Shape returned by getLatestLocation; captured once per task invocation,
+// BEFORE inserting the current location, so stage 3 can measure the rest gap
+type PreviousLocation = {
+  latitude: number;
+  longitude: number;
+  createdDateTime: string;
+} | null;
+
 // ===== HELPER: Stage 1 - Distance Filter (1m threshold) =====
 
 const stage1DistanceFilter = (
-  userId: number,
+  previousLocation: PreviousLocation,
   currentLat: number,
   currentLon: number,
 ): boolean => {
-  const latestDbLocation = getLatestLocation(userId);
-  if (!latestDbLocation) {
+  if (!previousLocation) {
     console.log(`📍 First location recorded`);
     return true; // No previous location, proceed to recording
   }
 
   const distanceFrom1mFilter = getDistance(
     {
-      latitude: latestDbLocation.latitude,
-      longitude: latestDbLocation.longitude,
+      latitude: previousLocation.latitude,
+      longitude: previousLocation.longitude,
     },
     { latitude: currentLat, longitude: currentLon },
   );
@@ -113,16 +135,17 @@ const stage3RestPeriodAndNotify = async (
   distanceFromMemory: number,
   notificationThreshold: number,
   restThreshold: number,
+  previousLocation: PreviousLocation,
 ): Promise<void> => {
-  const latestLocationWithTime = getLatestLocation(userId);
-  if (!latestLocationWithTime) {
+  // previousLocation was captured before the current location was inserted;
+  // querying the DB here would return the just-inserted row and the rest
+  // gap would always be ~0s
+  if (!previousLocation) {
     console.log(`⏭️  No location to check rest period`);
     return;
   }
 
-  const lastLocationTime = new Date(
-    latestLocationWithTime.createdDateTime,
-  ).getTime();
+  const lastLocationTime = new Date(previousLocation.createdDateTime).getTime();
   const currentTime = new Date().getTime();
   const timeSinceLastLocation = (currentTime - lastLocationTime) / 1000; // seconds
 
@@ -140,8 +163,10 @@ const stage3RestPeriodAndNotify = async (
   // Build notification message
   const notificationMessage = `Hey we noticed you're on a break and you have traveled more than ${notificationThreshold} meters since your last memory. Exactly - ${distanceFromMemory.toFixed(1)} meters.`;
 
-  // Check for duplicate notification within 5 minutes
-  const latestNotification = getLatestNotification(userId, notificationMessage);
+  // Check for duplicate notification within 5 minutes. Compare against the
+  // latest notification regardless of message text — the message embeds the
+  // measured distance, so exact-match comparison would never find a duplicate
+  const latestNotification = getLatestNotification(userId);
   if (latestNotification) {
     const notificationTime = new Date(latestNotification.createdAt).getTime();
     const timeSinceNotification = (currentTime - notificationTime) / 1000; // seconds
@@ -256,29 +281,44 @@ TaskManager.defineTask(LOCATION_TASK_NAME, async ({ data, error }) => {
     const currentLon = location.coords.longitude;
     const currentAlt = location.coords.altitude;
 
-    // Stage 1: Distance Filter
+    // Capture the previous location BEFORE inserting the current one — stage 3
+    // measures the rest period against its timestamp
+    let previousLocation: PreviousLocation = null;
+    try {
+      previousLocation = getLatestLocation(userId);
+    } catch (err) {
+      console.error("❌ Failed to fetch previous location:", err);
+      return;
+    }
+
+    // Stage 1: Distance Filter — gates only the DB insert, NOT the
+    // notification stages. While the user is resting, updates still arrive
+    // but are not recorded, so previousLocation keeps the timestamp of the
+    // last movement and stage 3 can detect the rest period as it happens
     let stage1Result = false;
     try {
-      stage1Result = stage1DistanceFilter(userId, currentLat, currentLon);
+      stage1Result = stage1DistanceFilter(
+        previousLocation,
+        currentLat,
+        currentLon,
+      );
     } catch (err) {
       console.error("❌ Error in stage 1 filter:", err);
       return;
     }
 
-    if (!stage1Result) {
-      console.log("⏭️  Stage 1 filter blocked - location too close");
-      return;
-    }
-
-    // Insert location
-    try {
-      insertLocation(userId, currentLat, currentLon, currentAlt);
-      console.log(
-        `✅ Location recorded: ${currentLat.toFixed(4)}, ${currentLon.toFixed(4)}`,
-      );
-    } catch (err) {
-      console.error("❌ Failed to insert location:", err);
-      return;
+    if (stage1Result) {
+      try {
+        insertLocation(userId, currentLat, currentLon, currentAlt);
+        console.log(
+          `✅ Location recorded: ${currentLat.toFixed(4)}, ${currentLon.toFixed(4)}`,
+        );
+      } catch (err) {
+        console.error("❌ Failed to insert location:", err);
+        return;
+      }
+    } else {
+      console.log("⏭️  Stage 1 filter blocked recording - location too close");
     }
 
     // Stage 2: Notification Threshold Check
@@ -311,6 +351,7 @@ TaskManager.defineTask(LOCATION_TASK_NAME, async ({ data, error }) => {
         distanceFromMemory,
         threshold,
         settings.restThreshold,
+        previousLocation,
       );
     } catch (err) {
       console.error(`❌ [#${invocationId}] Error in stage 3:`, err);
@@ -348,10 +389,18 @@ export const startLocationTracking = async () => {
       await new Promise((resolve) => setTimeout(resolve, 500));
     }
 
-    // Request notification permission only in production
+    // Request notification permission (skipped only in Expo Go)
     if (SEND_NOTIFICATIONS) {
       try {
         const Notifications = await getNotificationsModule();
+        if (Platform.OS === "android") {
+          // Android 8+ requires a channel; create it before requesting
+          // permission so the Android 13+ prompt can be shown
+          await Notifications.setNotificationChannelAsync("default", {
+            name: "Break reminders",
+            importance: Notifications.AndroidImportance.HIGH,
+          });
+        }
         await Notifications.requestPermissionsAsync();
       } catch (notifError) {
         console.warn(
@@ -390,15 +439,24 @@ export const startLocationTracking = async () => {
       `▶️  Starting location tracking: fetchFrequency=${fetchFrequencySeconds}s (${fetchFrequencyMs}ms)`,
     );
 
-    // Start location updates with user-configured frequency
-    // timeInterval: Updates at this interval (milliseconds)
-    // distanceInterval: Also trigger on this much movement (meters)
-    // Task fires when EITHER condition is met (whichever comes first)
+    // Start location updates with user-configured frequency.
+    // distanceInterval must stay 0: a positive value suppresses updates until
+    // the device has moved that far, which breaks time-based updates and the
+    // rest-period detection (no updates arrive while the user is resting)
     await Location.startLocationUpdatesAsync(LOCATION_TASK_NAME, {
       accuracy: Location.Accuracy.High,
       timeInterval: fetchFrequencyMs,
-      distanceInterval: 10,
+      distanceInterval: 0,
       mayShowUserSettingsDialog: true,
+      // iOS: show the status-bar indicator while tracking in the background
+      showsBackgroundLocationIndicator: true,
+      // Android: background location only keeps running inside a foreground
+      // service, which requires a persistent notification
+      foregroundService: {
+        notificationTitle: "Journal is tracking your walk",
+        notificationBody:
+          "Location is used to remind you to journal when you take a break.",
+      },
     });
 
     console.log(`✅ Location.startLocationUpdatesAsync() completed`);

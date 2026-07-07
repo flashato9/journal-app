@@ -3,24 +3,24 @@ import { useFocusEffect } from "@react-navigation/native";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useCallback, useState } from "react";
 import {
-    Alert,
-    FlatList,
-    StyleSheet,
-    Text,
-    ToastAndroid,
-    TouchableOpacity,
-    View,
+  Alert,
+  FlatList,
+  StyleSheet,
+  Text,
+  ToastAndroid,
+  TouchableOpacity,
+  View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import {
-    getDayMemoryById,
-    getTimeMemoriesByDayMemoryId,
-    updateDayMemory,
+  getDayMemoryById,
+  getTimeMemoriesByDayMemoryId,
+  updateDayMemory,
 } from "../../services/database";
 import Header from "../components/Header";
 import SummaryCard from "./components/SummaryCard";
 import TimeOfDayMemoryCard, {
-    TimeOfDayMemory,
+  TimeOfDayMemory,
 } from "./components/TimeOfDayMemoryCard";
 
 export default function DayMemoriesScreen() {

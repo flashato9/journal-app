@@ -1,10 +1,10 @@
 import { MaterialIcons } from "@expo/vector-icons";
 import {
-    Image,
-    ImageSourcePropType,
-    StyleSheet,
-    TouchableOpacity,
-    View,
+  Image,
+  ImageSourcePropType,
+  StyleSheet,
+  TouchableOpacity,
+  View,
 } from "react-native";
 
 interface ImageCardProps {

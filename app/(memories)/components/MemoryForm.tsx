@@ -1,13 +1,13 @@
 import { format } from "date-fns/format";
 import {
-    KeyboardAvoidingView,
-    Platform,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View,
+  KeyboardAvoidingView,
+  Platform,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
 } from "react-native";
 import LoadingIndicator from "../../components/LoadingIndicator";
 import UploadImages from "./ImageGallery/UploadImages";

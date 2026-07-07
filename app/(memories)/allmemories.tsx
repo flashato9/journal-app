@@ -8,15 +8,15 @@ import { Alert, BackHandler, FlatList, StyleSheet, Text } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { AuthContext } from "../../context/AuthContext";
 import {
-    createDayMemory,
-    getDayMemoriesByUserId,
-    getUserIdByUsername,
-    isDayMemoryExists,
+  createDayMemory,
+  getDayMemoriesByUserId,
+  getUserIdByUsername,
+  isDayMemoryExists,
 } from "../../services/database";
 import { stopLocationTracking } from "../../services/locationService";
 import Header from "../components/Header";
 import FullDayMemoryCard, {
-    DailyMemorySummary,
+  DailyMemorySummary,
 } from "./components/FullDayMemoryCard";
 
 export default function AllMemoriesScreen() {

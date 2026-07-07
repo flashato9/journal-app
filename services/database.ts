@@ -452,13 +452,12 @@ export const insertNotification = (
 
 export const getLatestNotification = (
   userId: number,
-  notificationMessage: string,
 ): { id: number; createdAt: string } | null => {
   const result = db.getFirstSync<{ id: number; createdAt: string }>(
-    `SELECT id, createdAt FROM Notification 
-     WHERE userId = ? AND notificationMessage = ? 
+    `SELECT id, createdAt FROM Notification
+     WHERE userId = ?
      ORDER BY createdAt DESC LIMIT 1`,
-    [userId, notificationMessage],
+    [userId],
   );
   return result || null;
 };

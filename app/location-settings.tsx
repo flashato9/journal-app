@@ -1,23 +1,23 @@
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useContext, useEffect, useState } from "react";
 import {
-    ActivityIndicator,
-    StyleSheet,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View,
+  ActivityIndicator,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
 } from "react-native";
 import { AuthContext } from "../context/AuthContext";
 import {
-    createLocationSettings,
-    getLocationSettingsByUserId,
-    getUserIdByUsername,
-    updateLocationSettings,
+  createLocationSettings,
+  getLocationSettingsByUserId,
+  getUserIdByUsername,
+  updateLocationSettings,
 } from "../services/database";
 import {
-    startLocationTracking,
-    stopLocationTracking,
+  startLocationTracking,
+  stopLocationTracking,
 } from "../services/locationService";
 import Header from "./components/Header";
 
