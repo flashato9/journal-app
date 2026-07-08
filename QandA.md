@@ -1,0 +1,281 @@
+# Q&A
+
+# eas.json
+
+## Is EAS a cloud platform reached via the EAS CLI, with eas.json defining that CLI's version?
+
+Yes. The one refinement: eas.json's `cli.version` sets the **minimum** required CLI version (e.g. `>= 20.5.1`), not an exact pin.
+
+## What do the `build` and `submit` sections in eas.json do?
+
+`build` defines recipes for compiling the app into binaries (development, preview, production profiles). `submit` defines how to upload a finished build to the app stores.
+
+## Would I ever need to modify eas.json?
+
+Yes — to add per-profile environment variables, app store submission credentials, extra build settings, or new profiles (e.g. staging). It's minimal now because you haven't started real cloud builds yet.
+
+## Is there online documentation for configuring eas.json / EAS?
+
+Yes — the main reference is the eas.json page (https://docs.expo.dev/eas/json/), plus EAS Build, EAS Submit, environment variables, and EAS Update guides on docs.expo.dev.
+
+# package.json
+
+## Is the `dev` script correct?
+
+Yes — `npm run build` runs lint/format/generate-icons, then `npm run android -- --clear` passes `--clear` through to become `expo start --android --clear` (launch on Android with a cleared Metro cache). Note `>nul 2>&1` is Windows-only syntax.
+
+## Why does an emulator open every time I run `npm run dev` now?
+
+Because `dev` now calls `npm run android`, whose `--android` flag tells Expo to auto-launch the Android emulator. The old `expo start` had no platform flag, so it just started the server and let you choose.
+
+## Why is the `main` key needed in package.json?
+
+It defines the app's entry point — the first file that runs. Here it's `expo-router/entry`, which bootstraps Expo Router so it can build navigation from the `app/` folder's file structure.
+
+## Where is the expo-router folder?
+
+In `node_modules/expo-router/` (the `entry.js` file there is what `main` points to). node_modules is npm-installed, git-ignored library code that Node resolves automatically from the bare package name.
+
+## Does package.json know to look in node_modules?
+
+Not quite — package.json just lists the names; it's Node.js (and Metro) whose built-in resolver knows the rule "bare package name → search node_modules". package.json names what; Node knows where.
+
+# context/AuthContext.tsx
+
+## What is a React Context?
+
+It's React's way to share data app-wide so any component can read it directly, avoiding "prop drilling" (passing props through every layer). A context has two parts: the context object (`createContext`) and a Provider that holds state and broadcasts it. AuthContext shares `username` and `locationSettings` across screens.
+
+## Why is a Provider needed — why can't a component just call useContext?
+
+`createContext` only defines default/fallback values (the empty setters). The Provider holds the real `useState` and broadcasts live values; without it, useContext returns the dead defaults. The Provider also scopes which subtree gets the data and re-renders consumers when the value changes.
+
+## What is the `AuthContext.Provider` syntax and the `value` prop?
+
+`createContext` returns an object with a `.Provider` component attached, so `AuthContext.Provider` is just accessing that component (dot syntax). `value` is its special built-in prop — whatever you pass to `value` is exactly what `useContext` receives. (Double braces `{{ }}` = JSX-expression braces around an object literal.)
+
+## Why separate the context object from the Provider instead of just exporting a Provider?
+
+Because `useContext(AuthContext)` needs the context object as the identifier for _which_ channel to read — both the Provider and every consumer reference it. The split also allows multiple/nested Providers with different values. Like a radio frequency: it must exist independently so both the station and the radio can reference it. Many wrap it in a custom `useAuth()` hook to hide the boilerplate.
+
+## Does surrounding components with the Provider decide which ones can useContext?
+
+Yes — any component nested inside the Provider (at any depth) can read the context; components outside it just get the dead defaults. That's why the Provider is usually placed near the app root so every screen can access it.
+
+## Why didn't the linter catch "Cannot find name 'router'"?
+
+That's a TypeScript error, not an ESLint one (ESLint's `no-undef` is off in TS projects since TS handles it). And nothing in `npm run build` runs the TypeScript compiler, so only the editor caught it. Adding a `tsc --noEmit` step would catch it in the build.
+
+# context/OptionsMenuContext.tsx
+
+## Why is one setter (`setLocationTrackingActive`) hidden from the context value?
+
+Encapsulation — `locationTrackingActive` is managed internally by the Provider (via `isLocationTrackingActive()` on menu open), so its setter stays private to keep the status truthful. Consumers can read it but not fake it, while `setMenuVisible` is exposed because components should control the menu.
+
+# services/database.ts
+
+## Does database.ts just create functions and a db object other components use?
+
+Yes — it exports the shared SQLite `db` connection plus functions (initializeDatabase, CRUD helpers). More precisely it's a service layer that hides raw SQL behind clean reusable functions, so screens call `getUserIdByUsername()` instead of writing SQL.
+
+# services/imageStorage.ts
+
+## Does imageStorage.ts just give components methods to save images / ensure directories?
+
+Yes — plus a clever detail: via `__DEV__` it saves to the app's local storage in development but to the phone's real photo gallery in production, and callers don't need to know which. Same service-layer encapsulation as database.ts.
+
+# services/locationService.ts
+
+## Is it normal for a service file to be this big (~526 lines)?
+
+Yes — 200–500 lines is common and 500–800 is "large but acceptable"; database.ts is the same size. Line count is a weak signal — the real question is number of responsibilities. This file is big because background location (3-stage filter + tracking lifecycle) is genuinely complex, not bloated.
+
+# services/logger.ts
+
+## What does the logger service do?
+
+It monkey-patches `console.log/warn/error` to also write every log to a file (`app-logs.txt`) while still printing normally. This captures logs app-wide with no code changes, so you can read them back on a real device (via readLogs / the debug-logs screen) where there's no console.
+
+# app/_layout.tsx
+
+## When does the `useEffect` with `[]` run — on page load or refresh?
+
+It runs once when the component **mounts** (first appears), not on re-renders. In a mobile app "page load" ≈ app cold start (it runs), there's no browser "refresh," and dev-only Fast Refresh can re-run it. So `_layout.tsx`'s effects run once at app startup.
+
+## What's the difference between mount, re-render, and refresh?
+
+Mount = component created/shown first time; re-render = it updates (state/props change) but stays; there's no browser "refresh" in mobile — the closest is app cold start (remounts everything) or dev Fast Refresh. `useEffect(fn, [])` runs on mount only.
+
+## Why are there two functions (RootLayout and RootLayoutContent) — can a file have two components?
+
+A file can have unlimited components; only one `default export` is allowed (RootLayout), the other is a private helper. Names are arbitrary — expo-router uses the default export regardless of name. They're split so RootLayoutContent sits _inside_ the Providers and can call `useContext` (a component can't consume a context whose Provider it renders itself).
+
+## What is a `Stack`?
+
+A navigation pattern that manages screens like a stack of cards: `router.push` adds a screen on top, `router.back()` pops it off to reveal the one below. `<Stack.Screen>` registers each screen. Best for drill-in flows (list → detail → edit); alternatives are Tabs and Drawer.
+
+## Why would I use a Tab navigator?
+
+For a few equal top-level sections users switch between freely (like Instagram's Home/Search/Profile) — parallel areas with no back relationship, unlike Stack's drill-in flow. Common real-world setup is Tabs on the outside with a Stack inside each tab.
+
+## Why are there folders inside the navigation, not just page files?
+
+In Expo Router the folder structure IS the navigation tree: a folder with `_layout.tsx` is a nested navigator (stack-in-stack), a `(name)` folder is a "route group" (shared layout, invisible in the URL, e.g. `(memories)/allmemories` → `/allmemories`), and a `components/` folder is just plain helper components, not routes. Plain `.tsx` files are the screens.
+
+# app/index.tsx
+
+## What does the `Redirect` component do and what does exporting the Index function do?
+
+`<Redirect href="..." />` immediately forwards the user to another route without showing UI. Exporting `Index` as the default registers it as the component for the `/` route (name is arbitrary; expo-router uses the default export). So landing at `/` renders Index, which just redirects to the login screen.
+
+# app/(welcome)/_layout.tsx
+
+## Does the order of `<Stack.Screen>` entries matter?
+
+No — for a Stack, order doesn't set the initial screen (the URL/redirect does) or the navigation sequence (`router.push` does); listing screens mainly attaches options, and expo-router auto-discovers routes anyway. For Tabs, order DOES matter — it sets the left-to-right tab order. To force an initial stack route, use `initialRouteName`, not declaration order.
+
+# app/(welcome)/login.tsx
+
+## Is it normal for component files to get big (e.g. login.tsx with a performLogin function)?
+
+Common, but not ideal — your instinct to keep them small is right. The real issue isn't line count; it's that business logic (`performLogin`: auth + DB + location) leaked into a UI file (the `setLocationSettings: any, router: any` params are the smell). Fix by extracting logic into a service (`services/auth.ts`) or a custom hook (`useLogin`), leaving the screen as mostly UI + wiring. Styles via `StyleSheet.create` in-file are fine/idiomatic.
+
+# eslint.config.js
+
+## What is eslint.config.js saying?
+
+It tells ESLint to apply Expo's recommended lint rules (`eslint-config-expo/flat`) while ignoring the `dist/` folder of compiled output.
+
+## Is `module.exports` a built-in JavaScript thing or just a variable?
+
+It's a built-in Node.js (CommonJS) mechanism that defines what a file hands out when another file `require()`s it — not an arbitrary variable.
+
+## Does ESLint automatically find and read eslint.config.js in the repo?
+
+Yes — ESLint looks for a file named `eslint.config.js` in the project root by default and uses whatever it exports, no path needed.
+
+# tsconfig.json
+
+## What is tsconfig.json for?
+
+It configures the TypeScript compiler — which files to type-check (`include`) and how strictly (`strict`), plus settings like the `@/*` path alias.
+
+## Is TypeScript just a program that converts .ts files into JSON?
+
+No — TypeScript is JavaScript plus a type system, and its compiler type-checks your code then strips the types to produce plain **JavaScript** (not JSON).
+
+## Is TypeScript really a transpiler, not a compiler?
+
+It's both — a transpiler is a kind of compiler (source-to-source). The translation part is transpiling, but TS also does true type-checking, so calling it a compiler is fair.
+
+## Does `include` in tsconfig tell TypeScript which files to compile and check?
+
+It defines which files are in the project so TypeScript type-checks them for issues. In this Expo project the actual JS generation is done by Metro, not `tsc`.
+
+# expo-env.d.ts
+
+## What is expo-env.d.ts and why should it be git-ignored?
+
+It's an auto-generated TypeScript declaration file that pulls in Expo's global types (`/// <reference types="expo/types" />`). It's recommended to git-ignore because Expo regenerates it, so committing it just adds noise.
+
+# app.json
+
+## What is app.json for?
+
+It's the main Expo config file defining the app's identity, icons, permissions, plugins, and per-platform (iOS/Android/web) native settings — the single source of truth Expo reads when building.
+
+## What is `slug` in app.json?
+
+It's a URL-friendly identifier for your project on Expo's servers (lowercase, no spaces) — an internal ID, unlike `name` which is the display name users see on their phone.
+
+## What shows the key descriptions when I hover over keys in my editor?
+
+A JSON Schema — VSCode's JSON language support reads Expo's published schema for the file and shows each key's description (also powering autocomplete and validation).
+
+## Where does the app.json schema live — in the extension or online?
+
+For app.json it's supplied locally by the Expo Tools VSCode extension (the file has no `$schema` URL). Schemas can also come from a `$schema` link in the file or from SchemaStore.org.
+
+## What is the `scheme` key in app.json?
+
+It's your app's custom URL protocol for deep linking (e.g. `journalapp://`), letting links open your app and route to a screen. Note: `scheme` (URL protocol) is unrelated to JSON schema.
+
+## Where can I read more about URL schemes / deep linking?
+
+Expo's "Linking into your app" guide (https://docs.expo.dev/guides/linking/) is the clearest; Apple and Android also have platform docs on custom URL schemes / deep links. Analogy: like `https://` opens a browser, `journalapp://` opens your app.
+
+## Does `scheme` enable deep links (clicking a link opens a specific app screen)?
+
+Yes — with two tweaks: it works on both iOS and Android (not just Android), and it enables the custom-scheme kind (`journalapp://`); `https://`-based deep links (Universal/App Links) need extra setup.
+
+## What is `userInterfaceStyle` in app.json?
+
+It sets the app's theme: `automatic` follows the phone's light/dark setting, while `light` or `dark` force one mode.
+
+## What is an adaptive icon (and where can I see what it looks like)?
+
+It's Android's icon system using two layers (foreground logo + background) that the OS masks into different shapes per device. Visual examples: https://developer.android.com/develop/ui/views/launch/icon_design_adaptive
+
+## What is `predictiveBackGestureEnabled`?
+
+It toggles Android's predictive back gesture (a preview animation of where a back-swipe leads). It's set to `false` here, likely because the app uses custom back-button handling that predictive back could conflict with.
+
+## Why is `edgeToEdgeEnabled` flagged as "not allowed" — is the schema out of date?
+
+No — the schema is up to date. In SDK 54 edge-to-edge is default and the opt-in property was removed, so this line is a harmless leftover from an older SDK that can be deleted.
+
+## Why did the Play Store reject my upload for having a different package name?
+
+The `package` is your app's permanent, globally-unique Android ID; once a listing is published it's locked to that name. A different `package` reads as a different app, so it must match exactly (iOS calls this the Bundle Identifier).
+
+## Is there a page listing all possible app.json values?
+
+Yes — Expo's app config reference (https://docs.expo.dev/versions/v54.0.0/config/app/) lists every field. Android permission strings come from Android's own docs (https://developer.android.com/reference/android/Manifest.permission).
+
+## What is a splash screen?
+
+It's the first full-screen image (usually your logo) shown briefly while the app loads on launch, before the real UI appears. Configured here via the expo-splash-screen plugin.
+
+## What other plugins can go in the `plugins` array?
+
+They're Expo config plugins that set up native features for libraries (e.g. expo-location, expo-notifications, expo-image-picker, expo-build-properties). Full list at https://docs.expo.dev/versions/v54.0.0/ and https://docs.expo.dev/config-plugins/introduction/.
+
+## Why configure libraries in `plugins` instead of just `npm install`?
+
+`npm install` only fetches the library's JavaScript; a config plugin injects the required native changes (AndroidManifest, Info.plist, Gradle) during build. Pure-JS libraries need no plugin; native ones do.
+
+## So at build time the plugin settings configure the files the libraries use?
+
+Yes — they configure the native app project files (AndroidManifest.xml, Info.plist, Gradle), not the libraries' own files. Those native files grant the OS permissions/hooks that let the libraries work.
+
+## Must native config happen at build time because you can't configure it while the app is running?
+
+Yes — native files are baked in at build and read by the OS at launch, so they're locked by the time your code runs. Runtime can only _request_ what was _declared_ at build time, not add new native config.
+
+## What is the `FOREGROUND_SERVICE` permission?
+
+It lets the app run ongoing background work that Android keeps alive because it shows a persistent notification (e.g. music, navigation). This app uses it for background location tracking.
+
+## Why is it called "foreground" if it enables background tasks?
+
+In Android, "foreground" means high priority/importance, not visible on screen. A foreground service is background work promoted to foreground priority so Android won't kill it — the required notification earns that status.
+
+## Does a foreground service pin a notification or just have the ability to show one?
+
+It must show a persistent, non-dismissible notification pinned in the bar the entire time the service runs (disappears when it stops). That's different from `POST_NOTIFICATIONS`, which is the capability to send regular dismissible alerts.
+
+## What is `FOREGROUND_SERVICE_LOCATION`?
+
+It declares that the foreground service's purpose is location tracking — a typed permission Android 14+ requires alongside the general `FOREGROUND_SERVICE`. Needed here for background location tracking.
+
+## Why do I need both `FOREGROUND_SERVICE` and `FOREGROUND_SERVICE_LOCATION` if I'm just tracking location?
+
+They're a required pair: the general one grants the ability to run a foreground service, the typed one specifies it's for location. The type doesn't replace the umbrella — Android 14+ needs both.
+
+## Can I install a schema to hover over the permission strings in app.json?
+
+No — the Expo schema treats `android.permissions` as a plain array of strings, so individual values have no hover docs. Use Android's Manifest.permission reference (https://developer.android.com/reference/android/Manifest.permission) instead.
+
+## What is `ACCESS_BACKGROUND_LOCATION`?
+
+It allows reading location while the app is backgrounded or closed (vs. FINE/COARSE which only work while the app is in use). It's extra privacy-sensitive — needs a separate "Allow all the time" grant and Play Store justification. Powers this app's background break reminders.

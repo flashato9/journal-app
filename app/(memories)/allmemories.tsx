@@ -14,10 +14,10 @@ import {
   isDayMemoryExists,
 } from "../../services/database";
 import { stopLocationTracking } from "../../services/locationService";
-import Header from "../components/Header";
+import Header from "@/components/Header";
 import FullDayMemoryCard, {
   DailyMemorySummary,
-} from "./components/FullDayMemoryCard";
+} from "@/components/memories/FullDayMemoryCard";
 
 export default function AllMemoriesScreen() {
   const router = useRouter();
@@ -116,7 +116,7 @@ export default function AllMemoriesScreen() {
       );
 
       return () => subscription.remove();
-    }, [router]),
+    }, [router, setUsername]),
   );
 
   return (

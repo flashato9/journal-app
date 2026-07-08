@@ -11,8 +11,8 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import { saveImagePersistently } from "../../../../services/imageStorage";
-import LoadingIndicator from "../../../components/LoadingIndicator";
+import { saveImagePersistently } from "@/services/imageStorage";
+import LoadingIndicator from "@/components/LoadingIndicator";
 import ImageCard from "./ImageCard";
 
 const MAX_IMAGES = 6;
@@ -21,11 +21,6 @@ interface UploadImagesProps {
   images: string[];
   onImagesSelected: (newImages: string[]) => void;
   isEditable?: boolean;
-}
-
-interface ImageWithAssetId {
-  uri: string;
-  assetId: string | null;
 }
 
 export default function UploadImages({
@@ -127,7 +122,7 @@ export default function UploadImages({
       } else {
         setIsLoading(false);
       }
-    } catch (error) {
+    } catch {
       Alert.alert("Error", "Failed to access camera");
       setIsLoading(false);
     }
@@ -204,7 +199,7 @@ export default function UploadImages({
       } else {
         setIsLoading(false);
       }
-    } catch (error) {
+    } catch {
       Alert.alert("Error", "Failed to access photo library");
       setIsLoading(false);
     }

@@ -2,7 +2,7 @@ import { MaterialIcons } from "@expo/vector-icons";
 import { useFocusEffect } from "@react-navigation/native";
 import { format } from "date-fns/format";
 import { parseISO } from "date-fns/parseISO";
-import { useLocalSearchParams, useRouter } from "expo-router";
+import { useLocalSearchParams } from "expo-router";
 import { useCallback, useState } from "react";
 import {
   ActivityIndicator,
@@ -23,25 +23,24 @@ import {
   updateTimeMemory,
 } from "../../services/database";
 import { deleteImage } from "../../services/imageStorage";
-import Header from "../components/Header";
-import LoadingIndicator from "../components/LoadingIndicator";
+import Header from "@/components/Header";
+import LoadingIndicator from "@/components/LoadingIndicator";
 import MemoryForm, {
   LocationState,
   MemoryFormState,
-} from "./components/MemoryForm";
-import { QuestionnaireItem } from "./components/QuestionnaireCard";
+} from "@/components/memories/MemoryForm";
+import { QuestionnaireItem } from "@/components/memories/QuestionnaireCard";
 
 function formatDate(isoDatetime: string): string {
   try {
     return format(parseISO(isoDatetime), "h:mmaa MMMM do, yyyy");
-  } catch (error) {
+  } catch {
     return "Unknown date";
   }
 }
 
 export default function ReadMemoryScreen() {
   const params = useLocalSearchParams();
-  const router = useRouter();
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [timeMemoryId, setTimeMemoryId] = useState<number | null>(null);

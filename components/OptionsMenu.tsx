@@ -9,9 +9,9 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import { AuthContext } from "../../context/AuthContext";
-import { OptionsMenuContext } from "../../context/OptionsMenuContext";
-import { isLocationTrackingActive } from "../../services/locationService";
+import { AuthContext } from "@/context/AuthContext";
+import { OptionsMenuContext } from "@/context/OptionsMenuContext";
+import { isLocationTrackingActive } from "@/services/locationService";
 
 export default function OptionsMenu() {
   const router = useRouter();

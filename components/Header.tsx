@@ -8,7 +8,7 @@ import {
   ViewStyle,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { OptionsMenuContext } from "../../context/OptionsMenuContext";
+import { OptionsMenuContext } from "@/context/OptionsMenuContext";
 
 interface HeaderProps {
   title: string;

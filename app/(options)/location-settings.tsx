@@ -1,5 +1,5 @@
 import { useLocalSearchParams, useRouter } from "expo-router";
-import { useContext, useEffect, useState } from "react";
+import { useCallback, useContext, useEffect, useState } from "react";
 import {
   ActivityIndicator,
   StyleSheet,
@@ -8,23 +8,23 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import { AuthContext } from "../context/AuthContext";
+import { AuthContext } from "@/context/AuthContext";
 import {
   createLocationSettings,
   getLocationSettingsByUserId,
   getUserIdByUsername,
   updateLocationSettings,
-} from "../services/database";
+} from "@/services/database";
 import {
   startLocationTracking,
   stopLocationTracking,
-} from "../services/locationService";
-import Header from "./components/Header";
+} from "@/services/locationService";
+import Header from "@/components/Header";
 
 export default function LocationSettingsScreen() {
   const router = useRouter();
   const { username } = useLocalSearchParams();
-  const { locationSettings, setLocationSettings } = useContext(AuthContext);
+  const { setLocationSettings } = useContext(AuthContext);
 
   const [fetchFrequency, setFetchFrequency] = useState("10");
   const [distanceThreshold, setDistanceThreshold] = useState("1");
@@ -33,11 +33,7 @@ export default function LocationSettingsScreen() {
   const [loading, setLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
 
-  useEffect(() => {
-    loadSettings();
-  }, []);
-
-  const loadSettings = async () => {
+  const loadSettings = useCallback(async () => {
     try {
       if (!username) {
         console.warn("No username provided");
@@ -72,7 +68,11 @@ export default function LocationSettingsScreen() {
       console.error("Error loading location settings:", error);
       setLoading(false);
     }
-  };
+  }, [username]);
+
+  useEffect(() => {
+    loadSettings();
+  }, [loadSettings]);
 
   const saveSettings = async () => {
     setIsSaving(true);

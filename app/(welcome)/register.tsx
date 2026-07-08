@@ -11,7 +11,7 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { z } from "zod";
-import Header from "../components/Header";
+import Header from "@/components/Header";
 
 // Validation schemas
 const usernameSchema = z

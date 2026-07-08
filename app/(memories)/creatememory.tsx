@@ -20,9 +20,9 @@ import {
   getUserIdByUsername,
   insertLocation,
 } from "../../services/database";
-import Header from "../components/Header";
-import MemoryForm, { MemoryFormState } from "./components/MemoryForm";
-import { QuestionnaireItem } from "./components/QuestionnaireCard";
+import Header from "@/components/Header";
+import MemoryForm, { MemoryFormState } from "@/components/memories/MemoryForm";
+import { QuestionnaireItem } from "@/components/memories/QuestionnaireCard";
 
 // Default questionnaire with sensory prompts
 const DEFAULT_QUESTIONNAIRE: QuestionnaireItem[] = [

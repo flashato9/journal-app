@@ -17,11 +17,11 @@ import {
   getTimeMemoriesByDayMemoryId,
   updateDayMemory,
 } from "../../services/database";
-import Header from "../components/Header";
-import SummaryCard from "./components/SummaryCard";
+import Header from "@/components/Header";
+import SummaryCard from "@/components/memories/SummaryCard";
 import TimeOfDayMemoryCard, {
   TimeOfDayMemory,
-} from "./components/TimeOfDayMemoryCard";
+} from "@/components/memories/TimeOfDayMemoryCard";
 
 export default function DayMemoriesScreen() {
   const { id, day } = useLocalSearchParams();

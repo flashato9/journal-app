@@ -1,5 +1,4 @@
 import { File, Paths } from "expo-file-system";
-import { useRouter } from "expo-router";
 import { useEffect, useRef, useState } from "react";
 import {
   ScrollView,
@@ -8,14 +7,12 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import { clearLogs, readLogs } from "../services/logger";
-import Header from "./components/Header";
+import { clearLogs, readLogs } from "@/services/logger";
+import Header from "@/components/Header";
 
 export default function DebugLogsScreen() {
-  const router = useRouter();
   const scrollViewRef = useRef<ScrollView>(null);
   const [logs, setLogs] = useState<string>("");
-  const [loading, setLoading] = useState(true);
   const lastInteractionRef = useRef<number>(Date.now());
 
   useEffect(() => {
@@ -40,7 +37,6 @@ export default function DebugLogsScreen() {
       if (isManual) {
         console.log("📋 Loading debug logs...");
       }
-      setLoading(true);
       const logContent = await readLogs();
       setLogs(logContent || "No logs yet");
       if (isManual) {
@@ -53,8 +49,6 @@ export default function DebugLogsScreen() {
     } catch (error) {
       console.log("❌ Error loading debug logs:", error);
       setLogs(`Error reading logs: ${error}`);
-    } finally {
-      setLoading(false);
     }
   };
 

@@ -9,9 +9,11 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import LoadingIndicator from "../../components/LoadingIndicator";
-import UploadImages from "./ImageGallery/UploadImages";
-import QuestionnaireCard, { QuestionnaireItem } from "./QuestionnaireCard";
+import LoadingIndicator from "@/components/LoadingIndicator";
+import UploadImages from "@/components/memories/ImageGallery/UploadImages";
+import QuestionnaireCard, {
+  QuestionnaireItem,
+} from "@/components/memories/QuestionnaireCard";
 
 export interface LocationInfo {
   latitude: number;
