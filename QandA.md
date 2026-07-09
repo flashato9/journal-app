@@ -1,5 +1,15 @@
 # Q&A
 
+# General
+
+## Other than hooks, what else does React offer?
+
+Hooks are React's API for logic/state; the rest is the component + composition model: Components, JSX, Props (data flows down), Composition/`children`, conditional rendering & lists (keys), Fragments (`<>`). Plus special features: Context (app-wide data), Refs (persist without re-render), Suspense (async loading UI), React.lazy (code-splitting), Error Boundaries (catch render errors), memo/useMemo/useCallback (perf). For clean organization the key trio is props+composition, context, and custom hooks; the rest is situational.
+
+## What is Suspense?
+
+Declarative loading: instead of each component tracking its own `isLoading` + ternary, you wrap async content in `<Suspense fallback={<Spinner/>}>` and React shows the fallback until the children are ready. It's composable (one boundary can cover several async children) and nestable. Catch: it only works with Suspense-enabled sources (throw a promise when not ready) — React.lazy (code-splitting), React Query/Relay, or the new `use()` hook — NOT a plain useEffect+setState fetch. So it's not a drop-in for this app's expo-sqlite manual fetches yet; `React.lazy` is the usable entry point in RN.
+
 # hooks/useLogin.ts
 
 ## What is a hook, and why did we make useLogin a hook instead of a service?
