@@ -2,6 +2,8 @@ import { useRouter } from "expo-router";
 import { useState } from "react";
 import {
   Alert,
+  KeyboardAvoidingView,
+  Platform,
   StyleSheet,
   Text,
   TextInput,
@@ -9,6 +11,7 @@ import {
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import Button from "@/components/Button";
 import Header from "@/components/Header";
 import { useLogin } from "@/hooks/useLogin";
 
@@ -35,42 +38,48 @@ export default function LoginScreen() {
     <SafeAreaView style={styles.container}>
       <Header title="" />
 
-      {/* Centered Login Content */}
-      <View style={styles.content}>
-        <Text style={styles.title}>Login</Text>
-        <TextInput
-          style={styles.input}
-          placeholder="Username"
-          placeholderTextColor="#999"
-          value={username}
-          onChangeText={setUsername}
-          editable={true}
-        />
+      <KeyboardAvoidingView
+        behavior={Platform.OS === "ios" ? "padding" : "height"}
+        style={styles.keyboardAvoidingView}
+      >
+        {/* Centered Login Content */}
+        <View style={styles.content}>
+          <Text style={styles.title}>Login</Text>
+          <TextInput
+            style={styles.input}
+            placeholder="Username"
+            placeholderTextColor="#999"
+            value={username}
+            onChangeText={setUsername}
+            editable={true}
+          />
 
-        <TextInput
-          style={styles.input}
-          placeholder="Password"
-          placeholderTextColor="#999"
-          value={password}
-          onChangeText={setPassword}
-          secureTextEntry={true}
-        />
+          <TextInput
+            style={styles.input}
+            placeholder="Password"
+            placeholderTextColor="#999"
+            value={password}
+            onChangeText={setPassword}
+            secureTextEntry={true}
+          />
 
-        <TouchableOpacity style={styles.loginButton} onPress={handleLogin}>
-          <Text style={styles.loginButtonText}>Login</Text>
-        </TouchableOpacity>
+          <Button
+            text="Login"
+            onPress={handleLogin}
+            backgroundColor="#007AFF"
+          />
 
-        <TouchableOpacity
-          style={styles.biometricButton}
-          onPress={loginWithBiometrics}
-        >
-          <Text style={styles.biometricButtonText}>Login with Fingerprint</Text>
-        </TouchableOpacity>
+          <Button
+            text="Login with Fingerprint"
+            onPress={loginWithBiometrics}
+            backgroundColor="#34C759"
+          />
 
-        <TouchableOpacity onPress={handleRegister}>
-          <Text style={styles.registerLink}>Register</Text>
-        </TouchableOpacity>
-      </View>
+          <TouchableOpacity onPress={handleRegister}>
+            <Text style={styles.registerLink}>Register</Text>
+          </TouchableOpacity>
+        </View>
+      </KeyboardAvoidingView>
     </SafeAreaView>
   );
 }
@@ -79,6 +88,9 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: "#fff",
+  },
+  keyboardAvoidingView: {
+    flex: 1,
   },
   title: {
     fontSize: 28,
@@ -101,30 +113,6 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     fontSize: 16,
     color: "#000",
-  },
-  loginButton: {
-    backgroundColor: "#007AFF",
-    paddingVertical: 12,
-    borderRadius: 8,
-    alignItems: "center",
-    marginTop: 8,
-  },
-  loginButtonText: {
-    color: "#fff",
-    fontSize: 16,
-    fontWeight: "600",
-  },
-  biometricButton: {
-    backgroundColor: "#34C759",
-    paddingVertical: 12,
-    borderRadius: 8,
-    alignItems: "center",
-    marginTop: 8,
-  },
-  biometricButtonText: {
-    color: "#fff",
-    fontSize: 16,
-    fontWeight: "600",
   },
   registerLink: {
     color: "#007AFF",

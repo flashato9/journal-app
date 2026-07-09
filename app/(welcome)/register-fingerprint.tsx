@@ -6,7 +6,6 @@ import {
   Alert,
   KeyboardAvoidingView,
   Platform,
-  StatusBar,
   StyleSheet,
   Text,
   TextInput,
@@ -15,6 +14,7 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { z } from "zod";
+import Button from "@/components/Button";
 import Header from "@/components/Header";
 
 const usernameSchema = z
@@ -117,7 +117,6 @@ export default function RegisterFingerprintScreen() {
 
   return (
     <SafeAreaView style={styles.container}>
-      <StatusBar barStyle="dark-content" hidden={false} />
       <Header title="" />
 
       <KeyboardAvoidingView
@@ -145,20 +144,12 @@ export default function RegisterFingerprintScreen() {
             <Text style={styles.errorText}>{usernameError}</Text>
           ) : null}
 
-          <TouchableOpacity
-            style={[
-              styles.fingerprintButton,
-              (!isUsernameValid || isScanning) &&
-                styles.fingerprintButtonDisabled,
-            ]}
+          <Button
+            text="Scan Fingerprint"
             onPress={handleFingerprintScan}
-            disabled={!isUsernameValid || isScanning}
-            activeOpacity={isUsernameValid && !isScanning ? 0.7 : 1}
-          >
-            <Text style={styles.fingerprintButtonText}>
-              {isScanning ? "Scanning..." : "Scan Fingerprint"}
-            </Text>
-          </TouchableOpacity>
+            backgroundColor="#34C759"
+            disabled={!isUsernameValid}
+          />
 
           <TouchableOpacity onPress={handleBackToRegister}>
             <Text style={styles.backLink}>Back to Register</Text>
@@ -214,22 +205,6 @@ const styles = StyleSheet.create({
     marginTop: -12,
     marginBottom: 8,
     marginLeft: 4,
-  },
-  fingerprintButton: {
-    backgroundColor: "#34C759",
-    paddingVertical: 12,
-    borderRadius: 8,
-    alignItems: "center",
-    marginTop: 8,
-  },
-  fingerprintButtonDisabled: {
-    backgroundColor: "#ccc",
-    opacity: 0.6,
-  },
-  fingerprintButtonText: {
-    color: "#fff",
-    fontSize: 16,
-    fontWeight: "600",
   },
   backLink: {
     color: "#007AFF",

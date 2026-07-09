@@ -3,6 +3,8 @@ import * as SecureStore from "expo-secure-store";
 import { useState } from "react";
 import {
   Alert,
+  KeyboardAvoidingView,
+  Platform,
   StyleSheet,
   Text,
   TextInput,
@@ -129,58 +131,63 @@ export default function RegisterScreen() {
     <SafeAreaView style={styles.container}>
       <Header title="" />
 
-      <View style={styles.content}>
-        <Text style={styles.title}>Create Account</Text>
+      <KeyboardAvoidingView
+        behavior={Platform.OS === "ios" ? "padding" : "height"}
+        style={styles.keyboardAvoidingView}
+      >
+        <View style={styles.content}>
+          <Text style={styles.title}>Create Account</Text>
 
-        <TextInput
-          style={[styles.input, usernameError ? styles.inputError : {}]}
-          placeholder="Username"
-          placeholderTextColor="#999"
-          value={username}
-          onChangeText={handleUsernameChange}
-          editable={true}
-        />
-        {usernameError ? (
-          <Text style={styles.errorText}>{usernameError}</Text>
-        ) : null}
+          <TextInput
+            style={[styles.input, usernameError ? styles.inputError : {}]}
+            placeholder="Username"
+            placeholderTextColor="#999"
+            value={username}
+            onChangeText={handleUsernameChange}
+            editable={true}
+          />
+          {usernameError ? (
+            <Text style={styles.errorText}>{usernameError}</Text>
+          ) : null}
 
-        <TextInput
-          style={[styles.input, passwordError ? styles.inputError : {}]}
-          placeholder="Password"
-          placeholderTextColor="#999"
-          value={password}
-          onChangeText={handlePasswordChange}
-          secureTextEntry={true}
-        />
-        {passwordError ? (
-          <Text style={styles.errorText}>{passwordError}</Text>
-        ) : null}
+          <TextInput
+            style={[styles.input, passwordError ? styles.inputError : {}]}
+            placeholder="Password"
+            placeholderTextColor="#999"
+            value={password}
+            onChangeText={handlePasswordChange}
+            secureTextEntry={true}
+          />
+          {passwordError ? (
+            <Text style={styles.errorText}>{passwordError}</Text>
+          ) : null}
 
-        <TouchableOpacity
-          style={[
-            styles.registerButton,
-            !isRegisterEnabled && styles.registerButtonDisabled,
-          ]}
-          onPress={handleRegister}
-          disabled={!isRegisterEnabled}
-          activeOpacity={isRegisterEnabled ? 0.7 : 1}
-        >
-          <Text style={styles.registerButtonText}>Register</Text>
-        </TouchableOpacity>
+          <TouchableOpacity
+            style={[
+              styles.registerButton,
+              !isRegisterEnabled && styles.registerButtonDisabled,
+            ]}
+            onPress={handleRegister}
+            disabled={!isRegisterEnabled}
+            activeOpacity={isRegisterEnabled ? 0.7 : 1}
+          >
+            <Text style={styles.registerButtonText}>Register</Text>
+          </TouchableOpacity>
 
-        <TouchableOpacity
-          style={styles.biometricButton}
-          onPress={handleBiometricRegister}
-        >
-          <Text style={styles.biometricButtonText}>
-            Register with Fingerprint
-          </Text>
-        </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.biometricButton}
+            onPress={handleBiometricRegister}
+          >
+            <Text style={styles.biometricButtonText}>
+              Register with Fingerprint
+            </Text>
+          </TouchableOpacity>
 
-        <TouchableOpacity onPress={handleBackToLogin}>
-          <Text style={styles.loginLink}>Back to Login</Text>
-        </TouchableOpacity>
-      </View>
+          <TouchableOpacity onPress={handleBackToLogin}>
+            <Text style={styles.loginLink}>Back to Login</Text>
+          </TouchableOpacity>
+        </View>
+      </KeyboardAvoidingView>
     </SafeAreaView>
   );
 }
@@ -189,6 +196,9 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: "#fff",
+  },
+  keyboardAvoidingView: {
+    flex: 1,
   },
   content: {
     flex: 1,

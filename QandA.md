@@ -1,281 +1,119 @@
 # Q&A
 
-# eas.json
+# hooks/useLogin.ts
 
-## Is EAS a cloud platform reached via the EAS CLI, with eas.json defining that CLI's version?
+## What is a hook, and why did we make useLogin a hook instead of a service?
 
-Yes. The one refinement: eas.json's `cli.version` sets the **minimum** required CLI version (e.g. `>= 20.5.1`), not an exact pin.
+A hook is a function that can call other hooks (`useContext`, `useState`, `useRouter`) and only runs inside a component/another hook; a service is plain non-React logic callable anywhere. Login needed React context + navigation, which only hooks can access — that's why it's a hook (and why the old plain function had to take `any`-typed setters/router as params). Rule of thumb: needs React → hook; pure logic (SQL, files, APIs) → service.
 
-## What do the `build` and `submit` sections in eas.json do?
+## Is a hook "a component without the component part"?
 
-`build` defines recipes for compiling the app into binaries (development, preview, production profiles). `submit` defines how to upload a finished build to the app stores.
+Fair intuition — it's a component's reusable state/logic minus the JSX (a component returns JSX; a hook returns data/functions). Refinement: a hook doesn't run standalone — it runs inside whichever component calls it, and its state lives in that component, so two components calling the same hook each get their own separate state.
 
-## Would I ever need to modify eas.json?
+## What is useLogin really doing — it just defines functions and returns them?
 
-Yes — to add per-profile environment variables, app store submission credentials, extra build settings, or new profiles (e.g. staging). It's minimal now because you haven't started real cloud builds yet.
+Yes, but first it grabs React values (`useRouter`, `useContext`) at the top, and the returned functions capture those via closures — so `login(username, password)` already "remembers" the router/context setters without them being passed in. The hook's real job is that wiring; the functions are just the interface. (It re-runs and re-creates the functions on every render.)
 
-## Is there online documentation for configuring eas.json / EAS?
+## Is the only benefit of useLogin that we avoid passing AuthContext/router into the functions?
 
-Yes — the main reference is the eas.json page (https://docs.expo.dev/eas/json/), plus EAS Build, EAS Submit, environment variables, and EAS Update guides on docs.expo.dev.
+For our thin usage, largely yes — plus clean extraction that a plain service couldn't do (non-React code can't call `useContext`/`useRouter`). The bigger hook benefits we didn't use: owning state (e.g. return `isLoading`/`error` for the UI to read) and reuse across multiple components.
 
-# package.json
+## How does a hook control the component that calls it — by exposing variables it references?
 
-## Is the `dev` script correct?
+Yes. The hook owns state (`useState`) and returns it; the component reads/renders that value. When the hook updates the state, the state lives in the component, so React re-renders it and the component re-reads the new returned value. It's pull, not push — the returned object is the whole contract. (A hook can also do side effects directly, like `router.push`/`Alert`.)
 
-Yes — `npm run build` runs lint/format/generate-icons, then `npm run android -- --clear` passes `--clear` through to become `expo start --android --clear` (launch on Android with a cleared Metro cache). Note `>nul 2>&1` is Windows-only syntax.
+## Why is it called a "hook"?
 
-## Why does an emulator open every time I run `npm run dev` now?
+Because it lets a function "hook into" React's built-in state, context, and lifecycle — features that used to be locked inside class components. Same sense as Git hooks / webhooks: an attachment point to plug into a system. The `use` prefix is required so React's linter can enforce the Rules of Hooks.
 
-Because `dev` now calls `npm run android`, whose `--android` flag tells Expo to auto-launch the Android emulator. The old `expo start` had no platform flag, so it just started the server and let you choose.
+## Mental model: you hook into a part of React to use what it offers
 
-## Why is the `main` key needed in package.json?
+state → remember across re-renders; context → read a broadcast value; effect → run code when things change; a custom hook → reuse a bundled capability. One correction: React state is NOT permanent — it's wiped on unmount/app restart. Permanent storage is SecureStore/SQLite (services). useLogin uses both: reads the credential from SecureStore (permanent), then puts the user in state/context (this session).
 
-It defines the app's entry point — the first file that runs. Here it's `expo-router/entry`, which bootstraps Expo Router so it can build navigation from the `app/` folder's file structure.
+# app/(memories)/readoreditmemory.tsx
 
-## Where is the expo-router folder?
+## Is readoreditmemory.tsx (236 lines) a good file size?
 
-In `node_modules/expo-router/` (the `entry.js` file there is what `main` points to). node_modules is npm-installed, git-ignored library code that Node resolves automatically from the bare package name.
+Not alarming generally, but over a personal ~200-line target. The bulk isn't UI (just Header + MemoryForm) — it's ~120 lines of business logic (`loadMemory`, `handleSave`: DB/image/QA work) leaked into the screen, same smell as login.tsx. Extracting a `useEditMemory` hook (owning state + load/save) would slim it under 200 and improve separation.
 
-## Does package.json know to look in node_modules?
+## Should business logic (e.g. validation) be extracted out of components into services?
 
-Not quite — package.json just lists the names; it's Node.js (and Metro) whose built-in resolver knows the rule "bare package name → search node_modules". package.json names what; Node knows where.
+Yes — components are for rendering; pure business logic belongs elsewhere. Two homes: pure logic (validation, DB, transforms) → services/schema modules (no React, callable anywhere, testable); React-coupled orchestration (state/context/router) → hooks. Example: the zod `usernameSchema` is duplicated inline in register.tsx and register-fingerprint.tsx — a prime candidate to extract into a shared `services/validation.ts`.
 
-# context/AuthContext.tsx
+## Services vs hooks — it feels like both. How do I decide?
 
-## What is a React Context?
+They're layers, not either/or: hooks CALL services. Litmus test: "could this run in a plain .ts file with no React imported?" Yes → service (pure verbs: validate/fetch/save). No — needs useState/useContext/useRouter/useEffect → hook (the conductor that runs services in order and wires results into state/context/navigation). Most features are both: pure parts → services, the React glue → hook. In useLogin, the DB/SecureStore steps are already services; the hook exists only to orchestrate them + update context/navigate.
 
-It's React's way to share data app-wide so any component can read it directly, avoiding "prop drilling" (passing props through every layer). A context has two parts: the context object (`createContext`) and a Provider that holds state and broadcasts it. AuthContext shares `username` and `locationSettings` across screens.
+## What's the extraction workflow / when do I make a hook vs leave it inline?
 
-## Why is a Provider needed — why can't a component just call useContext?
+Flow: pure logic (no React) → extract to a service eagerly. React logic → leave inline in the component while small; promote to a hook when it grows (past your line limit) or gets reused; never a service. Key signal: the urge to pass `setState`/`router` INTO a function means it needs React → make it a hook (which grabs them itself), not a service. Don't extract everything up front — extract when it hurts.
 
-`createContext` only defines default/fallback values (the empty setters). The Provider holds the real `useState` and broadcasts live values; without it, useContext returns the dead defaults. The Provider also scopes which subtree gets the data and re-renders consumers when the value changes.
+# app/(memories)/allmemories.tsx
 
-## What is the `AuthContext.Provider` syntax and the `value` prop?
+## What is FlatList?
 
-`createContext` returns an object with a `.Provider` component attached, so `AuthContext.Provider` is just accessing that component (dot syntax). `value` is its special built-in prop — whatever you pass to `value` is exactly what `useContext` receives. (Double braces `{{ }}` = JSX-expression braces around an object literal.)
+React Native's component for efficiently rendering a scrollable list from a data array. Unlike ScrollView + `.map()` (renders everything at once), FlatList only renders visible items and recycles them (virtualization), so long lists stay fast. Key props: `data`, `renderItem` (draws one item), `keyExtractor` (unique key), `ListEmptyComponent`. Rule: short fixed content → ScrollView; long/dynamic lists → FlatList.
 
-## Why separate the context object from the Provider instead of just exporting a Provider?
+# app/(options)/_layout.tsx
 
-Because `useContext(AuthContext)` needs the context object as the identifier for _which_ channel to read — both the Provider and every consumer reference it. The split also allows multiple/nested Providers with different values. Like a radio frequency: it must exist independently so both the station and the radio can reference it. Many wrap it in a custom `useAuth()` hook to hide the boilerplate.
+## Are the tabBarIcons in (options)/_layout pointless — I don't see them?
 
-## Does surrounding components with the Provider decide which ones can useContext?
+No — they render in the bottom tab bar that only appears at runtime while you're inside the (options) section (Location Settings / Debug Logs). You won't see them because the app hasn't been run yet — all changes so far are only `npm run build` (typecheck/lint) verified, not visually run.
 
-Yes — any component nested inside the Provider (at any depth) can read the context; components outside it just get the dead defaults. That's why the Provider is usually placed near the app root so every screen can access it.
+## Can I move the tabs to the top of the screen?
 
-## Why didn't the linter catch "Cannot find name 'router'"?
+Yes — add `tabBarPosition: "top"` to the Tabs `screenOptions` (works because @react-navigation/bottom-tabs v7 supports it; no new deps). That just relocates the normal tab bar. For swipeable top tabs you'd need `@react-navigation/material-top-tabs` (extra packages). Needs a visual run to confirm layout vs the Header.
 
-That's a TypeScript error, not an ESLint one (ESLint's `no-undef` is off in TS projects since TS handles it). And nothing in `npm run build` runs the TypeScript compiler, so only the editor caught it. Adding a `tsc --noEmit` step would catch it in the build.
+# app/(welcome)/register-fingerprint.tsx
 
-# context/OptionsMenuContext.tsx
+## Why is there a StatusBar in register-fingerprint?
 
-## Why is one setter (`setLocationTrackingActive`) hidden from the context value?
+`<StatusBar>` controls the OS status bar (clock/battery/signal at the top). `barStyle="dark-content"` makes its icons dark (readable on this screen's white background); `hidden={false}` keeps it visible. It's applied inconsistently (only this screen) — cleaner to set it once in the root `_layout.tsx`. Note it's imported from `react-native`, though Expo also offers `expo-status-bar`. (Removed it here since no other white-bg screen sets it.)
 
-Encapsulation — `locationTrackingActive` is managed internally by the Provider (via `isLocationTrackingActive()` on menu open), so its setter stays private to keep the status truthful. Consumers can read it but not fake it, while `setMenuVisible` is exposed because components should control the menu.
+## What is KeyboardAvoidingView?
 
-# services/database.ts
+It moves/resizes its content up when the on-screen keyboard appears so the keyboard doesn't cover the focused input. `behavior` controls how (padding/height/position); the `Platform.OS === "ios" ? "padding" : "height"` idiom is used because iOS/Android handle the keyboard differently. login.tsx doesn't use it — another possible consistency cleanup.
 
-## Does database.ts just create functions and a db object other components use?
+## Should we always use KeyboardAvoidingView (like SafeAreaView)? Does it break no-input pages?
 
-Yes — it exports the shared SQLite `db` connection plus functions (initializeDatabase, CRUD helpers). More precisely it's a service layer that hides raw SQL behind clean reusable functions, so screens call `getUserIdByUsername()` instead of writing SQL.
+No, it doesn't break input-less pages (no keyboard = no effect), but don't blanket-add it: it's needless complexity where there's no input, can cause layout quirks needing per-screen tuning, and only helps when inputs sit low enough to be covered. Unlike SafeAreaView (every screen needs it), KeyboardAvoidingView is conditional — use it on form screens, skip display-only ones.
 
-# services/imageStorage.ts
+## Should KeyboardAvoidingView wrap per-input or surround all the content?
 
-## Does imageStorage.ts just give components methods to save images / ensure directories?
+Surround the whole content block once (one KAV around all elements below the header). Per-input is wrong — multiple KAVs each compute their own shift and fight/double-shift. The keyboard moves the content as one unit, so one wrapper is correct.
 
-Yes — plus a clever detail: via `__DEV__` it saves to the app's local storage in development but to the phone's real photo gallery in production, and callers don't need to know which. Same service-layer encapsulation as database.ts.
+# app/(options)/debug-logs.tsx
 
-# services/locationService.ts
+## Should debug-logs/location-settings use SafeAreaView instead of the Header handling safe area?
 
-## Is it normal for a service file to be this big (~526 lines)?
-
-Yes — 200–500 lines is common and 500–800 is "large but acceptable"; database.ts is the same size. Line count is a weak signal — the real question is number of responsibilities. This file is big because background location (3-stage filter + tracking lifecycle) is genuinely complex, not bloated.
-
-# services/logger.ts
-
-## What does the logger service do?
-
-It monkey-patches `console.log/warn/error` to also write every log to a file (`app-logs.txt`) while still printing normally. This captures logs app-wide with no code changes, so you can read them back on a real device (via readLogs / the debug-logs screen) where there's no console.
-
-# app/_layout.tsx
-
-## When does the `useEffect` with `[]` run — on page load or refresh?
-
-It runs once when the component **mounts** (first appears), not on re-renders. In a mobile app "page load" ≈ app cold start (it runs), there's no browser "refresh," and dev-only Fast Refresh can re-run it. So `_layout.tsx`'s effects run once at app startup.
-
-## What's the difference between mount, re-render, and refresh?
-
-Mount = component created/shown first time; re-render = it updates (state/props change) but stays; there's no browser "refresh" in mobile — the closest is app cold start (remounts everything) or dev Fast Refresh. `useEffect(fn, [])` runs on mount only.
-
-## Why are there two functions (RootLayout and RootLayoutContent) — can a file have two components?
-
-A file can have unlimited components; only one `default export` is allowed (RootLayout), the other is a private helper. Names are arbitrary — expo-router uses the default export regardless of name. They're split so RootLayoutContent sits _inside_ the Providers and can call `useContext` (a component can't consume a context whose Provider it renders itself).
-
-## What is a `Stack`?
-
-A navigation pattern that manages screens like a stack of cards: `router.push` adds a screen on top, `router.back()` pops it off to reveal the one below. `<Stack.Screen>` registers each screen. Best for drill-in flows (list → detail → edit); alternatives are Tabs and Drawer.
-
-## Why would I use a Tab navigator?
-
-For a few equal top-level sections users switch between freely (like Instagram's Home/Search/Profile) — parallel areas with no back relationship, unlike Stack's drill-in flow. Common real-world setup is Tabs on the outside with a Stack inside each tab.
-
-## Why are there folders inside the navigation, not just page files?
-
-In Expo Router the folder structure IS the navigation tree: a folder with `_layout.tsx` is a nested navigator (stack-in-stack), a `(name)` folder is a "route group" (shared layout, invisible in the URL, e.g. `(memories)/allmemories` → `/allmemories`), and a `components/` folder is just plain helper components, not routes. Plain `.tsx` files are the screens.
-
-# app/index.tsx
-
-## What does the `Redirect` component do and what does exporting the Index function do?
-
-`<Redirect href="..." />` immediately forwards the user to another route without showing UI. Exporting `Index` as the default registers it as the component for the `/` route (name is arbitrary; expo-router uses the default export). So landing at `/` renders Index, which just redirects to the login screen.
-
-# app/(welcome)/_layout.tsx
-
-## Does the order of `<Stack.Screen>` entries matter?
-
-No — for a Stack, order doesn't set the initial screen (the URL/redirect does) or the navigation sequence (`router.push` does); listing screens mainly attaches options, and expo-router auto-discovers routes anyway. For Tabs, order DOES matter — it sets the left-to-right tab order. To force an initial stack route, use `initialRouteName`, not declaration order.
+Yes — good separation of concerns: safe-area is a screen/layout concern, so a reusable Header shouldn't own it (the Header reaching for `useSafeAreaInsets` leaks layout responsibility into a presentational component). The only time a header should own its top inset is when it has a colored background meant to extend behind the status bar; this Header is transparent, so there's no visual difference. Cleanup: wrap those two screens in SafeAreaView, drop the `useSafeArea` prop from Header entirely.
 
 # app/(welcome)/login.tsx
 
-## Is it normal for component files to get big (e.g. login.tsx with a performLogin function)?
+## What is a SafeAreaView?
 
-Common, but not ideal — your instinct to keep them small is right. The real issue isn't line count; it's that business logic (`performLogin`: auth + DB + location) leaked into a UI file (the `setLocationSettings: any, router: any` params are the smell). Fix by extracting logic into a service (`services/auth.ts`) or a custom hook (`useLogin`), leaving the screen as mostly UI + wiring. Styles via `StyleSheet.create` in-file are fine/idiomatic.
+A container that pads content away from OS-reserved zones (notch, status bar, home indicator, rounded corners) so nothing gets clipped or overlapped. Import it from `react-native-safe-area-context` (works on iOS+Android; React Native's built-in one is iOS-only/deprecated).
 
-# eslint.config.js
+## Do all pages need safe-area handling?
 
-## What is eslint.config.js saying?
+Yes — but not necessarily via `SafeAreaView` directly. This app does it two ways: most screens wrap in `SafeAreaView` (pads all edges), while location-settings/debug-logs use `Header`'s `useSafeArea` prop (via `useSafeAreaInsets`, pads top only). Every screen needs the handling; the mechanism can vary (SafeAreaView, the insets hook, or a nav header). Slightly inconsistent here; standardizing is a possible cleanup.
 
-It tells ESLint to apply Expo's recommended lint rules (`eslint-config-expo/flat`) while ignoring the `dist/` folder of compiled output.
+## Why not use SafeAreaView everywhere instead of View?
 
-## Is `module.exports` a built-in JavaScript thing or just a variable?
+SafeAreaView is just a View that adds safe-area inset padding — use it once at the screen's outermost container. Nesting them double-applies the padding and pushes content too far in. Inner content is already inside the safe zone, so use plain View there.
 
-It's a built-in Node.js (CommonJS) mechanism that defines what a file hands out when another file `require()`s it — not an arbitrary variable.
+## What is TouchableOpacity — is it basically a button?
 
-## Does ESLint automatically find and read eslint.config.js in the repo?
+Functionally yes: a tappable wrapper that fades on press, with an `onPress` handler (like web `onClick`). RN's built-in `<Button>` is too limited to style, so you build buttons by wrapping content in a touchable. Family: TouchableOpacity (fade), TouchableHighlight (darken), Pressable (newer/most flexible).
 
-Yes — ESLint looks for a file named `eslint.config.js` in the project root by default and uses whatever it exports, no path needed.
+## Should we make a reusable Button component to avoid repeating TouchableOpacity?
 
-# tsconfig.json
+Yes — there's enough repetition (login/save/debug buttons) to justify a shared `components/Button.tsx`. Give it props like `title`, `onPress`, `variant` (primary/success/danger), `loading`, `disabled` so it covers the color/spinner/disabled variation. Keep special cases (text links, card taps) as-is — don't over-abstract.
 
-## What is tsconfig.json for?
+## How do I make a Button auto-show loading while onPress runs?
 
-It configures the TypeScript compiler — which files to type-check (`include`) and how strictly (`strict`), plus settings like the `@/*` path alias.
+Give the Button its own `isLoading` useState, and wrap onPress: set loading true → `await onPress()` → `finally` set false. Widen the type to `() => void | Promise<void>` so it's awaitable (await works for sync too). Show an `ActivityIndicator` and set `disabled` while loading (blocks double-taps); `finally` guarantees the spinner clears even on error. Note: if onPress navigates away, the final setState is a harmless no-op in React 19.
 
-## Is TypeScript just a program that converts .ts files into JSON?
+## Would a useOnPress (useAsyncCallback) hook be better than putting loading logic in Button?
 
-No — TypeScript is JavaScript plus a type system, and its compiler type-checks your code then strips the types to produce plain **JavaScript** (not JSON).
-
-## Is TypeScript really a transpiler, not a compiler?
-
-It's both — a transpiler is a kind of compiler (source-to-source). The translation part is transpiling, but TS also does true type-checking, so calling it a compiler is fair.
-
-## Does `include` in tsconfig tell TypeScript which files to compile and check?
-
-It defines which files are in the project so TypeScript type-checks them for issues. In this Expo project the actual JS generation is done by Metro, not `tsc`.
-
-# expo-env.d.ts
-
-## What is expo-env.d.ts and why should it be git-ignored?
-
-It's an auto-generated TypeScript declaration file that pulls in Expo's global types (`/// <reference types="expo/types" />`). It's recommended to git-ignore because Expo regenerates it, so committing it just adds noise.
-
-# app.json
-
-## What is app.json for?
-
-It's the main Expo config file defining the app's identity, icons, permissions, plugins, and per-platform (iOS/Android/web) native settings — the single source of truth Expo reads when building.
-
-## What is `slug` in app.json?
-
-It's a URL-friendly identifier for your project on Expo's servers (lowercase, no spaces) — an internal ID, unlike `name` which is the display name users see on their phone.
-
-## What shows the key descriptions when I hover over keys in my editor?
-
-A JSON Schema — VSCode's JSON language support reads Expo's published schema for the file and shows each key's description (also powering autocomplete and validation).
-
-## Where does the app.json schema live — in the extension or online?
-
-For app.json it's supplied locally by the Expo Tools VSCode extension (the file has no `$schema` URL). Schemas can also come from a `$schema` link in the file or from SchemaStore.org.
-
-## What is the `scheme` key in app.json?
-
-It's your app's custom URL protocol for deep linking (e.g. `journalapp://`), letting links open your app and route to a screen. Note: `scheme` (URL protocol) is unrelated to JSON schema.
-
-## Where can I read more about URL schemes / deep linking?
-
-Expo's "Linking into your app" guide (https://docs.expo.dev/guides/linking/) is the clearest; Apple and Android also have platform docs on custom URL schemes / deep links. Analogy: like `https://` opens a browser, `journalapp://` opens your app.
-
-## Does `scheme` enable deep links (clicking a link opens a specific app screen)?
-
-Yes — with two tweaks: it works on both iOS and Android (not just Android), and it enables the custom-scheme kind (`journalapp://`); `https://`-based deep links (Universal/App Links) need extra setup.
-
-## What is `userInterfaceStyle` in app.json?
-
-It sets the app's theme: `automatic` follows the phone's light/dark setting, while `light` or `dark` force one mode.
-
-## What is an adaptive icon (and where can I see what it looks like)?
-
-It's Android's icon system using two layers (foreground logo + background) that the OS masks into different shapes per device. Visual examples: https://developer.android.com/develop/ui/views/launch/icon_design_adaptive
-
-## What is `predictiveBackGestureEnabled`?
-
-It toggles Android's predictive back gesture (a preview animation of where a back-swipe leads). It's set to `false` here, likely because the app uses custom back-button handling that predictive back could conflict with.
-
-## Why is `edgeToEdgeEnabled` flagged as "not allowed" — is the schema out of date?
-
-No — the schema is up to date. In SDK 54 edge-to-edge is default and the opt-in property was removed, so this line is a harmless leftover from an older SDK that can be deleted.
-
-## Why did the Play Store reject my upload for having a different package name?
-
-The `package` is your app's permanent, globally-unique Android ID; once a listing is published it's locked to that name. A different `package` reads as a different app, so it must match exactly (iOS calls this the Bundle Identifier).
-
-## Is there a page listing all possible app.json values?
-
-Yes — Expo's app config reference (https://docs.expo.dev/versions/v54.0.0/config/app/) lists every field. Android permission strings come from Android's own docs (https://developer.android.com/reference/android/Manifest.permission).
-
-## What is a splash screen?
-
-It's the first full-screen image (usually your logo) shown briefly while the app loads on launch, before the real UI appears. Configured here via the expo-splash-screen plugin.
-
-## What other plugins can go in the `plugins` array?
-
-They're Expo config plugins that set up native features for libraries (e.g. expo-location, expo-notifications, expo-image-picker, expo-build-properties). Full list at https://docs.expo.dev/versions/v54.0.0/ and https://docs.expo.dev/config-plugins/introduction/.
-
-## Why configure libraries in `plugins` instead of just `npm install`?
-
-`npm install` only fetches the library's JavaScript; a config plugin injects the required native changes (AndroidManifest, Info.plist, Gradle) during build. Pure-JS libraries need no plugin; native ones do.
-
-## So at build time the plugin settings configure the files the libraries use?
-
-Yes — they configure the native app project files (AndroidManifest.xml, Info.plist, Gradle), not the libraries' own files. Those native files grant the OS permissions/hooks that let the libraries work.
-
-## Must native config happen at build time because you can't configure it while the app is running?
-
-Yes — native files are baked in at build and read by the OS at launch, so they're locked by the time your code runs. Runtime can only _request_ what was _declared_ at build time, not add new native config.
-
-## What is the `FOREGROUND_SERVICE` permission?
-
-It lets the app run ongoing background work that Android keeps alive because it shows a persistent notification (e.g. music, navigation). This app uses it for background location tracking.
-
-## Why is it called "foreground" if it enables background tasks?
-
-In Android, "foreground" means high priority/importance, not visible on screen. A foreground service is background work promoted to foreground priority so Android won't kill it — the required notification earns that status.
-
-## Does a foreground service pin a notification or just have the ability to show one?
-
-It must show a persistent, non-dismissible notification pinned in the bar the entire time the service runs (disappears when it stops). That's different from `POST_NOTIFICATIONS`, which is the capability to send regular dismissible alerts.
-
-## What is `FOREGROUND_SERVICE_LOCATION`?
-
-It declares that the foreground service's purpose is location tracking — a typed permission Android 14+ requires alongside the general `FOREGROUND_SERVICE`. Needed here for background location tracking.
-
-## Why do I need both `FOREGROUND_SERVICE` and `FOREGROUND_SERVICE_LOCATION` if I'm just tracking location?
-
-They're a required pair: the general one grants the ability to run a foreground service, the typed one specifies it's for location. The type doesn't replace the umbrella — Android 14+ needs both.
-
-## Can I install a schema to hover over the permission strings in app.json?
-
-No — the Expo schema treats `android.permissions` as a plain array of strings, so individual values have no hover docs. Use Android's Manifest.permission reference (https://developer.android.com/reference/android/Manifest.permission) instead.
-
-## What is `ACCESS_BACKGROUND_LOCATION`?
-
-It allows reading location while the app is backgrounded or closed (vs. FINE/COARSE which only work while the app is in use). It's extra privacy-sensitive — needs a separate "Allow all the time" grant and Play Store justification. Powers this app's background break reminders.
+It'd extract the "run async + track loading" logic into a hook returning `{ isLoading, run }`, and Button would just use it. Not clearly better while Button is the only consumer (adds indirection with no reuse). It becomes worth it once a second place needs the same behavior — then both share one implementation. Principle: extract on the second use (rule of three). Better name: `useAsyncCallback` (describes what it does, not where).

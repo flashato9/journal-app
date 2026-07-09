@@ -7,6 +7,7 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import { clearLogs, readLogs } from "@/services/logger";
 import Header from "@/components/Header";
 
@@ -82,8 +83,8 @@ export default function DebugLogsScreen() {
   };
 
   return (
-    <View style={styles.container}>
-      <Header title="Debug Logs" useSafeArea={true} />
+    <SafeAreaView style={styles.container}>
+      <Header title="Debug Logs" />
 
       {/* Logs Content */}
       <ScrollView ref={scrollViewRef} style={styles.logsContainer}>
@@ -114,7 +115,7 @@ export default function DebugLogsScreen() {
           <Text style={styles.buttonText}>Clear</Text>
         </TouchableOpacity>
       </View>
-    </View>
+    </SafeAreaView>
   );
 }
 

@@ -15,6 +15,7 @@ import {
 } from "../../services/database";
 import { stopLocationTracking } from "../../services/locationService";
 import Header from "@/components/Header";
+import LoadingIndicator from "@/components/LoadingIndicator";
 import FullDayMemoryCard, {
   DailyMemorySummary,
 } from "@/components/memories/FullDayMemoryCard";
@@ -130,9 +131,11 @@ export default function AllMemoriesScreen() {
         keyExtractor={(item) => item.id}
         contentContainerStyle={styles.listContent}
         ListEmptyComponent={
-          <Text style={styles.emptyText}>
-            {isLoading ? "Loading..." : "No memories yet"}
-          </Text>
+          isLoading ? (
+            <LoadingIndicator message="Loading memories..." />
+          ) : (
+            <Text style={styles.emptyText}>No memories yet</Text>
+          )
         }
       />
     </SafeAreaView>

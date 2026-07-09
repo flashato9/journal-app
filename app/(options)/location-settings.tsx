@@ -8,6 +8,7 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import { AuthContext } from "@/context/AuthContext";
 import {
   createLocationSettings,
@@ -129,18 +130,18 @@ export default function LocationSettingsScreen() {
 
   if (loading) {
     return (
-      <View style={styles.container}>
-        <Header title="Location Settings" useSafeArea={true} />
+      <SafeAreaView style={styles.container}>
+        <Header title="Location Settings" />
         <View style={styles.loadingContainer}>
           <Text>Loading settings...</Text>
         </View>
-      </View>
+      </SafeAreaView>
     );
   }
 
   return (
-    <View style={styles.container}>
-      <Header title="Location Settings" useSafeArea={true} />
+    <SafeAreaView style={styles.container}>
+      <Header title="Location Settings" />
 
       <View style={styles.content}>
         {/* Fetch Frequency */}
@@ -209,7 +210,7 @@ export default function LocationSettingsScreen() {
           )}
         </TouchableOpacity>
       </View>
-    </View>
+    </SafeAreaView>
   );
 }
 
