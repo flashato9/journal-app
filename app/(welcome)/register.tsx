@@ -1,8 +1,5 @@
 import { useRouter } from "expo-router";
-import * as SecureStore from "expo-secure-store";
-import { useState } from "react";
 import {
-  Alert,
   KeyboardAvoidingView,
   Platform,
   StyleSheet,
@@ -12,111 +9,21 @@ import {
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { z } from "zod";
 import Header from "@/components/Header";
-
-// Validation schemas
-const usernameSchema = z
-  .string()
-  .min(3, "Username must be at least 3 characters")
-  .max(20, "Username must be at most 20 characters")
-  .regex(/^[a-zA-Z0-9_-]*$/, "Only letters, numbers, _, - allowed");
-
-const passwordSchema = z
-  .string()
-  .min(6, "Password must be at least 6 characters")
-  .max(50, "Password must be at most 50 characters");
+import { useRegister } from "@/hooks/welcome/useRegister";
 
 export default function RegisterScreen() {
-  const [username, setUsername] = useState("");
-  const [password, setPassword] = useState("");
-  const [usernameError, setUsernameError] = useState("");
-  const [passwordError, setPasswordError] = useState("");
   const router = useRouter();
-
-  const handleUsernameChange = (text: string) => {
-    setUsername(text);
-
-    // Validate as user types
-    if (text === "") {
-      setUsernameError("");
-      return;
-    }
-
-    const result = usernameSchema.safeParse(text);
-    if (!result.success) {
-      setUsernameError(result.error.issues[0].message);
-    } else {
-      setUsernameError("");
-    }
-  };
-
-  const handlePasswordChange = (text: string) => {
-    setPassword(text);
-
-    // Validate as user types
-    if (text === "") {
-      setPasswordError("");
-      return;
-    }
-
-    const result = passwordSchema.safeParse(text);
-    if (!result.success) {
-      setPasswordError(result.error.issues[0].message);
-    } else {
-      setPasswordError("");
-    }
-  };
-
-  const handleRegister = async () => {
-    // Final validation before submit
-    const usernameResult = usernameSchema.safeParse(username);
-    const passwordResult = passwordSchema.safeParse(password);
-
-    if (!usernameResult.success) {
-      setUsernameError(usernameResult.error.issues[0].message);
-      return;
-    }
-
-    if (!passwordResult.success) {
-      setPasswordError(passwordResult.error.issues[0].message);
-      return;
-    }
-
-    try {
-      const key = `login.${username}`;
-
-      // Check if username already exists
-      const existingPassword = await SecureStore.getItemAsync(key);
-      if (existingPassword) {
-        Alert.alert(
-          "Username Already Registered",
-          "This username is already taken. Please try another one or go to login.",
-        );
-        return;
-      }
-
-      // Store password in SecureStore with namespace login.<username>
-      await SecureStore.setItemAsync(key, password);
-
-      console.log("Registration successful:", { username, storedIn: key });
-
-      Alert.alert("Success", "Account created! Please log in.");
-      router.push("/(welcome)/login");
-    } catch (error) {
-      console.error("Error during registration:", error);
-      Alert.alert(
-        "Registration Failed",
-        "An error occurred during registration. Please try again.",
-      );
-    }
-  };
-
-  const isRegisterEnabled =
-    username.length > 0 &&
-    password.length > 0 &&
-    usernameError === "" &&
-    passwordError === "";
+  const {
+    username,
+    password,
+    usernameError,
+    passwordError,
+    handleUsernameChange,
+    handlePasswordChange,
+    handleRegister,
+    isRegisterEnabled,
+  } = useRegister();
 
   const handleBackToLogin = () => {
     router.push("/(welcome)/login");

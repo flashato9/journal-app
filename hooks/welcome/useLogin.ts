@@ -1,7 +1,7 @@
 import * as LocalAuthentication from "expo-local-authentication";
 import { useRouter } from "expo-router";
 import * as SecureStore from "expo-secure-store";
-import { useContext } from "react";
+import { useContext, useState } from "react";
 import { Alert } from "react-native";
 import { AuthContext } from "@/context/AuthContext";
 import {
@@ -13,16 +13,19 @@ import {
 } from "@/services/database";
 import { startLocationTracking } from "@/services/locationService";
 
-// Custom hook that encapsulates the login flow (auth check, DB sync,
-// location settings load, and location tracking start). Reads AuthContext
-// and the router directly, so the screen only wires up UI.
+// Custom hook that encapsulates the login flow (form state, validation,
+// auth check, DB sync, location settings load, and location tracking
+// start). Reads AuthContext and the router directly, so the screen only
+// wires up UI.
 export function useLogin() {
   const router = useRouter();
+  const [username, setUsername] = useState("");
+  const [password, setPassword] = useState("");
   const { setUsername: setAuthUsername, setLocationSettings } =
     useContext(AuthContext);
 
-  // Log in with a username and credential (password or biometric token).
-  const login = async (username: string, credential: string) => {
+  // Core auth check shared by password login and biometric login.
+  const authenticate = async (username: string, credential: string) => {
     try {
       const key = `login.${username}`;
 
@@ -124,12 +127,29 @@ export function useLogin() {
         return;
       }
 
-      await login(storedUsername, storedToken);
+      await authenticate(storedUsername, storedToken);
     } catch (error) {
       console.error("Error during biometric login:", error);
       Alert.alert("Login Failed", "An error occurred. Please try again.");
     }
   };
 
-  return { login, loginWithBiometrics };
+  // Validate the form fields, then log in with the entered credentials.
+  const handleLogin = async () => {
+    if (!username.trim() || !password.trim()) {
+      Alert.alert("Missing Fields", "Please enter both username and password.");
+      return;
+    }
+
+    await authenticate(username, password);
+  };
+
+  return {
+    username,
+    setUsername,
+    password,
+    setPassword,
+    handleLogin,
+    loginWithBiometrics,
+  };
 }

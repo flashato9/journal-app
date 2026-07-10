@@ -1,7 +1,5 @@
 import { useRouter } from "expo-router";
-import { useState } from "react";
 import {
-  Alert,
   KeyboardAvoidingView,
   Platform,
   StyleSheet,
@@ -13,22 +11,18 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import Button from "@/components/Button";
 import Header from "@/components/Header";
-import { useLogin } from "@/hooks/useLogin";
+import { useLogin } from "@/hooks/welcome/useLogin";
 
 export default function LoginScreen() {
-  const [username, setUsername] = useState("");
-  const [password, setPassword] = useState("");
   const router = useRouter();
-  const { login, loginWithBiometrics } = useLogin();
-
-  const handleLogin = async () => {
-    if (!username.trim() || !password.trim()) {
-      Alert.alert("Missing Fields", "Please enter both username and password.");
-      return;
-    }
-
-    await login(username, password);
-  };
+  const {
+    username,
+    setUsername,
+    password,
+    setPassword,
+    handleLogin,
+    loginWithBiometrics,
+  } = useLogin();
 
   const handleRegister = () => {
     router.push("/(welcome)/register");

@@ -1,9 +1,5 @@
-import * as LocalAuthentication from "expo-local-authentication";
 import { useRouter } from "expo-router";
-import * as SecureStore from "expo-secure-store";
-import { useState } from "react";
 import {
-  Alert,
   KeyboardAvoidingView,
   Platform,
   StyleSheet,
@@ -13,103 +9,24 @@ import {
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { z } from "zod";
 import Button from "@/components/Button";
 import Header from "@/components/Header";
-
-const usernameSchema = z
-  .string()
-  .min(3, "Username must be at least 3 characters")
-  .max(20, "Username must be at most 20 characters")
-  .regex(/^[a-zA-Z0-9_-]*$/, "Only letters, numbers, _, - allowed");
+import { useFingerprintScanner } from "@/hooks/welcome/useFingerprintScanner";
+import { useUsernameField } from "@/hooks/welcome/useUsernameField";
 
 export default function RegisterFingerprintScreen() {
-  const [username, setUsername] = useState("");
-  const [usernameError, setUsernameError] = useState("");
-  const [isScanning, setIsScanning] = useState(false);
+  const {
+    username,
+    usernameError,
+    handleUsernameChange,
+    validateUsername,
+    isUsernameValid,
+  } = useUsernameField();
+  const { isScanning, handleFingerprintScan } = useFingerprintScanner(
+    username,
+    validateUsername,
+  );
   const router = useRouter();
-
-  const handleUsernameChange = (text: string) => {
-    setUsername(text);
-
-    if (text === "") {
-      setUsernameError("");
-      return;
-    }
-
-    const result = usernameSchema.safeParse(text);
-    if (!result.success) {
-      setUsernameError(result.error.issues[0].message);
-    } else {
-      setUsernameError("");
-    }
-  };
-
-  const handleFingerprintScan = async () => {
-    // Validate username first
-    const result = usernameSchema.safeParse(username);
-    if (!result.success) {
-      setUsernameError(result.error.issues[0].message);
-      return;
-    }
-
-    try {
-      const key = `login.${username}`;
-
-      // Check if username already exists
-      const existingEntry = await SecureStore.getItemAsync(key);
-      if (existingEntry) {
-        Alert.alert(
-          "Username Already Registered",
-          "This username is already taken. Please try another one.",
-        );
-        return;
-      }
-
-      // Start scanning
-      setIsScanning(true);
-
-      // Authenticate with biometric
-      const authResult = await LocalAuthentication.authenticateAsync({
-        disableDeviceFallback: false,
-        promptMessage: "Scan your fingerprint to register",
-      });
-
-      if (authResult.success) {
-        // Generate a random token
-        const token = `${Math.random().toString(16).slice(2)}-${Date.now().toString(16)}`;
-
-        // Store username with token in SecureStore
-        await SecureStore.setItemAsync(key, token);
-
-        // Also store the username so we can retrieve it on fingerprint login
-        await SecureStore.setItemAsync("biometric.username", username);
-
-        console.log("Fingerprint registration successful:", { username });
-
-        Alert.alert(
-          "Success",
-          "Fingerprint registered! You can now log in with your fingerprint.",
-        );
-        router.push("/(welcome)/login");
-      } else {
-        Alert.alert(
-          "Fingerprint Failed",
-          "Fingerprint recognition failed. Please try again.",
-        );
-      }
-    } catch (error) {
-      console.error("Error during fingerprint registration:", error);
-      Alert.alert(
-        "Registration Failed",
-        "An error occurred. Please try again.",
-      );
-    } finally {
-      setIsScanning(false);
-    }
-  };
-
-  const isUsernameValid = username.length > 0 && usernameError === "";
 
   const handleBackToRegister = () => {
     router.push("/(welcome)/register");

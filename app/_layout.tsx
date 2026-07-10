@@ -13,9 +13,13 @@ function RootLayoutContent() {
   const [isDbReady, setIsDbReady] = useState(false);
 
   useEffect(() => {
-    initializeDatabase().then(() => {
+    const initialize = async () => {
+      // Start the logger first so it can capture logs from database init
+      await initializeLogger();
+      await initializeDatabase();
       setIsDbReady(true);
-    });
+    };
+    initialize();
   }, []);
 
   if (!isDbReady) {
@@ -27,38 +31,21 @@ function RootLayoutContent() {
   }
 
   return (
-    <Stack key={username ? "authenticated" : "unauthenticated"}>
+    <Stack
+      key={username ? "authenticated" : "unauthenticated"}
+      screenOptions={{ headerShown: false }}
+    >
       {username ? (
-        <Stack.Screen
-          name="(memories)"
-          options={{
-            headerShown: false,
-          }}
-        />
+        <Stack.Screen name="(memories)" />
       ) : (
-        <Stack.Screen
-          name="(welcome)"
-          options={{
-            headerShown: false,
-          }}
-        />
+        <Stack.Screen name="(welcome)" />
       )}
-      <Stack.Screen
-        name="(options)"
-        options={{
-          headerShown: false,
-        }}
-      />
+      <Stack.Screen name="(options)" />
     </Stack>
   );
 }
 
 export default function RootLayout() {
-  useEffect(() => {
-    // Initialize file-based logging for testing
-    initializeLogger();
-  }, []);
-
   return (
     <AuthProvider>
       <OptionsMenuProvider>

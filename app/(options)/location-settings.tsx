@@ -1,5 +1,3 @@
-import { useLocalSearchParams, useRouter } from "expo-router";
-import { useCallback, useContext, useEffect, useState } from "react";
 import {
   ActivityIndicator,
   StyleSheet,
@@ -9,131 +7,30 @@ import {
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { AuthContext } from "@/context/AuthContext";
-import {
-  createLocationSettings,
-  getLocationSettingsByUserId,
-  getUserIdByUsername,
-  updateLocationSettings,
-} from "@/services/database";
-import {
-  startLocationTracking,
-  stopLocationTracking,
-} from "@/services/locationService";
 import Header from "@/components/Header";
+import LoadingIndicator from "@/components/LoadingIndicator";
+import { useLocationSettings } from "@/hooks/options/useLocationSettings";
 
 export default function LocationSettingsScreen() {
-  const router = useRouter();
-  const { username } = useLocalSearchParams();
-  const { setLocationSettings } = useContext(AuthContext);
-
-  const [fetchFrequency, setFetchFrequency] = useState("10");
-  const [distanceThreshold, setDistanceThreshold] = useState("1");
-  const [restSeconds, setRestSeconds] = useState("10");
-  const [saved, setSaved] = useState(false);
-  const [loading, setLoading] = useState(true);
-  const [isSaving, setIsSaving] = useState(false);
-
-  const loadSettings = useCallback(async () => {
-    try {
-      if (!username) {
-        console.warn("No username provided");
-        setLoading(false);
-        return;
-      }
-
-      const userId = getUserIdByUsername(username as string);
-      if (!userId) {
-        console.warn("Could not find user ID");
-        setLoading(false);
-        return;
-      }
-
-      let settings = getLocationSettingsByUserId(userId);
-
-      // If settings don't exist, create dummy settings
-      if (!settings) {
-        console.log("Creating default location settings");
-        createLocationSettings(userId, 10, 1, 10);
-        settings = getLocationSettingsByUserId(userId);
-      }
-
-      if (settings) {
-        setFetchFrequency(settings.fetchFrequency.toString());
-        setDistanceThreshold(settings.notificationThreshold.toString());
-        setRestSeconds(settings.restThreshold.toString());
-      }
-
-      setLoading(false);
-    } catch (error) {
-      console.error("Error loading location settings:", error);
-      setLoading(false);
-    }
-  }, [username]);
-
-  useEffect(() => {
-    loadSettings();
-  }, [loadSettings]);
-
-  const saveSettings = async () => {
-    setIsSaving(true);
-    try {
-      if (!username) {
-        console.warn("No username provided");
-        setIsSaving(false);
-        return;
-      }
-
-      const userId = getUserIdByUsername(username as string);
-      if (!userId) {
-        console.warn("Could not find user ID");
-        setIsSaving(false);
-        return;
-      }
-
-      const fetchFreq = parseInt(fetchFrequency) || 10;
-      const distThreshold = parseFloat(distanceThreshold) || 1;
-      const restThresh = parseInt(restSeconds) || 10;
-
-      // Update database
-      updateLocationSettings(userId, fetchFreq, distThreshold, restThresh);
-      console.log("📍 Location settings saved to database:", {
-        fetchFreq,
-        distThreshold,
-        restThresh,
-      });
-
-      // Update AuthContext
-      setLocationSettings({
-        fetchFrequency: fetchFreq,
-        notificationThreshold: distThreshold,
-        restThreshold: restThresh,
-      });
-
-      // Stop and restart location tracking with new settings
-      await stopLocationTracking();
-      await startLocationTracking();
-      console.log("✅ Location tracking restarted with new settings");
-
-      setSaved(true);
-      setTimeout(() => setSaved(false), 2000);
-
-      // Navigate back after a short delay
-      setTimeout(() => {
-        router.back();
-      }, 1500);
-    } catch (error) {
-      console.error("Error saving location settings:", error);
-      setIsSaving(false);
-    }
-  };
+  const {
+    fetchFrequency,
+    setFetchFrequency,
+    distanceThreshold,
+    setDistanceThreshold,
+    restSeconds,
+    setRestSeconds,
+    saved,
+    loading,
+    isSaving,
+    saveSettings,
+  } = useLocationSettings();
 
   if (loading) {
     return (
       <SafeAreaView style={styles.container}>
         <Header title="Location Settings" />
         <View style={styles.loadingContainer}>
-          <Text>Loading settings...</Text>
+          <LoadingIndicator message="Loading settings..." />
         </View>
       </SafeAreaView>
     );
