@@ -15,3 +15,7 @@ When the user asks a question, decide (using the currently running model — no 
 When the user asks a theory question that did not require you to update the code base then write down their question and its answer in the QandA.md file. Keep the question short (1 sentence) and the answer short (1 to 2 sentences max).
 
 Organize QandA.md by the file the user was looking at when they asked the question. Each file gets its own `#` header (e.g. `# app.json`). Add the question and answer under that file's header. If a header for that file does not exist yet, create it and add the question under it. If the user was not looking at a specific file, use a `# General` header.
+
+# File Deletion
+
+Always ask for permission before removing a file, even if it seems clearly unused or the task otherwise implies deletion.

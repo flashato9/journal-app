@@ -3,7 +3,12 @@
     "allow": [
       "PowerShell(npm run build)",
       "Bash(git checkout *)",
-      "Bash(git mv *)"
+      "Bash(git mv *)",
+      "PowerShell(*)",
+      "Bash(*)",
+      "Edit",
+      "Write",
+      "WebSearch"
     ]
   },
   "enabledPlugins": {
