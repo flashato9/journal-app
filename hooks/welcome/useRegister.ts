@@ -1,14 +1,20 @@
 import { useRouter } from "expo-router";
+import * as ImagePicker from "expo-image-picker";
 import * as SecureStore from "expo-secure-store";
 import { useState } from "react";
-import { Alert } from "react-native";
+import { ActionSheetIOS, Alert, Platform } from "react-native";
 import { z } from "zod";
 import { useUsernameField } from "@/hooks/welcome/useUsernameField";
 import {
   insertUserIntoDB,
   isUserExists,
   setUserPreferredLoginMethod,
+  setUserProfileImagePath,
 } from "@/services/database";
+import {
+  saveProfilePicture,
+  savePlaceholderProfilePicture,
+} from "@/services/profilePictureStorage";
 
 const passwordSchema = z
   .string()
@@ -33,6 +39,69 @@ export function useRegister() {
   const [passwordError, setPasswordError] = useState("");
   const [preferredAuthMethod, setPreferredAuthMethod] =
     useState<PreferredAuthMethod>("PASSWORD");
+  const [profileImageUri, setProfileImageUri] = useState<string | null>(null);
+
+  const takeProfilePicture = async () => {
+    const permission = await ImagePicker.requestCameraPermissionsAsync();
+    if (!permission.granted) {
+      Alert.alert("Permission denied", "Camera access is required");
+      return;
+    }
+
+    const result = await ImagePicker.launchCameraAsync({
+      allowsEditing: false,
+      aspect: [1, 1],
+      quality: 1,
+    });
+
+    if (!result.canceled) {
+      setProfileImageUri(result.assets[0].uri);
+    }
+  };
+
+  const pickProfilePictureFromLibrary = async () => {
+    const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (!permission.granted) {
+      Alert.alert("Permission denied", "Photo library access is required");
+      return;
+    }
+
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ["images"],
+      aspect: [1, 1],
+      quality: 1,
+    });
+
+    if (!result.canceled) {
+      setProfileImageUri(result.assets[0].uri);
+    }
+  };
+
+  // Opens a Camera / Photo Library chooser, then stores the picked URI.
+  // The picture isn't persisted until registration actually completes.
+  const pickProfilePicture = () => {
+    if (Platform.OS === "ios") {
+      ActionSheetIOS.showActionSheetWithOptions(
+        {
+          options: ["Camera", "Photo Library", "Cancel"],
+          cancelButtonIndex: 2,
+        },
+        (buttonIndex) => {
+          if (buttonIndex === 0) {
+            takeProfilePicture();
+          } else if (buttonIndex === 1) {
+            pickProfilePictureFromLibrary();
+          }
+        },
+      );
+    } else {
+      Alert.alert("Upload Profile Picture", "Choose an option", [
+        { text: "Camera", onPress: takeProfilePicture },
+        { text: "Photo Library", onPress: pickProfilePictureFromLibrary },
+        { text: "Cancel", style: "cancel" },
+      ]);
+    }
+  };
 
   const handlePasswordChange = (text: string) => {
     setPassword(text);
@@ -86,6 +155,11 @@ export function useRegister() {
         if (!isUserExists(username)) {
           const userId = insertUserIntoDB(username);
           setUserPreferredLoginMethod(userId, preferredAuthMethod);
+
+          const profileImagePath = profileImageUri
+            ? await saveProfilePicture(profileImageUri)
+            : await savePlaceholderProfilePicture();
+          setUserProfileImagePath(userId, profileImagePath);
         }
       } catch (dbError) {
         console.error("Error creating user in database:", dbError);
@@ -114,6 +188,8 @@ export function useRegister() {
     passwordError,
     preferredAuthMethod,
     setPreferredAuthMethod,
+    profileImageUri,
+    pickProfilePicture,
     handleUsernameChange,
     handlePasswordChange,
     handleRegister,

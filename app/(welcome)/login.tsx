@@ -1,9 +1,10 @@
 import { useEffect } from "react";
-import { Image, StyleSheet, Text, TextInput, View } from "react-native";
+import { Image, StyleSheet, TextInput, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import Button from "@/components/Button";
 import Header from "@/components/Header";
 import LoadingIndicator from "@/components/LoadingIndicator";
+import PolaroidFrame from "@/components/PolaroidFrame";
 import { useLogin } from "@/hooks/welcome/useLogin";
 import { useUserSession } from "@/hooks/welcome/useUserSession";
 
@@ -30,21 +31,17 @@ export default function LoginScreen() {
       <Header title="" />
 
       <View style={styles.content}>
-        <View style={styles.polaroidFrame}>
+        <PolaroidFrame caption={username}>
           {profileImagePath ? (
             <Image
               source={{ uri: profileImagePath }}
-              style={styles.profileImage}
+              style={styles.photoImage}
               resizeMode="cover"
             />
           ) : (
-            <View style={styles.profileImage}>
-              <LoadingIndicator message="Loading..." />
-            </View>
+            <LoadingIndicator message="Loading..." />
           )}
-
-          {username && <Text style={styles.username}>{username}</Text>}
-        </View>
+        </PolaroidFrame>
 
         {showBiometricLogin ? (
           <View style={styles.buttonWrapper}>
@@ -90,34 +87,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     gap: 16,
   },
-  polaroidFrame: {
-    backgroundColor: "#fff",
-    paddingTop: 12,
-    paddingHorizontal: 12,
-    paddingBottom: 16,
-    marginBottom: 8,
-    transform: [{ rotate: "-2deg" }],
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.2,
-    shadowRadius: 6,
-    elevation: 4,
-  },
-  profileImage: {
-    width: 160,
-    height: 160,
-    backgroundColor: "#f0f0f0",
-    borderWidth: 1,
-    borderColor: "#ddd",
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  username: {
-    fontSize: 18,
-    fontWeight: "600",
-    color: "#000",
-    textAlign: "center",
-    marginTop: 12,
+  photoImage: {
+    width: "100%",
+    height: "100%",
   },
   buttonWrapper: {
     width: "100%",

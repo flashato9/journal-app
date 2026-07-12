@@ -1,8 +1,14 @@
 import { File, Paths } from "expo-file-system";
+import {
+  AppPrivateDirectoryPaths,
+  ensureDirectoryExists,
+  getAppDirectory,
+} from "@/services/filesystem";
 
 // Write logs to app's document directory (accessible in Expo Go)
 // This is app-internal storage, accessible from the app UI
-const logFile = new File(Paths.document, "app-logs.txt");
+const logsDir = getAppDirectory(AppPrivateDirectoryPaths.AppLogs);
+const logFile = new File(logsDir, "app-logs.txt");
 const MAX_LOG_SIZE = 5 * 1024 * 1024; // 5MB max file size
 
 let isInitialized = false;
@@ -13,6 +19,9 @@ export const initializeLogger = async () => {
   if (isInitialized) return;
 
   try {
+    // Ensure the app-logs directory exists before any writes
+    await ensureDirectoryExists(logsDir);
+
     // Log the exact file path
     console.log("📍 LOGGER FILE PATH: " + logFile.uri);
 

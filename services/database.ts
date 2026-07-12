@@ -155,6 +155,16 @@ export const setUserPreferredLoginMethod = (
   ]);
 };
 
+export const setUserProfileImagePath = (
+  userId: number,
+  profileImagePath: string,
+): void => {
+  db.runSync("UPDATE User SET profileImagePath = ? WHERE id = ?", [
+    profileImagePath,
+    userId,
+  ]);
+};
+
 export const getUserIdByUsername = (username: string): number | null => {
   const result = db.getFirstSync<{ id: number }>(
     "SELECT id FROM User WHERE username = ?",

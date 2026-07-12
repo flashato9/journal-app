@@ -1,4 +1,5 @@
 import {
+  Image,
   KeyboardAvoidingView,
   Platform,
   StyleSheet,
@@ -10,6 +11,7 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import Dropdown from "@/components/Dropdown";
 import Header from "@/components/Header";
+import PolaroidFrame from "@/components/PolaroidFrame";
 import { useRegister } from "@/hooks/welcome/useRegister";
 import type { PreferredAuthMethod } from "@/hooks/welcome/useRegister";
 
@@ -26,6 +28,8 @@ export default function RegisterScreen() {
     passwordError,
     preferredAuthMethod,
     setPreferredAuthMethod,
+    profileImageUri,
+    pickProfilePicture,
     handleUsernameChange,
     handlePasswordChange,
     handleRegister,
@@ -42,6 +46,24 @@ export default function RegisterScreen() {
       >
         <View style={styles.content}>
           <Text style={styles.title}>Create Account</Text>
+
+          <TouchableOpacity
+            style={styles.profilePictureWrapper}
+            onPress={pickProfilePicture}
+            activeOpacity={0.7}
+          >
+            <PolaroidFrame>
+              {profileImageUri ? (
+                <Image
+                  source={{ uri: profileImageUri }}
+                  style={styles.photoImage}
+                  resizeMode="cover"
+                />
+              ) : (
+                <Text style={styles.uploadText}>Upload a profile picture</Text>
+              )}
+            </PolaroidFrame>
+          </TouchableOpacity>
 
           <TextInput
             style={[styles.input, usernameError ? styles.inputError : {}]}
@@ -127,6 +149,19 @@ const styles = StyleSheet.create({
   },
   inputError: {
     borderColor: "#ff3333",
+  },
+  profilePictureWrapper: {
+    alignSelf: "center",
+  },
+  photoImage: {
+    width: "100%",
+    height: "100%",
+  },
+  uploadText: {
+    fontSize: 13,
+    color: "#666",
+    textAlign: "center",
+    paddingHorizontal: 8,
   },
   errorText: {
     color: "#ff3333",

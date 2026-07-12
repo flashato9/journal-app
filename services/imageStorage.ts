@@ -1,43 +1,19 @@
-import { Directory, File, Paths } from "expo-file-system";
+import { File } from "expo-file-system";
 import * as MediaLibrary from "expo-media-library";
-
-// Save to gallery in production, local app storage in development
-const SAVE_TO_GALLERY = !__DEV__;
-
-const getMemoriesDir = (): string => {
-  const docDir = new Directory(Paths.document, "memories");
-  return docDir.uri;
-};
-
-// Ensure memories directory exists
-export const ensureMemoriesDirectory = async (): Promise<void> => {
-  try {
-    const MEMORIES_DIR = getMemoriesDir();
-    const dir = new Directory(MEMORIES_DIR);
-
-    try {
-      await dir.create();
-      console.log("Memories directory created:", MEMORIES_DIR);
-    } catch (createError: any) {
-      // If directory already exists, that's okay
-      if (createError.message?.includes("already exists")) {
-        console.log("Memories directory already exists:", MEMORIES_DIR);
-      } else {
-        throw createError;
-      }
-    }
-  } catch (error) {
-    console.error("Error ensuring memories directory:", error);
-    throw error;
-  }
-};
+import {
+  AppPrivateDirectoryPaths,
+  ensureDirectoryExists,
+  getActiveStorageMode,
+  getAppDirectory,
+  StorageMode,
+} from "@/services/filesystem";
 
 // Save image to gallery (production) or local app storage (development)
 export const saveImagePersistently = async (
   temporaryUri: string,
 ): Promise<string> => {
   try {
-    if (SAVE_TO_GALLERY) {
+    if (getActiveStorageMode() === StorageMode.Gallery) {
       // Production: Save to photo library
       const permission = await MediaLibrary.requestPermissionsAsync(false, [
         "photo",
@@ -51,10 +27,10 @@ export const saveImagePersistently = async (
       return asset.uri;
     } else {
       // Development: Save to app local file system
-      await ensureMemoriesDirectory();
-      const MEMORIES_DIR = getMemoriesDir();
+      const memoriesDir = getAppDirectory(AppPrivateDirectoryPaths.Memories);
+      await ensureDirectoryExists(memoriesDir);
       const fileName = `photo_${Date.now()}.jpg`;
-      const targetUri = `${MEMORIES_DIR}/${fileName}`;
+      const targetUri = `${memoriesDir.uri}/${fileName}`;
 
       // Copy temporary image to memories directory
       const file = new File(temporaryUri);
@@ -73,7 +49,7 @@ export const saveImagePersistently = async (
 // Delete image from gallery (production) or local app storage (development)
 export const deleteImage = async (imagePath: string): Promise<void> => {
   try {
-    if (SAVE_TO_GALLERY) {
+    if (getActiveStorageMode() === StorageMode.Gallery) {
       // Production: Delete from photo library
       await MediaLibrary.deleteAssetsAsync([imagePath]);
       console.log("Image deleted from photo library:", imagePath);

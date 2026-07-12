@@ -1,5 +1,11 @@
 # Q&A
 
+# General
+
+## Where does the app store its data locally on the phone (DB, images, credentials)?
+
+`journal.db` (SQLite, all metadata incl. `imageUri`/`profileImagePath` strings) lives in the app's private document directory. Actual memory photo bytes go to `<Documents>/memories/` in dev builds or the OS Photo Library in production (`services/imageStorage.ts`). Login credentials/tokens live in the OS secure keychain via `expo-secure-store`, not a plain file.
+
 # hooks/options/useDebugLogs.ts
 
 ## What is the behavior where auto-scroll pauses if you've scrolled up (like a terminal)?
