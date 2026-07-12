@@ -1,4 +1,3 @@
-import { useRouter } from "expo-router";
 import {
   KeyboardAvoidingView,
   Platform,
@@ -9,30 +8,29 @@ import {
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import Dropdown from "@/components/Dropdown";
 import Header from "@/components/Header";
 import { useRegister } from "@/hooks/welcome/useRegister";
+import type { PreferredAuthMethod } from "@/hooks/welcome/useRegister";
+
+const AUTH_METHOD_OPTIONS: { label: string; value: PreferredAuthMethod }[] = [
+  { label: "Password", value: "PASSWORD" },
+  { label: "Fingerprint", value: "BIOMETRIC" },
+];
 
 export default function RegisterScreen() {
-  const router = useRouter();
   const {
     username,
     password,
     usernameError,
     passwordError,
+    preferredAuthMethod,
+    setPreferredAuthMethod,
     handleUsernameChange,
     handlePasswordChange,
     handleRegister,
     isRegisterEnabled,
   } = useRegister();
-
-  const handleBackToLogin = () => {
-    router.push("/(welcome)/login");
-  };
-
-  const handleBiometricRegister = () => {
-    console.log("Register with fingerprint clicked");
-    router.push("/(welcome)/register-fingerprint");
-  };
 
   return (
     <SafeAreaView style={styles.container}>
@@ -69,6 +67,17 @@ export default function RegisterScreen() {
             <Text style={styles.errorText}>{passwordError}</Text>
           ) : null}
 
+          <View style={styles.authMethodRow}>
+            <Text style={styles.label}>Auth Method</Text>
+            <View style={styles.dropdownWrapper}>
+              <Dropdown
+                options={AUTH_METHOD_OPTIONS}
+                value={preferredAuthMethod}
+                onChange={setPreferredAuthMethod}
+              />
+            </View>
+          </View>
+
           <TouchableOpacity
             style={[
               styles.registerButton,
@@ -79,19 +88,6 @@ export default function RegisterScreen() {
             activeOpacity={isRegisterEnabled ? 0.7 : 1}
           >
             <Text style={styles.registerButtonText}>Register</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={styles.biometricButton}
-            onPress={handleBiometricRegister}
-          >
-            <Text style={styles.biometricButtonText}>
-              Register with Fingerprint
-            </Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity onPress={handleBackToLogin}>
-            <Text style={styles.loginLink}>Back to Login</Text>
           </TouchableOpacity>
         </View>
       </KeyboardAvoidingView>
@@ -139,6 +135,19 @@ const styles = StyleSheet.create({
     marginBottom: 8,
     marginLeft: 4,
   },
+  authMethodRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: 12,
+  },
+  label: {
+    fontSize: 14,
+    color: "#666",
+  },
+  dropdownWrapper: {
+    flex: 1,
+  },
   registerButton: {
     backgroundColor: "#007AFF",
     paddingVertical: 12,
@@ -154,23 +163,5 @@ const styles = StyleSheet.create({
     color: "#fff",
     fontSize: 16,
     fontWeight: "600",
-  },
-  biometricButton: {
-    backgroundColor: "#34C759",
-    paddingVertical: 12,
-    borderRadius: 8,
-    alignItems: "center",
-    marginTop: 8,
-  },
-  biometricButtonText: {
-    color: "#fff",
-    fontSize: 16,
-    fontWeight: "600",
-  },
-  loginLink: {
-    color: "#007AFF",
-    fontSize: 14,
-    textAlign: "center",
-    marginTop: 8,
   },
 });

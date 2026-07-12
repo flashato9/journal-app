@@ -6,6 +6,18 @@
 
 "Stick-to-bottom" scrolling (aka scroll anchoring/autoscroll lock): track whether the user is at the bottom, and only auto-scroll on new content if they are — a manual scroll-up disables it until they return to the bottom.
 
+# services/avatarStorage.ts
+
+## Why key avatar files by username instead of userId (why not create the DB row at registration to get a userId)?
+
+You could create the row at registration, but username is still the better key: the returning-user screen reads the avatar before login with no DB lookup, username is a stable natural key while userId is an autoincrement surrogate that can desync/change on a DB reset, and username is already the identity key used everywhere in SecureStore.
+
+# app/index.tsx
+
+## When the app loads, does it have to show a page, or can it load nothing?
+
+Some screen must always be mounted — React Navigation has no "blank" state — but that screen doesn't have to be a dedicated placeholder/redirect page. The root layout already picks the real first screen (`(memories)` or `(welcome)`) based on auth state, so a separate redirect-only `index.tsx` is unnecessary.
+
 # hooks/options/useLocationSettings.ts
 
 ## What is useCallback and how is it different from useEffect?
@@ -27,3 +39,29 @@ useState only sets its value once on mount (or when you explicitly call the sett
 ## Why isn't username itself stored in useState?
 
 `username` comes from `useLocalSearchParams()` (the route), which is already reactive and updates automatically — copying it into local state would go stale after the first render and create two sources of truth. Rule: read external data (props/route params/context) directly, don't copy it into state.
+
+# hooks/welcome/useWelcomeRouting.ts
+
+## Do we have any mechanism currently to know if a user is already registered?
+
+Only per-username checks exist (`SecureStore` key `login.<username>` in `useRegister.ts`, and `isUserExists(username)` against the SQLite `User` table) — both need a username to check. There's no device-level "has anyone registered on this device" flag, so the random pick in this hook has nothing real to replace it with yet.
+
+# app/(welcome)/login.tsx
+
+## Is there a better way to display the profile image than passing the path, or is the path fine?
+
+Passing the path as a URI to `<Image source={{ uri }} />` is the standard, correct approach — nothing better exists for that. The only real alternative is swapping RN's core `Image` for `expo-image` (adds caching/placeholders), but the rest of the app (`ImageCard.tsx`) already uses plain `Image`, so staying consistent is reasonable.
+
+## Why does `useEffect(() => { if (username) setLoginUsername(username); }, ...)` check that username exists — shouldn't it exist on launch?
+
+`useUserSession`'s DB lookup is async, so `username` is `null` on the very first render and only becomes the real string after its internal effect resolves. The `if` just skips that transient null render; it re-fires once the value arrives.
+
+## Why is `setLoginUsername` also in the dependency array — it's a function, does it change?
+
+It's a `useState` setter, which React guarantees keeps the same identity across renders, so it never actually triggers a re-run. It's listed only because ESLint's `exhaustive-deps` rule requires every outside variable used inside the effect to be declared as a dependency.
+
+# app/(welcome)/register-fingerprint.tsx
+
+## Does this fingerprint scanner register a new fingerprint, or just use ones the phone already knows?
+
+Just uses ones the phone already knows — `LocalAuthentication.authenticateAsync()` can only verify against biometrics already enrolled in OS Settings; apps can't enroll new biometric templates themselves. "Registration" here just confirms the device owner via an existing fingerprint, then stores an app-side token in `SecureStore` tied to the username.

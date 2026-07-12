@@ -17,10 +17,14 @@ import { startLocationTracking } from "@/services/locationService";
 // auth check, DB sync, location settings load, and location tracking
 // start). Reads AuthContext and the router directly, so the screen only
 // wires up UI.
+const MAX_BIOMETRIC_ATTEMPTS = 3;
+
 export function useLogin() {
   const router = useRouter();
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
+  const [isBiometricLoginExhausted, setIsBiometricLoginExhausted] =
+    useState(false);
   const { setUsername: setAuthUsername, setLocationSettings } =
     useContext(AuthContext);
 
@@ -86,52 +90,46 @@ export function useLogin() {
     }
   };
 
-  // Authenticate with the device biometric, then complete login using the
-  // stored username/token associated with that fingerprint.
+  // Authenticate with the device biometric for the current username, retrying
+  // up to MAX_BIOMETRIC_ATTEMPTS times. If every attempt fails, sets
+  // isBiometricLoginExhausted so the screen can fall back to a password.
   const loginWithBiometrics = async () => {
-    try {
-      const authResult = await LocalAuthentication.authenticateAsync({
-        disableDeviceFallback: false,
-        promptMessage: "Scan your fingerprint to login",
-      });
+    if (!username) return;
 
-      if (!authResult.success) {
-        Alert.alert(
-          "Fingerprint Failed",
-          "Fingerprint recognition failed. Please try again.",
+    setIsBiometricLoginExhausted(false);
+
+    for (let attempt = 1; attempt <= MAX_BIOMETRIC_ATTEMPTS; attempt++) {
+      try {
+        const authResult = await LocalAuthentication.authenticateAsync({
+          disableDeviceFallback: false,
+          promptMessage: "Scan your fingerprint to login",
+        });
+
+        if (authResult.success) {
+          const key = `login.${username}`;
+          const storedToken = await SecureStore.getItemAsync(key);
+
+          if (!storedToken) {
+            Alert.alert(
+              "No Fingerprint Registration",
+              "Fingerprint registration not found for this user.",
+            );
+            return;
+          }
+
+          await authenticate(username, storedToken);
+          return;
+        }
+      } catch (error) {
+        console.error(
+          `Error during biometric login attempt ${attempt}:`,
+          error,
         );
-        return;
+        Alert.alert("Biometric Login Failed", "Please try again.");
       }
-
-      // Retrieve the username associated with this fingerprint
-      const storedUsername =
-        await SecureStore.getItemAsync("biometric.username");
-
-      if (!storedUsername) {
-        Alert.alert(
-          "No Fingerprint Registration",
-          "No fingerprint registration found. Please register with fingerprint first.",
-        );
-        return;
-      }
-
-      // Retrieve the stored token for this username
-      const key = `login.${storedUsername}`;
-      const storedToken = await SecureStore.getItemAsync(key);
-
-      if (!storedToken) {
-        Alert.alert(
-          "No Fingerprint Registration",
-          "Fingerprint registration not found for this user.",
-        );
-        return;
-      }
-
-      await authenticate(storedUsername, storedToken);
-    } catch (error) {
-      console.error("Error during biometric login:", error);
-      Alert.alert("Login Failed", "An error occurred. Please try again.");
     }
+
+    setIsBiometricLoginExhausted(true);
   };
 
   // Validate the form fields, then log in with the entered credentials.
@@ -151,5 +149,6 @@ export function useLogin() {
     setPassword,
     handleLogin,
     loginWithBiometrics,
+    isBiometricLoginExhausted,
   };
 }

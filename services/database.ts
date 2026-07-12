@@ -13,9 +13,25 @@ export const initializeDatabase = async () => {
       CREATE TABLE IF NOT EXISTS User (
         id INTEGER PRIMARY KEY,
         username TEXT UNIQUE NOT NULL,
+        profileImagePath TEXT,
+        preferredLoginMethod TEXT,
         createdAt TEXT DEFAULT CURRENT_TIMESTAMP
       );
     `);
+
+    // Migrate existing databases created before profileImagePath existed
+    try {
+      db.execSync(`ALTER TABLE User ADD COLUMN profileImagePath TEXT;`);
+    } catch {
+      // Column already exists — ignore
+    }
+
+    // Migrate existing databases created before preferredLoginMethod existed
+    try {
+      db.execSync(`ALTER TABLE User ADD COLUMN preferredLoginMethod TEXT;`);
+    } catch {
+      // Column already exists — ignore
+    }
 
     // Create DayMemory table
     db.execSync(`
@@ -129,12 +145,50 @@ export const insertUserIntoDB = (username: string): number => {
   return result.lastInsertRowId;
 };
 
+export const setUserPreferredLoginMethod = (
+  userId: number,
+  preferredLoginMethod: string,
+): void => {
+  db.runSync("UPDATE User SET preferredLoginMethod = ? WHERE id = ?", [
+    preferredLoginMethod,
+    userId,
+  ]);
+};
+
 export const getUserIdByUsername = (username: string): number | null => {
   const result = db.getFirstSync<{ id: number }>(
     "SELECT id FROM User WHERE username = ?",
     [username],
   );
   return result?.id || null;
+};
+
+export const isUserRegistered = (): boolean => {
+  const result = db.getFirstSync<{ id: number }>("SELECT id FROM User");
+  return !!result;
+};
+
+export const getRegisteredUserId = (): number | null => {
+  const result = db.getFirstSync<{ id: number }>("SELECT id FROM User LIMIT 1");
+  return result?.id ?? null;
+};
+
+export const getUserProfile = (
+  id: number,
+): {
+  username: string;
+  profileImagePath: string | null;
+  preferredLoginMethod: string | null;
+} | null => {
+  const result = db.getFirstSync<{
+    username: string;
+    profileImagePath: string | null;
+    preferredLoginMethod: string | null;
+  }>(
+    "SELECT username, profileImagePath, preferredLoginMethod FROM User WHERE id = ?",
+    [id],
+  );
+  return result ?? null;
 };
 
 // ===== DAY MEMORY OPERATIONS =====

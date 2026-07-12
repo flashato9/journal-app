@@ -4,11 +4,18 @@ import { useState } from "react";
 import { Alert } from "react-native";
 import { z } from "zod";
 import { useUsernameField } from "@/hooks/welcome/useUsernameField";
+import {
+  insertUserIntoDB,
+  isUserExists,
+  setUserPreferredLoginMethod,
+} from "@/services/database";
 
 const passwordSchema = z
   .string()
   .min(6, "Password must be at least 6 characters")
   .max(50, "Password must be at most 50 characters");
+
+export type PreferredAuthMethod = "PASSWORD" | "BIOMETRIC";
 
 // Custom hook that encapsulates the registration flow (form state,
 // per-field validation, and SecureStore account creation). Reads the
@@ -24,6 +31,8 @@ export function useRegister() {
   } = useUsernameField();
   const [password, setPassword] = useState("");
   const [passwordError, setPasswordError] = useState("");
+  const [preferredAuthMethod, setPreferredAuthMethod] =
+    useState<PreferredAuthMethod>("PASSWORD");
 
   const handlePasswordChange = (text: string) => {
     setPassword(text);
@@ -70,10 +79,22 @@ export function useRegister() {
       // Store password in SecureStore with namespace login.<username>
       await SecureStore.setItemAsync(key, password);
 
+      // Create the DB user row now so the preferred login method is
+      // available immediately (login otherwise has no way to know it
+      // until the DB row is created on first successful login).
+      try {
+        if (!isUserExists(username)) {
+          const userId = insertUserIntoDB(username);
+          setUserPreferredLoginMethod(userId, preferredAuthMethod);
+        }
+      } catch (dbError) {
+        console.error("Error creating user in database:", dbError);
+      }
+
       console.log("Registration successful:", { username, storedIn: key });
 
       Alert.alert("Success", "Account created! Please log in.");
-      router.push("/(welcome)/login");
+      router.replace("/(welcome)/login");
     } catch (error) {
       console.error("Error during registration:", error);
       Alert.alert(
@@ -91,6 +112,8 @@ export function useRegister() {
     password,
     usernameError,
     passwordError,
+    preferredAuthMethod,
+    setPreferredAuthMethod,
     handleUsernameChange,
     handlePasswordChange,
     handleRegister,
