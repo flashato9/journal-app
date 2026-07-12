@@ -116,11 +116,21 @@ export const initializeDatabase = async () => {
         fetchFrequency INTEGER DEFAULT 10,
         notificationThreshold REAL DEFAULT 1,
         restThreshold INTEGER DEFAULT 10,
+        locationTrackingPollFrequency INTEGER DEFAULT 15,
         createdAt TEXT DEFAULT CURRENT_TIMESTAMP,
         lastUpdatedTime TEXT DEFAULT CURRENT_TIMESTAMP,
         FOREIGN KEY(userId) REFERENCES User(id)
       );
     `);
+
+    // Migrate existing databases created before locationTrackingPollFrequency existed
+    try {
+      db.execSync(
+        `ALTER TABLE LocationSettings ADD COLUMN locationTrackingPollFrequency INTEGER DEFAULT 15;`,
+      );
+    } catch {
+      // Column already exists — ignore
+    }
 
     console.log("Database initialized successfully");
   } catch (error) {
@@ -161,6 +171,13 @@ export const setUserProfileImagePath = (
 ): void => {
   db.runSync("UPDATE User SET profileImagePath = ? WHERE id = ?", [
     profileImagePath,
+    userId,
+  ]);
+};
+
+export const updateUsername = (userId: number, newUsername: string): void => {
+  db.runSync("UPDATE User SET username = ? WHERE id = ?", [
+    newUsername,
     userId,
   ]);
 };
@@ -536,6 +553,7 @@ export const getLocationSettingsByUserId = (
   fetchFrequency: number;
   notificationThreshold: number;
   restThreshold: number;
+  locationTrackingPollFrequency: number;
   createdAt: string;
   lastUpdatedTime: string;
 } | null => {
@@ -545,6 +563,7 @@ export const getLocationSettingsByUserId = (
     fetchFrequency: number;
     notificationThreshold: number;
     restThreshold: number;
+    locationTrackingPollFrequency: number;
     createdAt: string;
     lastUpdatedTime: string;
   }>("SELECT * FROM LocationSettings WHERE userId = ?", [userId]);
@@ -556,14 +575,16 @@ export const createLocationSettings = (
   fetchFrequency: number = 10,
   notificationThreshold: number = 1,
   restThreshold: number = 10,
+  locationTrackingPollFrequency: number = 15,
 ): number => {
   const result = db.runSync(
-    "INSERT INTO LocationSettings (userId, fetchFrequency, notificationThreshold, restThreshold, createdAt, lastUpdatedTime) VALUES (?, ?, ?, ?, ?, ?)",
+    "INSERT INTO LocationSettings (userId, fetchFrequency, notificationThreshold, restThreshold, locationTrackingPollFrequency, createdAt, lastUpdatedTime) VALUES (?, ?, ?, ?, ?, ?, ?)",
     [
       userId,
       fetchFrequency,
       notificationThreshold,
       restThreshold,
+      locationTrackingPollFrequency,
       new Date().toISOString(),
       new Date().toISOString(),
     ],
@@ -576,13 +597,15 @@ export const updateLocationSettings = (
   fetchFrequency: number,
   notificationThreshold: number,
   restThreshold: number,
+  locationTrackingPollFrequency: number,
 ): void => {
   db.runSync(
-    "UPDATE LocationSettings SET fetchFrequency = ?, notificationThreshold = ?, restThreshold = ?, lastUpdatedTime = ? WHERE userId = ?",
+    "UPDATE LocationSettings SET fetchFrequency = ?, notificationThreshold = ?, restThreshold = ?, locationTrackingPollFrequency = ?, lastUpdatedTime = ? WHERE userId = ?",
     [
       fetchFrequency,
       notificationThreshold,
       restThreshold,
+      locationTrackingPollFrequency,
       new Date().toISOString(),
       userId,
     ],

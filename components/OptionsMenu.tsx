@@ -1,4 +1,3 @@
-import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { useContext } from "react";
 import {
@@ -9,30 +8,15 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import { AuthContext } from "@/context/AuthContext";
 import { OptionsMenuContext } from "@/context/OptionsMenuContext";
-import { isLocationTrackingActive } from "@/services/locationService";
 
 export default function OptionsMenu() {
   const router = useRouter();
-  const { menuVisible, setMenuVisible, locationTrackingActive } =
-    useContext(OptionsMenuContext);
-  const { username } = useContext(AuthContext);
-
-  const handleMenuShow = async () => {
-    // Check location tracking status when menu becomes visible
-    const isActive = await isLocationTrackingActive();
-    console.log("Location tracking active:", isActive);
-  };
+  const { menuVisible, setMenuVisible } = useContext(OptionsMenuContext);
 
   const handleDebugLogs = () => {
     setMenuVisible(false);
     router.push("/debug-logs");
-  };
-
-  const handleLocationSettings = () => {
-    setMenuVisible(false);
-    router.push({ pathname: "/location-settings", params: { username } });
   };
 
   const handleExitApp = () => {
@@ -40,18 +24,8 @@ export default function OptionsMenu() {
     BackHandler.exitApp();
   };
 
-  // Build menu options - Location Settings only available when logged in
   const menuOptions = [
-    {
-      label: `Location Tracking: ${locationTrackingActive ? "Online" : "Offline"}`,
-      onPress: () => {},
-      disabled: true,
-      isStatus: true,
-    },
     { label: "Debug Logs", onPress: handleDebugLogs },
-    ...(username
-      ? [{ label: "Location Settings", onPress: handleLocationSettings }]
-      : []),
     { label: "Exit App", onPress: handleExitApp },
   ];
 
@@ -61,7 +35,6 @@ export default function OptionsMenu() {
       transparent
       animationType="fade"
       onRequestClose={() => setMenuVisible(false)}
-      onShow={handleMenuShow}
     >
       {/* Overlay */}
       <TouchableOpacity
@@ -77,33 +50,10 @@ export default function OptionsMenu() {
               style={[
                 styles.menuItem,
                 index === menuOptions.length - 1 && styles.lastItem,
-                option.isStatus && styles.statusItem,
               ]}
               onPress={option.onPress}
-              disabled={option.disabled}
             >
-              <View style={styles.menuItemContent}>
-                {option.isStatus && (
-                  <MaterialCommunityIcons
-                    name={
-                      locationTrackingActive ? "map-marker" : "map-marker-off"
-                    }
-                    size={16}
-                    color={locationTrackingActive ? "#4CAF50" : "#999"}
-                    style={styles.statusIcon}
-                  />
-                )}
-                <Text
-                  style={[
-                    styles.menuText,
-                    option.isStatus && {
-                      color: locationTrackingActive ? "#4CAF50" : "#999",
-                    },
-                  ]}
-                >
-                  {option.label}
-                </Text>
-              </View>
+              <Text style={styles.menuText}>{option.label}</Text>
             </TouchableOpacity>
           ))}
         </View>
@@ -135,17 +85,6 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     borderBottomWidth: 1,
     borderBottomColor: "#f0f0f0",
-  },
-  statusItem: {
-    backgroundColor: "#f9f9f9",
-  },
-  menuItemContent: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-  },
-  statusIcon: {
-    marginRight: 4,
   },
   lastItem: {
     borderBottomWidth: 0,

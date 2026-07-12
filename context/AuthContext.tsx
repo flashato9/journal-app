@@ -4,6 +4,7 @@ interface LocationSettings {
   fetchFrequency: number;
   notificationThreshold: number;
   restThreshold: number;
+  locationTrackingPollFrequency: number;
 }
 
 interface AuthContextType {

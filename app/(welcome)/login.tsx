@@ -1,5 +1,12 @@
 import { useEffect } from "react";
-import { Image, StyleSheet, TextInput, View } from "react-native";
+import {
+  Image,
+  KeyboardAvoidingView,
+  Platform,
+  StyleSheet,
+  TextInput,
+  View,
+} from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import Button from "@/components/Button";
 import Header from "@/components/Header";
@@ -30,47 +37,52 @@ export default function LoginScreen() {
     <SafeAreaView style={styles.container}>
       <Header title="" />
 
-      <View style={styles.content}>
-        <PolaroidFrame caption={username}>
-          {profileImagePath ? (
-            <Image
-              source={{ uri: profileImagePath }}
-              style={styles.photoImage}
-              resizeMode="cover"
-            />
-          ) : (
-            <LoadingIndicator message="Loading..." />
-          )}
-        </PolaroidFrame>
+      <KeyboardAvoidingView
+        behavior={Platform.OS === "ios" ? "padding" : "height"}
+        style={styles.keyboardAvoidingView}
+      >
+        <View style={styles.content}>
+          <PolaroidFrame caption={username}>
+            {profileImagePath ? (
+              <Image
+                source={{ uri: profileImagePath }}
+                style={styles.photoImage}
+                resizeMode="cover"
+              />
+            ) : (
+              <LoadingIndicator message="Loading..." />
+            )}
+          </PolaroidFrame>
 
-        {showBiometricLogin ? (
-          <View style={styles.buttonWrapper}>
-            <Button
-              text="Login"
-              onPress={loginWithBiometrics}
-              backgroundColor="#007AFF"
-            />
-          </View>
-        ) : (
-          <>
-            <TextInput
-              style={styles.input}
-              placeholder="Password"
-              placeholderTextColor="#999"
-              value={password}
-              onChangeText={setPassword}
-              secureTextEntry
-            />
+          {showBiometricLogin ? (
             <View style={styles.buttonWrapper}>
               <Button
                 text="Login"
-                onPress={handleLogin}
+                onPress={loginWithBiometrics}
                 backgroundColor="#007AFF"
               />
             </View>
-          </>
-        )}
-      </View>
+          ) : (
+            <>
+              <TextInput
+                style={styles.input}
+                placeholder="Password"
+                placeholderTextColor="#999"
+                value={password}
+                onChangeText={setPassword}
+                secureTextEntry
+              />
+              <View style={styles.buttonWrapper}>
+                <Button
+                  text="Login"
+                  onPress={handleLogin}
+                  backgroundColor="#007AFF"
+                />
+              </View>
+            </>
+          )}
+        </View>
+      </KeyboardAvoidingView>
     </SafeAreaView>
   );
 }
@@ -79,6 +91,9 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: "#fff",
+  },
+  keyboardAvoidingView: {
+    flex: 1,
   },
   content: {
     flex: 1,

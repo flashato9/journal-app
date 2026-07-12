@@ -9,8 +9,8 @@ const usernameSchema = z
 
 // Custom hook that owns a validated username input: live validation as
 // the user types, plus a final check to run before submit.
-export function useUsernameField() {
-  const [username, setUsername] = useState("");
+export function useUsernameField(initialUsername: string = "") {
+  const [username, setUsername] = useState(initialUsername);
   const [usernameError, setUsernameError] = useState("");
 
   const handleUsernameChange = (text: string) => {

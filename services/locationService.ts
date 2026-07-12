@@ -88,15 +88,22 @@ const stage2NotificationThresholdCheck = (
   notificationThreshold: number,
 ): {
   shouldProceed: boolean;
-  distanceFromMemory: number;
+  distanceFromMemory: number | "FIRST_MEMORY";
   threshold: number;
 } => {
   const latestMemory = getLatestTimeMemoryWithLocation(userId);
   if (!latestMemory || !latestMemory.latitude || !latestMemory.longitude) {
+    // No previous memory to measure against — treat that as being
+    // unboundedly far from "the last memory," so the check passes through
+    // to the rest-period stage instead of blocking forever.
     console.log(
-      `⏭️  No previous memory with location, skipping notification check`,
+      `⚠️  No previous memory with location — treating distance as unbounded, checking rest period`,
     );
-    return { shouldProceed: false, distanceFromMemory: 0, threshold: 0 };
+    return {
+      shouldProceed: true,
+      distanceFromMemory: "FIRST_MEMORY",
+      threshold: notificationThreshold,
+    };
   }
 
   const distanceFromMemory = getDistance(
@@ -132,7 +139,7 @@ const stage2NotificationThresholdCheck = (
 
 const stage3RestPeriodAndNotify = async (
   userId: number,
-  distanceFromMemory: number,
+  distanceFromMemory: number | "FIRST_MEMORY",
   notificationThreshold: number,
   restThreshold: number,
   previousLocation: PreviousLocation,
@@ -160,8 +167,12 @@ const stage3RestPeriodAndNotify = async (
     `✓ ${timeSinceLastLocation.toFixed(1)}s > ${restThreshold}s rest period, ready to notify`,
   );
 
-  // Build notification message
-  const notificationMessage = `Hey we noticed you're on a break and you have traveled more than ${notificationThreshold} meters since your last memory. Exactly - ${distanceFromMemory.toFixed(1)} meters.`;
+  // Build notification message. distanceFromMemory is "FIRST_MEMORY" when
+  // there's no previous memory with a location to measure against.
+  const notificationMessage =
+    distanceFromMemory !== "FIRST_MEMORY"
+      ? `Hey we noticed you're on a break and you have traveled more than ${notificationThreshold} meters since your last memory. Exactly - ${distanceFromMemory.toFixed(1)} meters.`
+      : `Hey we noticed you're on a break! You don't have any memories with a location yet — come create your first one.`;
 
   // Check for duplicate notification within 5 minutes. Compare against the
   // latest notification regardless of message text — the message embeds the

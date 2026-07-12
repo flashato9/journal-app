@@ -8,6 +8,8 @@ export enum AppPrivateDirectoryPaths {
   Memories = "images/memories",
   // Profile picture uploads, used in both dev and production (no Gallery split)
   ProfilePictures = "images/profile_pictures",
+  // Staging area for profile pictures not yet committed (services/profilePictureStorage.ts)
+  Temp = "images/temp",
   // App debug logs written during the session (services/logger.ts)
   AppLogs = "app-logs",
 }

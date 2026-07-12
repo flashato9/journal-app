@@ -15,6 +15,12 @@ const getProfilePicturesDir = async () => {
   return dir;
 };
 
+const getTempDir = async () => {
+  const dir = getAppDirectory(AppPrivateDirectoryPaths.Temp);
+  await ensureDirectoryExists(dir);
+  return dir;
+};
+
 // Copies a picked photo's temporary URI into the profile pictures directory.
 export const saveProfilePicture = async (
   temporaryUri: string,
@@ -47,4 +53,25 @@ export const savePlaceholderProfilePicture = async (): Promise<string> => {
   await file.copy(targetFile);
 
   return targetUri;
+};
+
+// Copies a picked photo into the temp staging directory, for a
+// not-yet-committed profile picture change.
+export const saveProfilePictureToTemp = async (
+  temporaryUri: string,
+): Promise<string> => {
+  const tempDir = await getTempDir();
+  const targetUri = `${tempDir.uri}/temp_${Date.now()}.jpg`;
+
+  const file = new File(temporaryUri);
+  const targetFile = new File(targetUri);
+  await file.copy(targetFile);
+
+  return targetUri;
+};
+
+// Deletes a profile picture file (temp or permanent) at the given path.
+export const deleteProfilePictureFile = async (path: string): Promise<void> => {
+  const file = new File(path);
+  await file.delete();
 };

@@ -9,16 +9,11 @@ import {
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { AUTH_METHOD_OPTIONS } from "@/constants/authMethod";
 import Dropdown from "@/components/Dropdown";
 import Header from "@/components/Header";
 import PolaroidFrame from "@/components/PolaroidFrame";
 import { useRegister } from "@/hooks/welcome/useRegister";
-import type { PreferredAuthMethod } from "@/hooks/welcome/useRegister";
-
-const AUTH_METHOD_OPTIONS: { label: string; value: PreferredAuthMethod }[] = [
-  { label: "Password", value: "PASSWORD" },
-  { label: "Fingerprint", value: "BIOMETRIC" },
-];
 
 export default function RegisterScreen() {
   const {

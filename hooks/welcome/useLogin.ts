@@ -65,6 +65,8 @@ export function useLogin() {
             fetchFrequency: settings.fetchFrequency,
             notificationThreshold: settings.notificationThreshold,
             restThreshold: settings.restThreshold,
+            locationTrackingPollFrequency:
+              settings.locationTrackingPollFrequency,
           });
           console.log("Location settings loaded:", settings);
         }

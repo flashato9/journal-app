@@ -3,7 +3,8 @@ import * as ImagePicker from "expo-image-picker";
 import * as SecureStore from "expo-secure-store";
 import { useState } from "react";
 import { ActionSheetIOS, Alert, Platform } from "react-native";
-import { z } from "zod";
+import type { PreferredAuthMethod } from "@/constants/authMethod";
+import { usePasswordField } from "@/hooks/welcome/usePasswordField";
 import { useUsernameField } from "@/hooks/welcome/useUsernameField";
 import {
   insertUserIntoDB,
@@ -16,12 +17,7 @@ import {
   savePlaceholderProfilePicture,
 } from "@/services/profilePictureStorage";
 
-const passwordSchema = z
-  .string()
-  .min(6, "Password must be at least 6 characters")
-  .max(50, "Password must be at most 50 characters");
-
-export type PreferredAuthMethod = "PASSWORD" | "BIOMETRIC";
+export type { PreferredAuthMethod } from "@/constants/authMethod";
 
 // Custom hook that encapsulates the registration flow (form state,
 // per-field validation, and SecureStore account creation). Reads the
@@ -35,8 +31,13 @@ export function useRegister() {
     validateUsername,
     isUsernameValid,
   } = useUsernameField();
-  const [password, setPassword] = useState("");
-  const [passwordError, setPasswordError] = useState("");
+  const {
+    password,
+    passwordError,
+    handlePasswordChange,
+    validatePassword,
+    isPasswordValid,
+  } = usePasswordField();
   const [preferredAuthMethod, setPreferredAuthMethod] =
     useState<PreferredAuthMethod>("PASSWORD");
   const [profileImageUri, setProfileImageUri] = useState<string | null>(null);
@@ -103,32 +104,13 @@ export function useRegister() {
     }
   };
 
-  const handlePasswordChange = (text: string) => {
-    setPassword(text);
-
-    // Validate as user types
-    if (text === "") {
-      setPasswordError("");
-      return;
-    }
-
-    const result = passwordSchema.safeParse(text);
-    if (!result.success) {
-      setPasswordError(result.error.issues[0].message);
-    } else {
-      setPasswordError("");
-    }
-  };
-
   const handleRegister = async () => {
     // Final validation before submit
     if (!validateUsername()) {
       return;
     }
 
-    const passwordResult = passwordSchema.safeParse(password);
-    if (!passwordResult.success) {
-      setPasswordError(passwordResult.error.issues[0].message);
+    if (!validatePassword()) {
       return;
     }
 
@@ -178,8 +160,7 @@ export function useRegister() {
     }
   };
 
-  const isRegisterEnabled =
-    isUsernameValid && password.length > 0 && passwordError === "";
+  const isRegisterEnabled = isUsernameValid && isPasswordValid;
 
   return {
     username,

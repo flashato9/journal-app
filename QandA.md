@@ -1,5 +1,25 @@
 # Q&A
 
+# services/locationService.ts
+
+## In stage1DistanceFilter, what is the current point compared against, and what happens with no recorded points yet?
+
+It compares against `getLatestLocation(userId)` — the last location row actually written to the DB (not necessarily the previous GPS ping, since filtered-out points never get inserted). If there's no recorded point yet, `previousLocation` is `null` and the function returns `true` immediately, so the first-ever point is always recorded with no distance check.
+
+## In stage2NotificationThresholdCheck, what happens if there's no recent memory (or none with a location)?
+
+`getLatestTimeMemoryWithLocation` returns `null` or a row with null lat/long, so the `!latestMemory || !latestMemory.latitude || !latestMemory.longitude` guard catches it and returns `shouldProceed: false`. The task handler then returns immediately — Stage 3 never runs, no notification is sent (though Stage 1's location recording is unaffected, since it's independent).
+
+# components/Header.tsx
+
+## Why fall back to a placeholder circle when profileImagePath is falsy — doesn't registration always store something (the picture or the placeholder PNG)?
+
+Registration does always write a real path to the DB, but `useUserSession()`'s fetch is async — `profileImagePath` is `null` in state for the brief moment before its effect resolves the SQLite query. The fallback covers that transient loading gap, not a "no picture was provided" case.
+
+## After changing the profile picture, why doesn't it update on a screen I navigate back to?
+
+`useUserSession()` fetches from the DB only once, in a `useEffect` on mount. If that screen's `Header` was already mounted before you opened Profile Settings, navigating back doesn't remount it — React Navigation just re-shows the existing instance, so the effect never re-runs and it keeps the picture it fetched the first time. Flagged as a known limitation, deferred, when the profile picture feature was built.
+
 # General
 
 ## Where does the app store its data locally on the phone (DB, images, credentials)?

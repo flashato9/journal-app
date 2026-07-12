@@ -1,4 +1,3 @@
-import { useLocalSearchParams, useRouter } from "expo-router";
 import { useContext, useEffect, useState } from "react";
 import { AuthContext } from "@/context/AuthContext";
 import {
@@ -12,17 +11,16 @@ import {
   stopLocationTracking,
 } from "@/services/locationService";
 
-// Custom hook that owns the location settings screen: loading the
+// Custom hook that owns the location settings section: loading the
 // current user's settings (creating defaults if none exist), form
 // state, and saving (DB update, AuthContext sync, tracking restart).
 export function useLocationSettings() {
-  const router = useRouter();
-  const { username } = useLocalSearchParams();
-  const { setLocationSettings } = useContext(AuthContext);
+  const { username, setLocationSettings } = useContext(AuthContext);
 
   const [fetchFrequency, setFetchFrequency] = useState("10");
   const [distanceThreshold, setDistanceThreshold] = useState("1");
   const [restSeconds, setRestSeconds] = useState("10");
+  const [pollFrequency, setPollFrequency] = useState("15");
   const [saved, setSaved] = useState(false);
   const [loading, setLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
@@ -36,7 +34,7 @@ export function useLocationSettings() {
           return;
         }
 
-        const userId = getUserIdByUsername(username as string);
+        const userId = getUserIdByUsername(username);
         if (!userId) {
           console.warn("Could not find user ID");
           setLoading(false);
@@ -56,6 +54,7 @@ export function useLocationSettings() {
           setFetchFrequency(settings.fetchFrequency.toString());
           setDistanceThreshold(settings.notificationThreshold.toString());
           setRestSeconds(settings.restThreshold.toString());
+          setPollFrequency(settings.locationTrackingPollFrequency.toString());
         }
 
         setLoading(false);
@@ -77,7 +76,7 @@ export function useLocationSettings() {
         return;
       }
 
-      const userId = getUserIdByUsername(username as string);
+      const userId = getUserIdByUsername(username);
       if (!userId) {
         console.warn("Could not find user ID");
         setIsSaving(false);
@@ -87,13 +86,21 @@ export function useLocationSettings() {
       const fetchFreq = parseInt(fetchFrequency) || 10;
       const distThreshold = parseFloat(distanceThreshold) || 1;
       const restThresh = parseInt(restSeconds) || 10;
+      const pollFreq = parseInt(pollFrequency) || 15;
 
       // Update database
-      updateLocationSettings(userId, fetchFreq, distThreshold, restThresh);
+      updateLocationSettings(
+        userId,
+        fetchFreq,
+        distThreshold,
+        restThresh,
+        pollFreq,
+      );
       console.log("📍 Location settings saved to database:", {
         fetchFreq,
         distThreshold,
         restThresh,
+        pollFreq,
       });
 
       // Update AuthContext
@@ -101,6 +108,7 @@ export function useLocationSettings() {
         fetchFrequency: fetchFreq,
         notificationThreshold: distThreshold,
         restThreshold: restThresh,
+        locationTrackingPollFrequency: pollFreq,
       });
 
       // Stop and restart location tracking with new settings
@@ -110,13 +118,9 @@ export function useLocationSettings() {
 
       setSaved(true);
       setTimeout(() => setSaved(false), 2000);
-
-      // Navigate back after a short delay
-      setTimeout(() => {
-        router.back();
-      }, 1500);
     } catch (error) {
       console.error("Error saving location settings:", error);
+    } finally {
       setIsSaving(false);
     }
   };
@@ -128,6 +132,8 @@ export function useLocationSettings() {
     setDistanceThreshold,
     restSeconds,
     setRestSeconds,
+    pollFrequency,
+    setPollFrequency,
     saved,
     loading,
     isSaving,
