@@ -202,6 +202,7 @@ const stage3RestPeriodAndNotify = async (
         content: {
           title: "You're on a break!",
           body: notificationMessage,
+          sound: "default",
         },
         trigger: null,
       });
@@ -410,6 +411,7 @@ export const startLocationTracking = async () => {
           await Notifications.setNotificationChannelAsync("default", {
             name: "Break reminders",
             importance: Notifications.AndroidImportance.HIGH,
+            sound: "default",
           });
         }
         await Notifications.requestPermissionsAsync();

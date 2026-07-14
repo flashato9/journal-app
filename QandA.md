@@ -22,6 +22,18 @@ Registration does always write a real path to the DB, but `useUserSession()`'s f
 
 # General
 
+## What does `npx expo run:android --device` do?
+
+Builds a native Android debug APK from the `android/` project, installs it on a connected USB device, and launches it — unlike `expo start`, this compiles the full native code (required for custom native modules like `llama.rn`). `--device` targets a physical device rather than an emulator.
+
+## Is it true that `run:android` is slow once and then you use `expo start` after?
+
+Yes, with nuance: `run:android` does a full Gradle/native compile (slow). Once the APK is on the device, `expo start` only runs Metro for JS hot-reloads (fast). But if native code changes (new native packages, `android/` edits, `llama.rn` config), you must `run:android` again — `expo start` alone won't pick those up.
+
+## What is a "native module" in PC terms?
+
+JS/TS code is like a script (Python/batch) — interpreted, easy to edit, but slow for heavy work. A native module is like a `.dll` (compiled C/C++ binary) — runs directly on the hardware with no interpreter, much faster. `llama.rn` compiles to a `.so` shared library on Android; `run:android` is the one-time compile step (like building the `.dll`), after which your TS just calls into it.
+
 ## Where does the app store its data locally on the phone (DB, images, credentials)?
 
 `journal.db` (SQLite, all metadata incl. `imageUri`/`profileImagePath` strings) lives in the app's private document directory. Actual memory photo bytes go to `<Documents>/memories/` in dev builds or the OS Photo Library in production (`services/imageStorage.ts`). Login credentials/tokens live in the OS secure keychain via `expo-secure-store`, not a plain file.
@@ -91,3 +103,9 @@ It's a `useState` setter, which React guarantees keeps the same identity across 
 ## Does this fingerprint scanner register a new fingerprint, or just use ones the phone already knows?
 
 Just uses ones the phone already knows — `LocalAuthentication.authenticateAsync()` can only verify against biometrics already enrolled in OS Settings; apps can't enroll new biometric templates themselves. "Registration" here just confirms the device owner via an existing fingerprint, then stores an app-side token in `SecureStore` tied to the username.
+
+# svg-to-png.html
+
+## Why does this html file fail with a fetch error?
+
+It's almost certainly being opened directly as a `file://` URL rather than served over HTTP — browsers block `fetch()` calls both to sibling local files and to remote HTTPS URLs from a `file://` origin. Serving it via a local server (e.g. `npx http-server .`) and opening it as `http://localhost:...` fixes it.

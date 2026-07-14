@@ -11,10 +11,11 @@
     "dev": "npm run build && npm run start -- --clear",
     "start": "expo start",
     "reset-project": "node ./scripts/reset-project.js",
-    "android": "expo start --android",
-    "ios": "expo start --ios",
+    "android": "expo run:android",
+    "ios": "expo run:ios",
     "web": "expo start --web",
-    "lint": "expo lint"
+    "lint": "expo lint",
+    "postinstall": "patch-package"
   },
   "dependencies": {
     "@expo/vector-icons": "^15.0.3",
@@ -45,6 +46,7 @@
     "expo-task-manager": "~14.0.9",
     "expo-web-browser": "~15.0.11",
     "geolib": "^3.3.14",
+    "llama.rn": "^0.12.5",
     "react": "19.1.0",
     "react-dom": "19.1.0",
     "react-native": "0.81.5",
@@ -61,6 +63,7 @@
     "@types/react": "~19.1.0",
     "eslint": "^9.25.0",
     "eslint-config-expo": "~10.0.0",
+    "patch-package": "^8.0.1",
     "prettier": "^3.9.4",
     "ts-node": "^10.9.2",
     "typescript": "~5.9.2"

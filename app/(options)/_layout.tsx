@@ -5,6 +5,7 @@ export default function OptionsLayout() {
     <Stack screenOptions={{ headerShown: false }}>
       <Stack.Screen name="debug-logs" />
       <Stack.Screen name="profile-settings" />
+      <Stack.Screen name="debug-llm" />
     </Stack>
   );
 }

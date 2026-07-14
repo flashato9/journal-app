@@ -12,6 +12,8 @@ export enum AppPrivateDirectoryPaths {
   Temp = "images/temp",
   // App debug logs written during the session (services/logger.ts)
   AppLogs = "app-logs",
+  // Downloaded GGUF model files, cached across app sessions (services/llmService.ts)
+  Models = "models",
 }
 
 // Where memory photos actually get persisted, depending on build type.

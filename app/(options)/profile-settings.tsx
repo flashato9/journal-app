@@ -1,5 +1,12 @@
 import { useState } from "react";
-import { ScrollView, StyleSheet, Text, TouchableOpacity } from "react-native";
+import {
+  KeyboardAvoidingView,
+  Platform,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+} from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import ChangeAuthMethod from "@/components/options/ChangeAuthMethod";
 import ChangePassword from "@/components/options/ChangePassword";
@@ -18,44 +25,53 @@ export default function ProfileSettingsScreen() {
   return (
     <SafeAreaView style={styles.container}>
       <Header title="Profile Settings" hideProfileIcon />
-      <ScrollView
-        style={styles.scrollView}
-        contentContainerStyle={styles.content}
+      <KeyboardAvoidingView
+        style={styles.keyboardAvoidingView}
+        behavior={Platform.OS === "ios" ? "padding" : "height"}
       >
-        <TouchableOpacity
-          onPress={() => setIsProfilePictureOpen((open) => !open)}
+        <ScrollView
+          style={styles.scrollView}
+          contentContainerStyle={styles.content}
         >
-          <Text style={styles.link}>Change Profile Picture</Text>
-        </TouchableOpacity>
+          <TouchableOpacity
+            onPress={() => setIsProfilePictureOpen((open) => !open)}
+          >
+            <Text style={styles.link}>Change Profile Picture</Text>
+          </TouchableOpacity>
 
-        {isProfilePictureOpen && <ChangeProfilePicture />}
+          {isProfilePictureOpen && <ChangeProfilePicture />}
 
-        <TouchableOpacity onPress={() => setIsUsernameOpen((open) => !open)}>
-          <Text style={styles.link}>Change Username</Text>
-        </TouchableOpacity>
+          <TouchableOpacity onPress={() => setIsUsernameOpen((open) => !open)}>
+            <Text style={styles.link}>Change Username</Text>
+          </TouchableOpacity>
 
-        {isUsernameOpen && <ChangeUsername />}
+          {isUsernameOpen && <ChangeUsername />}
 
-        <TouchableOpacity onPress={() => setIsPasswordOpen((open) => !open)}>
-          <Text style={styles.link}>Change Password</Text>
-        </TouchableOpacity>
+          <TouchableOpacity onPress={() => setIsPasswordOpen((open) => !open)}>
+            <Text style={styles.link}>Change Password</Text>
+          </TouchableOpacity>
 
-        {isPasswordOpen && <ChangePassword />}
+          {isPasswordOpen && <ChangePassword />}
 
-        <TouchableOpacity onPress={() => setIsAuthMethodOpen((open) => !open)}>
-          <Text style={styles.link}>Change Preferred Authentication Type</Text>
-        </TouchableOpacity>
+          <TouchableOpacity
+            onPress={() => setIsAuthMethodOpen((open) => !open)}
+          >
+            <Text style={styles.link}>
+              Change Preferred Authentication Type
+            </Text>
+          </TouchableOpacity>
 
-        {isAuthMethodOpen && <ChangeAuthMethod />}
+          {isAuthMethodOpen && <ChangeAuthMethod />}
 
-        <TouchableOpacity
-          onPress={() => setIsLocationSettingsOpen((open) => !open)}
-        >
-          <Text style={styles.link}>Location Settings</Text>
-        </TouchableOpacity>
+          <TouchableOpacity
+            onPress={() => setIsLocationSettingsOpen((open) => !open)}
+          >
+            <Text style={styles.link}>Location Settings</Text>
+          </TouchableOpacity>
 
-        {isLocationSettingsOpen && <LocationSettings />}
-      </ScrollView>
+          {isLocationSettingsOpen && <LocationSettings />}
+        </ScrollView>
+      </KeyboardAvoidingView>
     </SafeAreaView>
   );
 }
@@ -64,6 +80,9 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: "#fff",
+  },
+  keyboardAvoidingView: {
+    flex: 1,
   },
   scrollView: {
     flex: 1,

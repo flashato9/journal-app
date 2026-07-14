@@ -19,6 +19,11 @@ export default function OptionsMenu() {
     router.push("/debug-logs");
   };
 
+  const handleDebugLlm = () => {
+    setMenuVisible(false);
+    router.push("/debug-llm");
+  };
+
   const handleExitApp = () => {
     setMenuVisible(false);
     BackHandler.exitApp();
@@ -26,6 +31,7 @@ export default function OptionsMenu() {
 
   const menuOptions = [
     { label: "Debug Logs", onPress: handleDebugLogs },
+    { label: "Debug LLM", onPress: handleDebugLlm },
     { label: "Exit App", onPress: handleExitApp },
   ];
 

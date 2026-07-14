@@ -62,7 +62,8 @@
           "granularPermissions": ["photo"]
         }
       ],
-      "expo-asset"
+      "expo-asset",
+      "./plugins/withLlamaRnFixed.js"
     ],
     "experiments": {
       "typedRoutes": true,

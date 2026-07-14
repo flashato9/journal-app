@@ -1,0 +1,13 @@
+diff --git a/node_modules/llama.rn/lib/commonjs/expo-plugin/withLlamaRN.js b/node_modules/llama.rn/lib/commonjs/expo-plugin/withLlamaRN.js
+index 47bb21e..df79be3 100644
+--- a/node_modules/llama.rn/lib/commonjs/expo-plugin/withLlamaRN.js
++++ b/node_modules/llama.rn/lib/commonjs/expo-plugin/withLlamaRN.js
+@@ -18,7 +18,7 @@ const {
+   withXcodeProject,
+   withAndroidManifest,
+   createRunOncePlugin
+-} = _configPlugins.default;
++} = _configPlugins;
+ const withLlamaRn = (config, options = {}) => {
+   const {
+     enableEntitlements = true,
