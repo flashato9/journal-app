@@ -1,4 +1,7 @@
 import * as SQLite from "expo-sqlite";
+// Type-only import: erased at compile time, so this doesn't pull the storage
+// module (and expo-media-library with it) into the database module graph.
+import type { MediaType } from "@/services/mediaStorage";
 
 const DATABASE_NAME = "journal.db";
 
@@ -74,16 +77,57 @@ export const initializeDatabase = async () => {
       );
     `);
 
-    // Create TimeMemoryImage table
+    // Migrate databases created back when this table only held images.
+    // Ordering matters: rename the table first so the column migrations below
+    // always target TimeMemoryMedia. Each step no-ops on databases that are
+    // already current.
+    try {
+      db.execSync(`ALTER TABLE TimeMemoryImage RENAME TO TimeMemoryMedia;`);
+    } catch {
+      // Table already renamed, or this is a fresh install — ignore
+    }
+
+    // Create TimeMemoryMedia table (images, videos, and sound recordings)
     db.execSync(`
-      CREATE TABLE IF NOT EXISTS TimeMemoryImage (
+      CREATE TABLE IF NOT EXISTS TimeMemoryMedia (
         id INTEGER PRIMARY KEY,
         timeMemoryId INTEGER NOT NULL,
-        imageUri TEXT NOT NULL,
+        mediaUri TEXT NOT NULL,
+        mediaType TEXT NOT NULL DEFAULT 'image',
+        mediaLibraryAssetId TEXT,
         lastUpdatedTime TEXT DEFAULT CURRENT_TIMESTAMP,
         FOREIGN KEY(timeMemoryId) REFERENCES TimeMemory(id)
       );
     `);
+
+    // Migrate existing databases created before mediaType existed
+    try {
+      db.execSync(
+        `ALTER TABLE TimeMemoryMedia ADD COLUMN mediaType TEXT NOT NULL DEFAULT 'image';`,
+      );
+    } catch {
+      // Column already exists — ignore
+    }
+
+    // Migrate existing databases created before imageUri became mediaUri
+    try {
+      db.execSync(
+        `ALTER TABLE TimeMemoryMedia RENAME COLUMN imageUri TO mediaUri;`,
+      );
+    } catch {
+      // Column already renamed, or this is a fresh install — ignore
+    }
+
+    // Migrate existing databases created before mediaLibraryAssetId existed.
+    // Nullable: only gallery-stored (production) media has an asset id; rows
+    // predating this column keep NULL and fall back to reading mediaUri directly.
+    try {
+      db.execSync(
+        `ALTER TABLE TimeMemoryMedia ADD COLUMN mediaLibraryAssetId TEXT;`,
+      );
+    } catch {
+      // Column already exists — ignore
+    }
 
     // Create TimeMemoryQA table (Question & Answer)
     db.execSync(`
@@ -319,13 +363,15 @@ export const createTimeMemory = (
   return result.lastInsertRowId;
 };
 
-export const createTimeMemoryImage = (
+export const createTimeMemoryMedia = (
   timeMemoryId: number,
-  imageUri: string,
+  mediaUri: string,
+  mediaType: MediaType = "image",
+  mediaLibraryAssetId: string | null = null,
 ): number => {
   const result = db.runSync(
-    "INSERT INTO TimeMemoryImage (timeMemoryId, imageUri) VALUES (?, ?)",
-    [timeMemoryId, imageUri],
+    "INSERT INTO TimeMemoryMedia (timeMemoryId, mediaUri, mediaType, mediaLibraryAssetId) VALUES (?, ?, ?, ?)",
+    [timeMemoryId, mediaUri, mediaType, mediaLibraryAssetId],
   );
   return result.lastInsertRowId;
 };
@@ -344,10 +390,14 @@ export const createTimeMemoryQA = (
 
 // ===== GET TIME MEMORY DETAILS =====
 
-interface TimeMemoryImage {
+export interface TimeMemoryMedia {
   id: number;
   timeMemoryId: number;
-  imageUri: string;
+  mediaUri: string;
+  mediaType: MediaType;
+  // Only set for media saved to the OS gallery (production). Needed to resolve
+  // the real file bytes for export, since a gallery uri isn't always readable.
+  mediaLibraryAssetId: string | null;
 }
 
 interface TimeMemoryQA {
@@ -367,11 +417,11 @@ export const getTimeMemoryById = (
   return result || null;
 };
 
-export const getTimeMemoryImagesByTimeMemoryId = (
+export const getTimeMemoryMediaByTimeMemoryId = (
   timeMemoryId: number,
-): TimeMemoryImage[] => {
-  const result = db.getAllSync<TimeMemoryImage>(
-    "SELECT * FROM TimeMemoryImage WHERE timeMemoryId = ?",
+): TimeMemoryMedia[] => {
+  const result = db.getAllSync<TimeMemoryMedia>(
+    "SELECT * FROM TimeMemoryMedia WHERE timeMemoryId = ?",
     [timeMemoryId],
   );
   return result || [];
@@ -399,10 +449,10 @@ export const updateTimeMemory = (
   );
 };
 
-export const deleteTimeMemoryImagesByTimeMemoryId = (
+export const deleteTimeMemoryMediaByTimeMemoryId = (
   timeMemoryId: number,
 ): void => {
-  db.runSync("DELETE FROM TimeMemoryImage WHERE timeMemoryId = ?", [
+  db.runSync("DELETE FROM TimeMemoryMedia WHERE timeMemoryId = ?", [
     timeMemoryId,
   ]);
 };
@@ -609,5 +659,170 @@ export const updateLocationSettings = (
       new Date().toISOString(),
       userId,
     ],
+  );
+};
+
+// ===== BACKUP EXPORT/IMPORT OPERATIONS =====
+//
+// Export needs the *full* history (the read helpers above are capped or scoped
+// for UI use). Import needs to write rows with their original timestamps rather
+// than stamping "now", so that re-importing the same backup is a no-op under
+// last-write-wins instead of looking newer every time.
+
+export interface LocationRecord {
+  id: number;
+  userId: number;
+  latitude: number;
+  longitude: number;
+  altitude: number | null;
+  createdDateTime: string;
+}
+
+export interface NotificationRecord {
+  id: number;
+  userId: number;
+  notificationMessage: string;
+  createdAt: string;
+}
+
+// Unlike getLocationsByUserId (capped at 100 for the UI), this returns the
+// whole breadcrumb trail for a complete snapshot.
+export const getAllLocationsByUserId = (userId: number): LocationRecord[] => {
+  const result = db.getAllSync<LocationRecord>(
+    "SELECT * FROM Location WHERE userId = ? ORDER BY createdDateTime ASC",
+    [userId],
+  );
+  return result || [];
+};
+
+export const getNotificationsByUserId = (
+  userId: number,
+): NotificationRecord[] => {
+  const result = db.getAllSync<NotificationRecord>(
+    "SELECT * FROM Notification WHERE userId = ? ORDER BY createdAt ASC",
+    [userId],
+  );
+  return result || [];
+};
+
+// Natural-key lookup: autoincrement ids are per-device, so import matches an
+// existing memory by the day it belongs to plus its capture time.
+export const getTimeMemoryByDayMemoryIdAndTime = (
+  dayMemoryId: number,
+  timeOfRecord: string,
+): TimeMemoryRecord | null => {
+  const result = db.getFirstSync<TimeMemoryRecord>(
+    "SELECT * FROM TimeMemory WHERE dayMemoryId = ? AND timeOfRecord = ?",
+    [dayMemoryId, timeOfRecord],
+  );
+  return result || null;
+};
+
+export const locationExistsAtTime = (
+  userId: number,
+  createdDateTime: string,
+): boolean => {
+  const result = db.getFirstSync<{ id: number }>(
+    "SELECT id FROM Location WHERE userId = ? AND createdDateTime = ?",
+    [userId, createdDateTime],
+  );
+  return !!result;
+};
+
+export const notificationExistsAtTime = (
+  userId: number,
+  createdAt: string,
+): boolean => {
+  const result = db.getFirstSync<{ id: number }>(
+    "SELECT id FROM Notification WHERE userId = ? AND createdAt = ?",
+    [userId, createdAt],
+  );
+  return !!result;
+};
+
+export const insertLocationForImport = (
+  userId: number,
+  latitude: number,
+  longitude: number,
+  altitude: number | null,
+  createdDateTime: string,
+): number => {
+  const result = db.runSync(
+    "INSERT INTO Location (userId, latitude, longitude, altitude, createdDateTime) VALUES (?, ?, ?, ?, ?)",
+    [userId, latitude, longitude, altitude, createdDateTime],
+  );
+  return result.lastInsertRowId;
+};
+
+export const insertNotificationForImport = (
+  userId: number,
+  notificationMessage: string,
+  createdAt: string,
+): number => {
+  const result = db.runSync(
+    "INSERT INTO Notification (userId, notificationMessage, createdAt) VALUES (?, ?, ?)",
+    [userId, notificationMessage, createdAt],
+  );
+  return result.lastInsertRowId;
+};
+
+export const createDayMemoryForImport = (
+  userId: number,
+  day: string,
+  summary: string,
+  createdAt: string,
+  lastUpdatedTime: string,
+): number => {
+  const result = db.runSync(
+    "INSERT INTO DayMemory (userId, day, summary, createdAt, lastUpdatedTime) VALUES (?, ?, ?, ?, ?)",
+    [userId, day, summary, createdAt, lastUpdatedTime],
+  );
+  return result.lastInsertRowId;
+};
+
+export const updateDayMemoryForImport = (
+  dayMemoryId: number,
+  summary: string,
+  lastUpdatedTime: string,
+): void => {
+  db.runSync(
+    "UPDATE DayMemory SET summary = ?, lastUpdatedTime = ? WHERE id = ?",
+    [summary, lastUpdatedTime, dayMemoryId],
+  );
+};
+
+export const createTimeMemoryForImport = (
+  dayMemoryId: number,
+  locationId: number | null,
+  timeOfRecord: string,
+  summary: string,
+  createdAt: string,
+  lastUpdatedTime: string,
+): number => {
+  const result = db.runSync(
+    "INSERT INTO TimeMemory (dayMemoryId, locationId, timeOfRecord, summary, createdAt, lastUpdatedTime) VALUES (?, ?, ?, ?, ?, ?)",
+    [
+      dayMemoryId,
+      locationId,
+      timeOfRecord,
+      summary,
+      createdAt,
+      lastUpdatedTime,
+    ],
+  );
+  return result.lastInsertRowId;
+};
+
+// Unlike updateTimeMemory (which stamps lastUpdatedTime = now), this preserves
+// the backup's own timestamp so repeat imports stay idempotent.
+export const updateTimeMemoryForImport = (
+  timeMemoryId: number,
+  locationId: number | null,
+  summary: string,
+  lastUpdatedTime: string,
+): void => {
+  db.runSync(
+    "UPDATE TimeMemory SET locationId = ?, summary = ?, lastUpdatedTime = ? WHERE id = ?",
+    [locationId, summary, lastUpdatedTime, timeMemoryId],
   );
 };

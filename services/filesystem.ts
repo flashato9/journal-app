@@ -4,8 +4,12 @@ import { Directory, Paths } from "expo-file-system";
 export enum AppPrivateDirectoryPaths {
   // Where expo-sqlite stores journal.db (created automatically by expo-sqlite; services/database.ts)
   SQLite = "SQLite",
-  // Dev-mode memory photos, saved locally instead of the OS photo library (services/imageStorage.ts)
+  // Dev-mode memory photos, saved locally instead of the OS photo library (services/mediaStorage.ts)
   Memories = "images/memories",
+  // Dev-mode memory videos, saved locally instead of the OS photo library (services/mediaStorage.ts)
+  VideoMemories = "videos/memories",
+  // Memory sound recordings, always app-private in both dev and prod (services/mediaStorage.ts)
+  AudioMemories = "sounds/memories",
   // Profile picture uploads, used in both dev and production (no Gallery split)
   ProfilePictures = "images/profile_pictures",
   // Staging area for profile pictures not yet committed (services/profilePictureStorage.ts)
@@ -16,7 +20,9 @@ export enum AppPrivateDirectoryPaths {
   Models = "models",
 }
 
-// Where memory photos actually get persisted, depending on build type.
+// Where memory photos/videos actually get persisted, depending on build type.
+// Audio recordings ignore this entirely — they are always app-private under
+// AppPrivateDirectoryPaths.AudioMemories (see services/mediaStorage.ts).
 export enum StorageMode {
   Local = "local", // dev: under AppPrivateDirectoryPaths.Memories
   Gallery = "gallery", // prod: OS Photo Library via expo-media-library (outside the document directory)

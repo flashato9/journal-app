@@ -17,12 +17,17 @@ import {
 // Local notifications are unavailable only in Expo Go (SDK 53+); dev and
 // production builds support them. Background location requires a dev build
 // anyway, so this is effectively always true where tracking works.
-const SEND_NOTIFICATIONS =
+export const SEND_NOTIFICATIONS =
   Constants.executionEnvironment !== ExecutionEnvironment.StoreClient;
+
+// Marker stored in a break notification's `data` payload, read by
+// app/_layout.tsx's tap handler to know to navigate to the create-memory
+// screen.
+export const BREAK_NOTIFICATION_TYPE = "break-reminder";
 
 // Lazy load notifications to avoid module initialization errors in Expo Go
 let NotificationsModule: any = null;
-const getNotificationsModule = async () => {
+export const getNotificationsModule = async () => {
   if (!NotificationsModule) {
     NotificationsModule = await import("expo-notifications");
     // Without a handler, notifications that arrive while the app is
@@ -135,6 +140,58 @@ const stage2NotificationThresholdCheck = (
   };
 };
 
+// ===== HELPER: Live status notification text =====
+
+// One-line, weather-app-style status shown in the (patched, see
+// patches/expo-location+*.patch) "Journal is tracking your walk"
+// notification — purely informational, independent of whether an actual
+// break notification fires.
+const buildStatusMessage = (
+  isMoving: boolean,
+  distanceFromMemory: number | "FIRST_MEMORY",
+  notificationThreshold: number,
+  restThreshold: number,
+  previousLocation: PreviousLocation,
+): string => {
+  if (distanceFromMemory === "FIRST_MEMORY") {
+    return "No memories yet — create one anytime.";
+  }
+
+  const distanceText = `${distanceFromMemory.toFixed(0)}m from your last memory`;
+
+  if (distanceFromMemory <= notificationThreshold) {
+    return `${distanceText}.`;
+  }
+
+  if (isMoving || !previousLocation) {
+    return `${distanceText} — still traveling.`;
+  }
+
+  const secondsResting =
+    (Date.now() - new Date(previousLocation.createdDateTime).getTime()) / 1000;
+
+  if (secondsResting <= restThreshold) {
+    const secondsLeft = Math.max(0, Math.round(restThreshold - secondsResting));
+    return `${distanceText}, resting — ${secondsLeft}s until a break reminder.`;
+  }
+
+  return "On a break — go create a memory whenever you're ready!";
+};
+
+const TRACKING_NOTIFICATION_TITLE = "Journal is tracking your walk";
+
+const updateLiveStatusNotification = async (status: string): Promise<void> => {
+  try {
+    await (Location as any).updateForegroundServiceNotificationAsync(
+      LOCATION_TASK_NAME,
+      TRACKING_NOTIFICATION_TITLE,
+      status,
+    );
+  } catch (err) {
+    console.warn("⚠️  Could not update live status notification:", err);
+  }
+};
+
 // ===== HELPER: Stage 3 - Rest Period + Duplicate Prevention =====
 
 const stage3RestPeriodAndNotify = async (
@@ -202,7 +259,8 @@ const stage3RestPeriodAndNotify = async (
         content: {
           title: "You're on a break!",
           body: notificationMessage,
-          sound: "default",
+          sound: "app_notification.mp3",
+          data: { type: BREAK_NOTIFICATION_TYPE },
         },
         trigger: null,
       });
@@ -349,6 +407,18 @@ TaskManager.defineTask(LOCATION_TASK_NAME, async ({ data, error }) => {
 
     const { shouldProceed, distanceFromMemory, threshold } = stage2Result;
 
+    // Live status notification — informational only, runs every cycle
+    // regardless of whether an actual break notification fires below.
+    await updateLiveStatusNotification(
+      buildStatusMessage(
+        stage1Result,
+        distanceFromMemory,
+        threshold,
+        settings.restThreshold,
+        previousLocation,
+      ),
+    );
+
     if (!shouldProceed) {
       console.log(
         "⏭️  Stage 2 check blocked - not enough distance from memory",
@@ -411,7 +481,7 @@ export const startLocationTracking = async () => {
           await Notifications.setNotificationChannelAsync("default", {
             name: "Break reminders",
             importance: Notifications.AndroidImportance.HIGH,
-            sound: "default",
+            sound: "app_notification.mp3",
           });
         }
         await Notifications.requestPermissionsAsync();

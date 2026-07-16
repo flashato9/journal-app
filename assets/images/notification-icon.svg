@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Android notification small-icon source: a handwritten "SB" (ScrapBook).
+  Editable — tweak the path control points below, or replace the whole file.
+
+  MUST stay white-on-transparent: Android discards color from the small
+  notification icon and keeps only the alpha shape, tinting it (see the
+  `color` option in app.json's expo-notifications plugin). A colored or
+  filled-square icon would render as a solid white blob.
+
+  Letters are drawn as vector <path> strokes, NOT <text>, so rasterization
+  (sharp/resvg in scripts/generate-icons.ts -> notification-icon.png) renders
+  identically regardless of which fonts the build machine has installed.
+-->
+<svg xmlns="http://www.w3.org/2000/svg" width="96" height="96" viewBox="0 0 96 96">
+  <g fill="none" stroke="#ffffff" stroke-width="6.5" stroke-linecap="round" stroke-linejoin="round">
+    <!-- S -->
+    <path d="M 44 32 C 39 25, 27 24, 25 33 C 23 42, 37 43, 41 50 C 46 58, 34 62, 26 55" />
+    <!-- B stem -->
+    <path d="M 54 26 C 53 41, 53 55, 54 70" />
+    <!-- B upper bowl -->
+    <path d="M 55 29 C 68 24, 76 34, 63 41 C 59 43, 55 42, 55 42" />
+    <!-- B lower bowl -->
+    <path d="M 55 44 C 72 40, 79 55, 64 61 C 59 63, 55 61, 54 59" />
+  </g>
+</svg>

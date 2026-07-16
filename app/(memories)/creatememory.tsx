@@ -2,7 +2,7 @@ import { MaterialIcons } from "@expo/vector-icons";
 import { format } from "date-fns/format";
 import { formatISO } from "date-fns/formatISO";
 import * as Location from "expo-location";
-import { useRouter } from "expo-router";
+import { useLocalSearchParams, useRouter } from "expo-router";
 import { useContext, useEffect, useState } from "react";
 import {
   ActivityIndicator,
@@ -14,7 +14,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { AuthContext } from "../../context/AuthContext";
 import {
   createTimeMemory,
-  createTimeMemoryImage,
+  createTimeMemoryMedia,
   createTimeMemoryQA,
   getDayMemoryByUserIdAndDay,
   getUserIdByUsername,
@@ -39,12 +39,26 @@ const DEFAULT_QUESTIONNAIRE: QuestionnaireItem[] = [
 export default function CreateMemoryScreen() {
   const router = useRouter();
   const { username } = useContext(AuthContext);
+  const { sharedMediaUri, sharedMediaType, sharedMediaAssetId } =
+    useLocalSearchParams<{
+      sharedMediaUri?: string;
+      sharedMediaType?: "image" | "video";
+      sharedMediaAssetId?: string;
+    }>();
   const [isSaving, setIsSaving] = useState(false);
   const [memoryState, setMemoryState] = useState<MemoryFormState>({
     dateTimeOfCapture: formatISO(new Date()),
     summary: "",
     location: "Loading",
-    images: [],
+    media: sharedMediaUri
+      ? [
+          {
+            uri: sharedMediaUri,
+            type: sharedMediaType ?? "image",
+            mediaLibraryAssetId: sharedMediaAssetId ?? null,
+          },
+        ]
+      : [],
     questionnaire: DEFAULT_QUESTIONNAIRE,
     isEditable: true,
   });
@@ -128,11 +142,16 @@ export default function CreateMemoryScreen() {
       );
       console.log("Created TimeMemory:", timeMemoryId);
 
-      // Create TimeMemoryImages
-      for (const imageUri of memoryState.images) {
-        createTimeMemoryImage(timeMemoryId, imageUri);
+      // Create TimeMemoryMedia (images, videos, and sound recordings alike)
+      for (const item of memoryState.media) {
+        createTimeMemoryMedia(
+          timeMemoryId,
+          item.uri,
+          item.type,
+          item.mediaLibraryAssetId ?? null,
+        );
       }
-      console.log("Created TimeMemoryImages:", memoryState.images.length);
+      console.log("Created TimeMemoryMedia:", memoryState.media.length);
 
       // Create TimeMemoryQA entries (all items, including empty answers)
       for (const item of memoryState.questionnaire) {

@@ -12,6 +12,8 @@ const SVG_SOURCE = path.join(ASSETS_DIR, "icon.svg");
 interface IconSpec {
   size: number;
   description: string;
+  // Defaults to icon.svg; set when an output has its own source SVG.
+  source?: string;
 }
 
 // Icon specifications
@@ -31,6 +33,14 @@ const iconSpecs: Record<string, IconSpec> = {
   },
   "favicon.png": { size: 256, description: "Web favicon" },
   "splash-icon.png": { size: 200, description: "Splash screen icon" },
+  // White "SB" silhouette for the Android notification small icon. Has its
+  // own source (not the full-color app icon) and is already white/transparent,
+  // so it just needs a resize. 96x96 per Google's notification-icon guideline.
+  "notification-icon.png": {
+    size: 96,
+    description: "Android notification small icon",
+    source: "notification-icon.svg",
+  },
 };
 
 async function generateIcons(): Promise<void> {
@@ -71,9 +81,18 @@ async function generateIcons(): Promise<void> {
           .toFile(path.join(ASSETS_DIR, filename));
         console.log(`✅ ${filename}\n`);
       } else {
-        // Generate regular icons
+        // Generate regular icons. Most use the shared app icon (icon.svg);
+        // a spec may point at its own source (e.g. the notification icon).
         console.log(`🎨 Generating ${filename} (${spec.description})...`);
-        await sharp(svgBuffer)
+        let sourceBuffer = svgBuffer;
+        if (spec.source) {
+          const sourcePath = path.join(ASSETS_DIR, spec.source);
+          if (!fs.existsSync(sourcePath)) {
+            throw new Error(`SVG source not found: ${sourcePath}`);
+          }
+          sourceBuffer = fs.readFileSync(sourcePath);
+        }
+        await sharp(sourceBuffer)
           .resize(spec.size, spec.size, {
             fit: "contain",
             background: { r: 0, g: 0, b: 0, alpha: 0 },

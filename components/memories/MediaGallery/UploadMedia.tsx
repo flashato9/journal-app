@@ -11,63 +11,114 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import { saveImagePersistently } from "@/services/imageStorage";
+import {
+  MediaType,
+  saveAudioPersistently,
+  saveImagePersistently,
+  saveVideoPersistently,
+} from "@/services/mediaStorage";
 import LoadingIndicator from "@/components/LoadingIndicator";
-import ImageCard from "./ImageCard";
+import MediaCard from "./MediaCard";
+import MediaPreviewModal from "./MediaPreviewModal";
+import RecordAudioModal from "./RecordAudioModal";
 
-const MAX_IMAGES = 6;
+const MAX_MEDIA = 6;
 
-interface UploadImagesProps {
-  images: string[];
-  onImagesSelected: (newImages: string[]) => void;
+export interface MediaItem {
+  uri: string;
+  type: MediaType;
+  // Set only for gallery-stored images/videos; carried through to the DB so a
+  // later backup export can resolve the file's real bytes.
+  mediaLibraryAssetId?: string | null;
+}
+
+interface UploadMediaProps {
+  media: MediaItem[];
+  onMediaSelected: (newMedia: MediaItem[]) => void;
   isEditable?: boolean;
 }
 
-export default function UploadImages({
-  images,
-  onImagesSelected,
+export default function UploadMedia({
+  media,
+  onMediaSelected,
   isEditable = true,
-}: UploadImagesProps) {
+}: UploadMediaProps) {
   const [isLoading, setIsLoading] = useState(false);
   const [imageAssetIds, setImageAssetIds] = useState<Set<string>>(new Set());
+  const [previewItem, setPreviewItem] = useState<MediaItem | null>(null);
+  const [isRecording, setIsRecording] = useState(false);
 
-  const removeImage = (indexToRemove: number) => {
-    const updatedImages = images.filter((_, idx) => idx !== indexToRemove);
-    onImagesSelected(updatedImages);
+  const removeMedia = (indexToRemove: number) => {
+    const updatedMedia = media.filter((_, idx) => idx !== indexToRemove);
+    onMediaSelected(updatedMedia);
 
-    // Rebuild assetId set from remaining images
+    // Rebuild assetId set from remaining media
     // Note: This is a simplified approach - in production you might want to track assetIds separately
     const newAssetIds = new Set<string>();
     setImageAssetIds(newAssetIds);
   };
   const handleUploadPress = async () => {
     try {
-      const options = ["Camera", "Photo Library", "Cancel"];
+      const options = ["Camera", "Photo Library", "Record Sound", "Cancel"];
 
       if (Platform.OS === "ios") {
         ActionSheetIOS.showActionSheetWithOptions(
-          { options, cancelButtonIndex: 2 },
+          { options, cancelButtonIndex: 3 },
           async (buttonIndex) => {
             if (buttonIndex === 0) {
               await takePhoto();
             } else if (buttonIndex === 1) {
               await pickFromLibrary();
+            } else if (buttonIndex === 2) {
+              setIsRecording(true);
             }
           },
         );
       } else {
-        Alert.alert("Upload Image", "Choose an option", [
+        Alert.alert("Upload Media", "Choose an option", [
           { text: "Camera", onPress: takePhoto },
           {
             text: "Photo Library",
             onPress: pickFromLibrary,
           },
+          { text: "Record Sound", onPress: () => setIsRecording(true) },
           { text: "Cancel", style: "cancel" },
         ]);
       }
     } catch (error) {
-      console.error("Error with image picker:", error);
-      Alert.alert("Error", "Failed to upload image");
+      console.error("Error with media picker:", error);
+      Alert.alert("Error", "Failed to upload media");
+    }
+  };
+
+  // Recordings skip the imageAssetIds dedupe entirely — there's no asset ID to
+  // compare, and every recording is new by definition.
+  const handleRecorded = async (temporaryUri: string) => {
+    setIsRecording(false);
+
+    // The "Add More" button is already disabled at the cap, but guard anyway to
+    // match takePhoto/pickFromLibrary rather than silently dropping a recording.
+    if (media.length >= MAX_MEDIA) {
+      Alert.alert("Maximum reached", `You can add up to ${MAX_MEDIA} items`);
+      return;
+    }
+
+    setIsLoading(true);
+    try {
+      const saved = await saveAudioPersistently(temporaryUri);
+      onMediaSelected([
+        ...media,
+        {
+          uri: saved.uri,
+          type: "audio",
+          mediaLibraryAssetId: saved.mediaLibraryAssetId,
+        },
+      ]);
+    } catch (error) {
+      console.error("Error saving audio:", error);
+      Alert.alert("Error", "Failed to save recording");
+    } finally {
+      setTimeout(() => setIsLoading(false), 300);
     }
   };
 
@@ -102,14 +153,21 @@ export default function UploadImages({
         console.log(`  isDuplicate: ${imageAssetIds.has(assetId)}`);
 
         // Check if already exists using composite key
-        if (!imageAssetIds.has(assetId) && images.length < MAX_IMAGES) {
+        if (!imageAssetIds.has(assetId) && media.length < MAX_MEDIA) {
           const newAssetIds = new Set(imageAssetIds);
           newAssetIds.add(assetId);
 
           // Save image persistently
           try {
-            const persistentPath = await saveImagePersistently(asset.uri);
-            onImagesSelected([...images, persistentPath]);
+            const saved = await saveImagePersistently(asset.uri);
+            onMediaSelected([
+              ...media,
+              {
+                uri: saved.uri,
+                type: "image",
+                mediaLibraryAssetId: saved.mediaLibraryAssetId,
+              },
+            ]);
             setImageAssetIds(newAssetIds);
           } catch (error) {
             console.error("Error saving image:", error);
@@ -140,9 +198,9 @@ export default function UploadImages({
       }
 
       const result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ["images"],
+        mediaTypes: ["images", "videos"],
         allowsMultipleSelection: true,
-        selectionLimit: Math.max(0, MAX_IMAGES - images.length),
+        selectionLimit: Math.max(0, MAX_MEDIA - media.length),
         quality: 1,
       });
 
@@ -177,23 +235,32 @@ export default function UploadImages({
 
         console.log("Unique assets after filtering:", uniqueAssets.length);
 
-        // Save images persistently
+        // Save images/videos persistently
         try {
-          const persistentPaths = await Promise.all(
-            uniqueAssets.map((asset) => saveImagePersistently(asset.uri)),
+          const newItems: MediaItem[] = await Promise.all(
+            uniqueAssets.map(async (asset) => {
+              const isVideo = asset.type === "video";
+              const saved = isVideo
+                ? await saveVideoPersistently(asset.uri)
+                : await saveImagePersistently(asset.uri);
+              return {
+                uri: saved.uri,
+                type: isVideo ? "video" : "image",
+                mediaLibraryAssetId: saved.mediaLibraryAssetId,
+              } as MediaItem;
+            }),
           );
 
-          // Add new unique images and enforce max 6 limit
-          let updatedImages = [...images, ...persistentPaths];
-          // Enforce max 6 images
-          updatedImages = updatedImages.slice(0, MAX_IMAGES);
+          // Add new unique media and enforce max limit
+          let updatedMedia = [...media, ...newItems];
+          updatedMedia = updatedMedia.slice(0, MAX_MEDIA);
 
-          onImagesSelected(updatedImages);
+          onMediaSelected(updatedMedia);
           setImageAssetIds(newAssetIds);
           setTimeout(() => setIsLoading(false), 300);
         } catch (error) {
-          console.error("Error saving images:", error);
-          Alert.alert("Error", "Failed to save images");
+          console.error("Error saving media:", error);
+          Alert.alert("Error", "Failed to save media");
           setTimeout(() => setIsLoading(false), 300);
         }
       } else {
@@ -208,27 +275,29 @@ export default function UploadImages({
   return (
     <View style={styles.container}>
       {isLoading && isEditable ? (
-        <LoadingIndicator message="Processing images..." />
-      ) : images.length === 0 && isEditable ? (
+        <LoadingIndicator message="Processing media..." />
+      ) : media.length === 0 && isEditable ? (
         <TouchableOpacity
           style={styles.uploadButton}
           onPress={handleUploadPress}
         >
           <MaterialIcons name="add-photo-alternate" size={24} color="#007AFF" />
-          <Text style={styles.uploadButtonText}>Upload Images</Text>
+          <Text style={styles.uploadButtonText}>Upload Media</Text>
         </TouchableOpacity>
-      ) : images.length === 0 ? (
+      ) : media.length === 0 ? (
         <View style={styles.emptyContainer}>
-          <Text style={styles.noImagesText}>No images</Text>
+          <Text style={styles.noImagesText}>No media</Text>
         </View>
       ) : (
         <>
           <FlatList
-            data={images}
+            data={media}
             renderItem={({ item, index }) => (
-              <ImageCard
-                uri={item}
-                onRemove={isEditable ? () => removeImage(index) : undefined}
+              <MediaCard
+                uri={item.uri}
+                type={item.type}
+                onRemove={isEditable ? () => removeMedia(index) : undefined}
+                onPress={() => setPreviewItem(item)}
               />
             )}
             keyExtractor={(item, index) => index.toString()}
@@ -240,31 +309,44 @@ export default function UploadImages({
             <TouchableOpacity
               style={[
                 styles.uploadMoreButton,
-                images.length >= MAX_IMAGES && styles.uploadMoreButtonDisabled,
+                media.length >= MAX_MEDIA && styles.uploadMoreButtonDisabled,
               ]}
               onPress={handleUploadPress}
               activeOpacity={0.7}
-              disabled={images.length >= MAX_IMAGES}
+              disabled={media.length >= MAX_MEDIA}
             >
               <MaterialIcons
                 name="add-photo-alternate"
                 size={20}
-                color={images.length >= MAX_IMAGES ? "#999" : "white"}
+                color={media.length >= MAX_MEDIA ? "#999" : "white"}
               />
               <Text
                 style={[
                   styles.uploadMoreButtonText,
-                  images.length >= MAX_IMAGES &&
+                  media.length >= MAX_MEDIA &&
                     styles.uploadMoreButtonTextDisabled,
                 ]}
               >
-                {images.length >= MAX_IMAGES
-                  ? "Maximum images reached"
-                  : "Add More Images"}
+                {media.length >= MAX_MEDIA ? "Maximum reached" : "Add More"}
               </Text>
             </TouchableOpacity>
           )}
         </>
+      )}
+      <MediaPreviewModal
+        visible={previewItem !== null}
+        uri={previewItem?.uri ?? null}
+        type={previewItem?.type ?? "image"}
+        onClose={() => setPreviewItem(null)}
+      />
+      {/* Mounted only while recording so the recorder (and the mic session it
+          holds) is torn down as soon as the modal closes. */}
+      {isRecording && (
+        <RecordAudioModal
+          visible
+          onRecorded={handleRecorded}
+          onClose={() => setIsRecording(false)}
+        />
       )}
     </View>
   );

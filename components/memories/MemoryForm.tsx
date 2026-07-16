@@ -10,7 +10,9 @@ import {
   View,
 } from "react-native";
 import LoadingIndicator from "@/components/LoadingIndicator";
-import UploadImages from "@/components/memories/ImageGallery/UploadImages";
+import UploadMedia, {
+  MediaItem,
+} from "@/components/memories/MediaGallery/UploadMedia";
 import QuestionnaireCard, {
   QuestionnaireItem,
 } from "@/components/memories/QuestionnaireCard";
@@ -27,7 +29,7 @@ export interface MemoryFormState {
   dateTimeOfCapture: string; // ISO format datetime
   summary: string;
   location: LocationState;
-  images: string[];
+  media: MediaItem[];
   questionnaire: QuestionnaireItem[];
   isEditable: boolean;
 }
@@ -48,10 +50,10 @@ export default function MemoryForm({
     });
   };
 
-  const handleImagesSelected = (newImages: string[]) => {
+  const handleMediaSelected = (newMedia: MediaItem[]) => {
     onStorageChange({
       ...storage,
-      images: newImages,
+      media: newMedia,
     });
   };
 
@@ -72,6 +74,13 @@ export default function MemoryForm({
     onStorageChange({
       ...storage,
       questionnaire: updated,
+    });
+  };
+
+  const handleRemoveQuestionnaire = (id: string) => {
+    onStorageChange({
+      ...storage,
+      questionnaire: storage.questionnaire.filter((item) => item.id !== id),
     });
   };
 
@@ -149,13 +158,13 @@ export default function MemoryForm({
           )}
         </View>
 
-        {/* Images Section */}
+        {/* Media Section (images, videos, and sound recordings) */}
         <View style={styles.section}>
-          <Text style={styles.sectionLabel}>Images:</Text>
-          <UploadImages
-            images={storage.images}
-            onImagesSelected={
-              storage.isEditable ? handleImagesSelected : () => {}
+          <Text style={styles.sectionLabel}>Media:</Text>
+          <UploadMedia
+            media={storage.media}
+            onMediaSelected={
+              storage.isEditable ? handleMediaSelected : () => {}
             }
             isEditable={storage.isEditable}
           />
@@ -181,6 +190,11 @@ export default function MemoryForm({
                   storage.isEditable
                     ? (id: string, question: string) =>
                         handleQuestionChange(id, question)
+                    : undefined
+                }
+                onRemove={
+                  storage.isEditable
+                    ? () => handleRemoveQuestionnaire(item.id)
                     : undefined
                 }
                 isEditable={storage.isEditable}

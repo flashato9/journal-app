@@ -12,17 +12,17 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import {
-  createTimeMemoryImage,
+  createTimeMemoryMedia,
   createTimeMemoryQA,
-  deleteTimeMemoryImagesByTimeMemoryId,
+  deleteTimeMemoryMediaByTimeMemoryId,
   deleteTimeMemoryQAByTimeMemoryId,
   getLocationById,
   getTimeMemoryById,
-  getTimeMemoryImagesByTimeMemoryId,
+  getTimeMemoryMediaByTimeMemoryId,
   getTimeMemoryQAByTimeMemoryId,
   updateTimeMemory,
 } from "../../services/database";
-import { deleteImage } from "../../services/imageStorage";
+import { deleteMedia } from "../../services/mediaStorage";
 import Header from "@/components/Header";
 import LoadingIndicator from "@/components/LoadingIndicator";
 import MemoryForm, {
@@ -48,7 +48,7 @@ export default function ReadMemoryScreen() {
     dateTimeOfCapture: "",
     summary: "",
     location: null,
-    images: [],
+    media: [],
     questionnaire: [],
     isEditable: false,
   });
@@ -70,26 +70,34 @@ export default function ReadMemoryScreen() {
       // Update TimeMemory summary
       updateTimeMemory(timeMemoryId, memoryState.summary);
 
-      // Get old images to delete their files from storage
-      const oldImages = getTimeMemoryImagesByTimeMemoryId(timeMemoryId);
+      // Get old media to delete their files from storage
+      const oldMedia = getTimeMemoryMediaByTimeMemoryId(timeMemoryId);
 
-      // Delete old image files from disk
+      // Delete old media files from disk
       await Promise.all(
-        oldImages.map((img) =>
-          deleteImage(img.imageUri).catch((error) => {
-            console.warn(`Failed to delete image file ${img.imageUri}:`, error);
+        oldMedia.map((item) =>
+          deleteMedia(item.mediaUri, item.mediaType).catch((error) => {
+            console.warn(
+              `Failed to delete media file ${item.mediaUri}:`,
+              error,
+            );
             // Don't throw - continue with other deletions
           }),
         ),
       );
 
-      // Delete old images and QA records from database
-      deleteTimeMemoryImagesByTimeMemoryId(timeMemoryId);
+      // Delete old media and QA records from database
+      deleteTimeMemoryMediaByTimeMemoryId(timeMemoryId);
       deleteTimeMemoryQAByTimeMemoryId(timeMemoryId);
 
-      // Insert new images
-      memoryState.images.forEach((imageUri) => {
-        createTimeMemoryImage(timeMemoryId, imageUri);
+      // Insert new media (images, videos, and sound recordings)
+      memoryState.media.forEach((item) => {
+        createTimeMemoryMedia(
+          timeMemoryId,
+          item.uri,
+          item.type,
+          item.mediaLibraryAssetId ?? null,
+        );
       });
 
       // Insert new QA records (all items, including empty answers)
@@ -142,8 +150,8 @@ export default function ReadMemoryScreen() {
             throw new Error("Memory not found");
           }
 
-          // Fetch related images and QA records
-          const images = getTimeMemoryImagesByTimeMemoryId(id);
+          // Fetch related media and QA records
+          const mediaRecords = getTimeMemoryMediaByTimeMemoryId(id);
           const qaRecords = getTimeMemoryQAByTimeMemoryId(id);
 
           // Convert QA records to QuestionnaireItem format
@@ -170,7 +178,11 @@ export default function ReadMemoryScreen() {
             dateTimeOfCapture: timeMemory.timeOfRecord,
             summary: timeMemory.summary,
             location,
-            images: images.map((img) => img.imageUri),
+            media: mediaRecords.map((item) => ({
+              uri: item.mediaUri,
+              type: item.mediaType,
+              mediaLibraryAssetId: item.mediaLibraryAssetId,
+            })),
             questionnaire,
             isEditable: false,
           });

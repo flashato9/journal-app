@@ -70,7 +70,7 @@
 - Examples
   - `database.ts` — SQLite storage for users, memories, and locations
   - `locationService.ts` — background tracking that sends break reminders
-  - `imageStorage.ts` and `logger.ts` — save photos and capture logs
+  - `mediaStorage.ts` and `logger.ts` — save photos/videos/sound recordings and capture logs
 
 # .gitignore
 

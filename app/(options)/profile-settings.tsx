@@ -12,6 +12,7 @@ import ChangeAuthMethod from "@/components/options/ChangeAuthMethod";
 import ChangePassword from "@/components/options/ChangePassword";
 import ChangeProfilePicture from "@/components/options/ChangeProfilePicture";
 import ChangeUsername from "@/components/options/ChangeUsername";
+import ExportImport from "@/components/options/ExportImport";
 import LocationSettings from "@/components/options/LocationSettings";
 import Header from "@/components/Header";
 
@@ -21,6 +22,7 @@ export default function ProfileSettingsScreen() {
   const [isPasswordOpen, setIsPasswordOpen] = useState(false);
   const [isAuthMethodOpen, setIsAuthMethodOpen] = useState(false);
   const [isLocationSettingsOpen, setIsLocationSettingsOpen] = useState(false);
+  const [isBackupOpen, setIsBackupOpen] = useState(false);
 
   return (
     <SafeAreaView style={styles.container}>
@@ -70,6 +72,12 @@ export default function ProfileSettingsScreen() {
           </TouchableOpacity>
 
           {isLocationSettingsOpen && <LocationSettings />}
+
+          <TouchableOpacity onPress={() => setIsBackupOpen((open) => !open)}>
+            <Text style={styles.link}>Backup &amp; Restore</Text>
+          </TouchableOpacity>
+
+          {isBackupOpen && <ExportImport />}
         </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>

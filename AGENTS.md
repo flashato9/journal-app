@@ -16,6 +16,8 @@ When the user asks a theory question that did not require you to update the code
 
 Organize QandA.md by the file the user was looking at when they asked the question. Each file gets its own `#` header (e.g. `# app.json`). Add the question and answer under that file's header. If a header for that file does not exist yet, create it and add the question under it. If the user was not looking at a specific file, use a `# General` header.
 
+QandA.md only ever holds today's questions. When a new day's question comes in and QandA.md still holds a previous day's content, first move that existing content into `QandA_M_D_YYYY.md` (the date it was written), then start QandA.md fresh for today.
+
 # File Deletion
 
 Always ask for permission before removing a file, even if it seems clearly unused or the task otherwise implies deletion.

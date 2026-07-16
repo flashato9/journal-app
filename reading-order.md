@@ -42,7 +42,7 @@ Read these when you hit them referenced above:
 
 The components that make up the memory screens (all in `components/memories/`):
 
-- `MemoryForm` → `QuestionnaireCard` → `SummaryCard` → `FullDayMemoryCard` / `TimeOfDayMemoryCard` → `ImageGallery/` (`UploadImages`, `ImageCard`)
+- `MemoryForm` → `QuestionnaireCard` → `SummaryCard` → `FullDayMemoryCard` / `TimeOfDayMemoryCard` → `MediaGallery/` (`UploadMedia`, `MediaCard`, `MediaPreviewModal`, `RecordAudioModal`)
 
 ## 6. Settings & debug (side screens)
 

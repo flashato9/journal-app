@@ -1,111 +1,155 @@
 # Q&A
 
-# services/locationService.ts
-
-## In stage1DistanceFilter, what is the current point compared against, and what happens with no recorded points yet?
-
-It compares against `getLatestLocation(userId)` — the last location row actually written to the DB (not necessarily the previous GPS ping, since filtered-out points never get inserted). If there's no recorded point yet, `previousLocation` is `null` and the function returns `true` immediately, so the first-ever point is always recorded with no distance check.
-
-## In stage2NotificationThresholdCheck, what happens if there's no recent memory (or none with a location)?
-
-`getLatestTimeMemoryWithLocation` returns `null` or a row with null lat/long, so the `!latestMemory || !latestMemory.latitude || !latestMemory.longitude` guard catches it and returns `shouldProceed: false`. The task handler then returns immediately — Stage 3 never runs, no notification is sent (though Stage 1's location recording is unaffected, since it's independent).
-
-# components/Header.tsx
-
-## Why fall back to a placeholder circle when profileImagePath is falsy — doesn't registration always store something (the picture or the placeholder PNG)?
-
-Registration does always write a real path to the DB, but `useUserSession()`'s fetch is async — `profileImagePath` is `null` in state for the brief moment before its effect resolves the SQLite query. The fallback covers that transient loading gap, not a "no picture was provided" case.
-
-## After changing the profile picture, why doesn't it update on a screen I navigate back to?
-
-`useUserSession()` fetches from the DB only once, in a `useEffect` on mount. If that screen's `Header` was already mounted before you opened Profile Settings, navigating back doesn't remount it — React Navigation just re-shows the existing instance, so the effect never re-runs and it keeps the picture it fetched the first time. Flagged as a known limitation, deferred, when the profile picture feature was built.
-
 # General
 
 ## What does `npx expo run:android --device` do?
 
-Builds a native Android debug APK from the `android/` project, installs it on a connected USB device, and launches it — unlike `expo start`, this compiles the full native code (required for custom native modules like `llama.rn`). `--device` targets a physical device rather than an emulator.
+It generates the APK, installs it on the device, and launches it.
 
-## Is it true that `run:android` is slow once and then you use `expo start` after?
+## When I first ran that command I got an error, what was that error?
 
-Yes, with nuance: `run:android` does a full Gradle/native compile (slow). Once the APK is on the device, `expo start` only runs Metro for JS hot-reloads (fast). But if native code changes (new native packages, `android/` edits, `llama.rn` config), you must `run:android` again — `expo start` alone won't pick those up.
+`INSTALL_FAILED_VERSION_DOWNGRADE` — the phone already had `versionCode 2` installed, but `app.json` had no explicit `versionCode` so it defaulted to `1`.
 
-## What is a "native module" in PC terms?
+## Before running `npx expo run:android --device`, do I need to increment versionCode?
 
-JS/TS code is like a script (Python/batch) — interpreted, easy to edit, but slow for heavy work. A native module is like a `.dll` (compiled C/C++ binary) — runs directly on the hardware with no interpreter, much faster. `llama.rn` compiles to a `.so` shared library on Android; `run:android` is the one-time compile step (like building the `.dll`), after which your TS just calls into it.
+Not always — only if the currently-installed build's `versionCode` is equal to or higher than the one in `app.json`.
 
-## Where does the app store its data locally on the phone (DB, images, credentials)?
+## How do I check the versionCode for the APK on my phone?
 
-`journal.db` (SQLite, all metadata incl. `imageUri`/`profileImagePath` strings) lives in the app's private document directory. Actual memory photo bytes go to `<Documents>/memories/` in dev builds or the OS Photo Library in production (`services/imageStorage.ts`). Login credentials/tokens live in the OS secure keychain via `expo-secure-store`, not a plain file.
+`adb shell dumpsys package com.relentless.memory_journal | Select-String versionCode` → e.g. `versionCode=3 minSdk=24 targetSdk=36`
 
-# hooks/options/useDebugLogs.ts
+## What does "adb" stand for / mean?
 
-## What is the behavior where auto-scroll pauses if you've scrolled up (like a terminal)?
+Android Debug Bridge — a command-line tool that lets your PC talk to a connected Android device (install apps, run shell commands, pull logs, etc.).
 
-"Stick-to-bottom" scrolling (aka scroll anchoring/autoscroll lock): track whether the user is at the bottom, and only auto-scroll on new content if they are — a manual scroll-up disables it until they return to the bottom.
+## Is adb like ssh but for Android?
 
-# services/avatarStorage.ts
+Similar idea (remote shell), but over USB instead of network, with Android-specific commands like `install` and `logcat`.
 
-## Why key avatar files by username instead of userId (why not create the DB row at registration to get a userId)?
+## What does `adb shell` mean?
 
-You could create the row at registration, but username is still the better key: the returning-user screen reads the avatar before login with no DB lookup, username is a stable natural key while userId is an autoincrement surrogate that can desync/change on a DB reset, and username is already the identity key used everywhere in SecureStore.
+Opens an interactive shell on the device — subsequent commands run there, not on your PC.
 
-# app/index.tsx
+## What does `adb shell <command>` do?
 
-## When the app loads, does it have to show a page, or can it load nothing?
+Runs that command on the device and returns the output (no interactive shell).
 
-Some screen must always be mounted — React Navigation has no "blank" state — but that screen doesn't have to be a dedicated placeholder/redirect page. The root layout already picks the real first screen (`(memories)` or `(welcome)`) based on auth state, so a separate redirect-only `index.tsx` is unnecessary.
+## What does `adb devices` do?
 
-# hooks/options/useLocationSettings.ts
+Lists all Android devices currently connected via USB or Wi-Fi.
 
-## What is useCallback and how is it different from useEffect?
+## What does `adb logcat` do?
 
-`useEffect` runs code (a side effect) after render, when deps change. `useCallback` runs nothing — it returns a memoized _function reference_ that only changes when its deps change, so a function you call from an effect doesn't cause that effect to refire every render.
+Streams logs from the device's log buffer to your PC. Apps and the OS write logs on the device; logcat reads and displays them on your computer.
 
-## Why not just useEffect(() => loadSettings(), [username]) instead of wrapping it in useCallback?
+## Why doesn't `adb logcat` stop?
 
-You can, and it's simpler when the function is only used in that one effect (as here) — inline the async function inside the effect and depend on `username` directly. `useCallback` earns its keep only when the function is also called elsewhere (another effect, a button's onPress), so it needs a stable identity outside any single effect.
+It's a live stream — logs keep coming as they happen. Press Ctrl+C to stop.
 
-## Why does a function need to be a dependency at all — why not use an object instead?
+## Does `adb reboot` reboot my computer?
 
-Objects are reference types too — a fresh `{}` each render is just as unstable as a fresh function each render, so swapping to an object doesn't help (it'd need `useMemo` for the same reason). Primitives (strings/numbers/booleans) don't have this problem since they compare by value, which is why depending on `username` directly (a primitive) sidesteps the whole issue.
+No, it reboots the Android device — fully restarts the OS and all apps.
 
-## Why not use useState to persist a function across renders instead of useCallback?
+## What do `adb push` and `adb pull` do?
 
-useState only sets its value once on mount (or when you explicitly call the setter) — it wouldn't auto-update when `username` changes, and fixing that would need an effect + setState round-trip (an extra re-render). useCallback recomputes inline during the same render, no extra render needed.
+`push` copies files from your PC to the device. `pull` copies files from the device to your PC.
 
-## Why isn't username itself stored in useState?
+## What's the difference between public and private storage on Android?
 
-`username` comes from `useLocalSearchParams()` (the route), which is already reactive and updates automatically — copying it into local state would go stale after the first render and create two sources of truth. Rule: read external data (props/route params/context) directly, don't copy it into state.
+Public storage (Downloads, Pictures) is visible when you plug in via USB and accessible to all apps. App-private storage (`/data/data/app-name/`) is hidden and only that app can access it — you need `adb pull` to copy it.
 
-# hooks/welcome/useWelcomeRouting.ts
+## How do I list the file system on the phone?
 
-## Do we have any mechanism currently to know if a user is already registered?
+Use `adb shell ls <path>` — for example, `adb shell ls /data/data/` lists all app folders, or `adb shell ls /sdcard/` lists public storage.
 
-Only per-username checks exist (`SecureStore` key `login.<username>` in `useRegister.ts`, and `isUserExists(username)` against the SQLite `User` table) — both need a username to check. There's no device-level "has anyone registered on this device" flag, so the random pick in this hook has nothing real to replace it with yet.
+## Why do I get "Permission denied" for `/data/data/`?
 
-# app/(welcome)/login.tsx
+Android's security — adb runs as a limited user and can't access other apps' private folders. You can access your own app's folder: `adb shell ls /data/data/com.relentless.memory_journal/`. To access all folders, you'd need to root the device.
 
-## Is there a better way to display the profile image than passing the path, or is the path fine?
+## What is `pm`?
 
-Passing the path as a URI to `<Image source={{ uri }} />` is the standard, correct approach — nothing better exists for that. The only real alternative is swapping RN's core `Image` for `expo-image` (adds caching/placeholders), but the rest of the app (`ImageCard.tsx`) already uses plain `Image`, so staying consistent is reasonable.
+Package manager — handles app installation, uninstallation, and queries. Use `adb shell pm list packages | Select-String memory` (PowerShell) to list and filter apps.
 
-## Why does `useEffect(() => { if (username) setLoginUsername(username); }, ...)` check that username exists — shouldn't it exist on launch?
+## How do I access my app's private data without rooting?
 
-`useUserSession`'s DB lookup is async, so `username` is `null` on the very first render and only becomes the real string after its internal effect resolves. The `if` just skips that transient null render; it re-fires once the value arrives.
+Use `adb shell run-as <package-name>` to run commands as your app. For example, `adb shell run-as com.relentless.memory_journal ls` lists your app's data folder.
 
-## Why is `setLoginUsername` also in the dependency array — it's a function, does it change?
+## What does `run-as` do?
 
-It's a `useState` setter, which React guarantees keeps the same identity across renders, so it never actually triggers a re-run. It's listed only because ESLint's `exhaustive-deps` rule requires every outside variable used inside the effect to be declared as a dependency.
+Executes a command with the same permissions/access level as a specific app — so you can read/write files that only that app normally can access.
 
-# app/(welcome)/register-fingerprint.tsx
+## What is `dumpsys`?
 
-## Does this fingerprint scanner register a new fingerprint, or just use ones the phone already knows?
+Dumps diagnostic info from Android system services. For example, `dumpsys package` shows app info, `dumpsys battery` shows battery status, `dumpsys meminfo` shows memory usage.
 
-Just uses ones the phone already knows — `LocalAuthentication.authenticateAsync()` can only verify against biometrics already enrolled in OS Settings; apps can't enroll new biometric templates themselves. "Registration" here just confirms the device owner via an existing fingerprint, then stores an app-side token in `SecureStore` tied to the username.
+## What is a package?
 
-# svg-to-png.html
+In Android, a package is an installed app identified by a unique name like `com.relentless.memory_journal`. More broadly, "package" means a software bundle (npm packages, apt packages, etc.).
 
-## Why does this html file fail with a fetch error?
+## Does each package have its own folder?
 
-It's almost certainly being opened directly as a `file://` URL rather than served over HTTP — browsers block `fetch()` calls both to sibling local files and to remote HTTPS URLs from a `file://` origin. Serving it via a local server (e.g. `npx http-server .`) and opening it as `http://localhost:...` fixes it.
+Yes — each app has a private folder at `/data/data/<package-name>/` for databases, preferences, cache, and other private data.
+
+## What's the difference between `/data/data/<package>/` and `/data/user/0/<package>/`?
+
+Same folder, different paths. `/data/user/0/` is the actual location on modern Android; `/data/data/` is kept for backwards compatibility. The `0` is the primary user ID.
+
+## What is the `0` in `/data/user/0/`?
+
+Primary user ID — Android supports multiple users (mainly on tablets). Each user gets `/data/user/1/`, `/data/user/2/`, etc. User `0` is the main owner.
+
+## Is everything the app needs in `/data/user/0/<package>/`?
+
+Mostly — the folder contains databases, preferences, cache, and runtime data. The app's code (APK) is stored separately in `/data/app/`.
+
+## Where does the APK code live vs app data?
+
+`/data/app/` has the APK (app code, JavaScript, resources). `/data/user/0/<package>/` has app-generated data (databases, preferences, files).
+
+## What does APK stand for?
+
+Android Package Kit (or Android Application Package) — the file format for Android apps, like .exe on Windows.
+
+## Can I use `run-as` to access `/data/app/`?
+
+No — `run-as` only works for a specific app's private data. `/data/app/` is a system directory requiring root access.
+
+## How can I see what's in `/data/app/` without root?
+
+Use `adb shell pm path <package-name>` to find the APK path, then `adb pull <path> .` to copy it to your PC. Or check your Expo build output — it already generated the APK locally.
+
+## What's actually in the `/data/app/` folder?
+
+Each app has its own folder containing the APK, compiled code (.oat/.odex files), and resources.
+
+## What folders are in `/data/user/0/<package>/`?
+
+**databases** — SQLite databases (structured data). **shared_prefs** — key-value settings. **files** — app-created files. **cache** — temporary data. **app_bridgeless_dev_js_split_bundles** — your JavaScript code. **code_cache** — compiled code. **no_backup** — excluded from backup. **app_webview, app_textures** — WebView/texture caches.
+
+## Can SQLite databases be in both `databases/` and `files/` folders?
+
+Yes — `databases/` is for databases created via Android's standard API. `files/` is for general app files, which can include SQLite databases your app explicitly saves there.
+
+## What is `ProfileInstaller`?
+
+An Android library that optimizes your app's performance based on runtime profiling. The files track whether a profile was installed and when. You don't need to manage these — the system handles it.
+
+## Which files in `/files/` are app-created vs system-generated?
+
+App-created: SQLite database, images, sounds. System-generated: profileInstalled, app-logs, profileinstaller_* metadata.
+
+## What does `INSTALL_FAILED_UPDATE_INCOMPATIBLE` signature error mean?
+
+The old app on your device was signed with a different certificate than the new APK. Android won't replace it. Uninstall first: `adb uninstall com.relentless.memory_journal` then reinstall.
+
+## Does `npx expo run:android --device` sign the APK?
+
+Yes — it builds an APK and automatically signs it with a debug certificate (Expo manages this). If the signature changes, you get the incompatibility error.
+
+## How does the EAS signing plugin prevent signature mismatches?
+
+`plugins/withEasDebugSigning.js` configures the build to sign with a consistent EAS-managed keystore instead of random debug keys. So signatures always match and Android allows updates without errors.
+
+## Do I need the EAS signing plugin for local development?
+
+No — just put the EAS keystore at `~/.android/debug.keystore`, change its password to `android`, and Gradle uses it automatically. The plugin is overkill for local builds — it's for teams/CI needing consistent signing across machines.
