@@ -1,5 +1,11 @@
 # Q&A
 
+# package.json
+
+## Why was the patched `updateForegroundServiceNotificationAsync` missing at runtime despite the source patch and cache clears?
+
+Since SDK 53, Expo links modules like `expo-location` as prebuilt binaries (📦 in build output) — the Kotlin source in `node_modules` is never compiled, so the patch was ignored. Fixed by adding `expo.autolinking.android.buildFromSource: ["expo-location"]` to package.json, forcing compilation from patched source.
+
 # General
 
 ## What does `npx expo run:android --device` do?
@@ -65,6 +71,10 @@ Use `adb shell ls <path>` — for example, `adb shell ls /data/data/` lists all 
 ## Why do I get "Permission denied" for `/data/data/`?
 
 Android's security — adb runs as a limited user and can't access other apps' private folders. You can access your own app's folder: `adb shell ls /data/data/com.relentless.memory_journal/`. To access all folders, you'd need to root the device.
+
+## Why can I still swipe away the "Journal is tracking" notification despite `setOngoing(true)`?
+
+Since Android 14, all foreground-service notifications are user-dismissible by design — `setOngoing(true)` no longer prevents it. Swiping doesn't stop the tracking service, and the patch re-posts the notification on the next location update (~60s).
 
 ## What is `pm`?
 
@@ -153,3 +163,19 @@ Yes — it builds an APK and automatically signs it with a debug certificate (Ex
 ## Do I need the EAS signing plugin for local development?
 
 No — just put the EAS keystore at `~/.android/debug.keystore`, change its password to `android`, and Gradle uses it automatically. The plugin is overkill for local builds — it's for teams/CI needing consistent signing across machines.
+
+## What's the difference between native Android development and React Native?
+
+Native Android = write Kotlin directly, lots of boilerplate. React Native = write JavaScript/JSX that translates to native. One codebase runs on Android and iOS instead of writing the same app twice.
+
+## What does Expo do (on top of React Native)?
+
+Manages the build process (handles gradle/Xcode), provides pre-built modules (camera, location, notifications, audio), and enables easy testing via `npx expo run:android --device`. Abstracts away Android/iOS complexity. Trade-off: limited to what Expo supports.
+
+## What is `npx`?
+
+Node.js tool to run npm package commands without installing globally. `npx expo run:android` downloads Expo CLI, runs it, then cleans up.
+
+## What is the `expo` CLI?
+
+The Expo build toolchain and command-line interface. Handles building, running, and deploying your app. `npx expo run:android` uses it to build and run on Android.

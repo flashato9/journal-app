@@ -80,3 +80,47 @@ index e659285..55a33e3 100644
 +    fun getInstance(taskName: String): LocationTaskConsumer? = instances[taskName]
    }
  }
+diff --git a/node_modules/expo-location/build/Location.d.ts b/node_modules/expo-location/build/Location.d.ts
+index 63d46d8..e4e0287 100644
+--- a/node_modules/expo-location/build/Location.d.ts
++++ b/node_modules/expo-location/build/Location.d.ts
+@@ -195,6 +195,15 @@ export declare function stopLocationUpdatesAsync(taskName: string): Promise<void
+  * started or not.
+  */
+ export declare function hasStartedLocationUpdatesAsync(taskName: string): Promise<boolean>;
++/**
++ * Updates the title/body of the foreground-service notification for an
++ * already-running location task, without re-registering the task.
++ * @param taskName Name of the running background location task.
++ * @param title New notification title.
++ * @param body New notification body.
++ * @return A promise resolving once the notification has been updated.
++ */
++export declare function updateForegroundServiceNotificationAsync(taskName: string, title: string, body: string): Promise<void>;
+ /**
+  * Starts geofencing for given regions. When the new event comes, the task with specified name will
+  * be called with the region that the device enter to or exit from.
+diff --git a/node_modules/expo-location/build/Location.js b/node_modules/expo-location/build/Location.js
+index cfcf5f1..68ef1be 100644
+--- a/node_modules/expo-location/build/Location.js
++++ b/node_modules/expo-location/build/Location.js
+@@ -345,6 +345,19 @@ export async function hasStartedLocationUpdatesAsync(taskName) {
+     _validate(taskName);
+     return ExpoLocation.hasStartedLocationUpdatesAsync(taskName);
+ }
++// @needsAudit
++/**
++ * Updates the title/body of the foreground-service notification for an
++ * already-running location task, without re-registering the task.
++ * @param taskName Name of the running background location task.
++ * @param title New notification title.
++ * @param body New notification body.
++ * @return A promise resolving once the notification has been updated.
++ */
++export async function updateForegroundServiceNotificationAsync(taskName, title, body) {
++    _validate(taskName);
++    await ExpoLocation.updateForegroundServiceNotificationAsync(taskName, title, body);
++}
+ // --- Geofencing
+ function _validateRegions(regions) {
+     if (!regions || regions.length === 0) {

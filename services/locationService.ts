@@ -182,7 +182,7 @@ const TRACKING_NOTIFICATION_TITLE = "Journal is tracking your walk";
 
 const updateLiveStatusNotification = async (status: string): Promise<void> => {
   try {
-    await (Location as any).updateForegroundServiceNotificationAsync(
+    await Location.updateForegroundServiceNotificationAsync(
       LOCATION_TASK_NAME,
       TRACKING_NOTIFICATION_TITLE,
       status,

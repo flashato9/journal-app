@@ -45,6 +45,11 @@ export function useImageZoomGesture() {
     });
 
   const panGesture = Gesture.Pan()
+    // Without this, a two-finger pinch also feeds its centroid movement into
+    // this gesture's onUpdate, translating the image while it's being
+    // zoomed instead of scaling in place around center.
+    .minPointers(1)
+    .maxPointers(1)
     .onUpdate((event) => {
       translateX.value = savedTranslateX.value + event.translationX;
       translateY.value = savedTranslateY.value + event.translationY;

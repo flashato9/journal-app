@@ -65,6 +65,15 @@
     "sharp": "^0.35.3",
     "zod": "^4.4.3"
   },
+  "expo": {
+    "autolinking": {
+      "android": {
+        "buildFromSource": [
+          "expo-location"
+        ]
+      }
+    }
+  },
   "devDependencies": {
     "@types/react": "~19.1.0",
     "eslint": "^9.25.0",
