@@ -25,22 +25,22 @@ export default function MediaCard({
   onRemove,
   onPress,
 }: MediaCardProps) {
-  // Handle both string URIs and require() results
   const source = typeof uri === "string" ? { uri } : uri;
 
-  // Video and audio tiles need a real URI string to load a player; a require()
-  // source can only ever be an image, so it falls through to <Image>.
+  // A require() source can only ever be an image, so it falls through to <Image>.
   const renderTile = () => {
+    let tile: React.ReactNode;
     if (typeof uri === "string" && type === "video") {
-      return <VideoTile uri={uri} />;
+      tile = <VideoTile uri={uri} />;
+    } else if (typeof uri === "string" && type === "audio") {
+      tile = <AudioTile uri={uri} />;
+    } else {
+      tile = <Image source={source} style={styles.image} resizeMode="cover" />;
     }
-    if (typeof uri === "string" && type === "audio") {
-      return <AudioTile uri={uri} />;
-    }
-    return <Image source={source} style={styles.image} resizeMode="cover" />;
+    return tile;
   };
 
-  return (
+  const content = (
     <View style={styles.container}>
       <TouchableOpacity
         activeOpacity={onPress ? 0.8 : 1}
@@ -60,12 +60,10 @@ export default function MediaCard({
       )}
     </View>
   );
+  return content;
 }
 
-// Grid tile for a video: shows the first frame, paused, no controls, with a
-// translucent play badge over it — tapping the tile opens the full preview
-// (playback happens there instead). pointerEvents="none" on the badge keeps
-// the tap going to the tile's own TouchableOpacity, not the icon.
+// Grid tile for a video: shows the first frame, paused, with a play badge; tapping opens the full preview instead.
 function VideoTile({ uri }: { uri: string }) {
   const player = useVideoPlayer(uri, (player) => {
     player.pause();
@@ -88,8 +86,7 @@ function VideoTile({ uri }: { uri: string }) {
   );
 }
 
-// Grid tile for a sound recording. There's no frame to show, so this is a mic
-// icon plus the clip length; tapping opens the preview, where it actually plays.
+// Grid tile for a sound recording: mic icon plus clip length; tapping opens the preview to play it.
 function AudioTile({ uri }: { uri: string }) {
   const player = useAudioPlayer(uri);
   const status = useAudioPlayerStatus(player);
@@ -131,7 +128,6 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
   },
-  // Translucent so the video frame stays visible through the badge.
   playBadge: {
     backgroundColor: "rgba(0, 0, 0, 0.35)",
     width: 36,

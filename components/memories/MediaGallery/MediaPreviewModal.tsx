@@ -9,17 +9,16 @@ import {
   Text,
   TouchableOpacity,
   View,
+  type ViewStyle,
 } from "react-native";
 import {
   GestureDetector,
   GestureHandlerRootView,
 } from "react-native-gesture-handler";
 import Animated from "react-native-reanimated";
-import { useImageZoomGesture } from "@/hooks/memories/useImageZoomGesture";
+import { useZoomGesture } from "react-native-zoom-reanimated";
 import type { MediaType } from "@/services/mediaStorage";
 import { formatDuration } from "./formatDuration";
-
-const AnimatedImage = Animated.createAnimatedComponent(Image);
 
 interface MediaPreviewModalProps {
   visible: boolean;
@@ -34,34 +33,51 @@ export default function MediaPreviewModal({
   type = "image",
   onClose,
 }: MediaPreviewModalProps) {
-  const { gesture, animatedStyle, reset } = useImageZoomGesture();
+  const zoomGestureOptions = { minScale: 1 };
+  const {
+    zoomGesture,
+    contentContainerAnimatedStyle,
+    onLayout,
+    onLayoutContent,
+    zoomOut,
+  } = useZoomGesture(zoomGestureOptions);
 
   // Start every image fresh at 1x zoom, centered.
   useEffect(() => {
-    if (visible) reset();
-  }, [visible, uri, reset]);
+    if (visible) zoomOut();
+  }, [visible, uri, zoomOut]);
 
   if (!uri) return null;
 
+  // The image branch casts contentContainerAnimatedStyle to ViewStyle since react-native-zoom-reanimated's useAnimatedStyle return type is untyped.
   const renderMedia = () => {
+    let media: React.ReactNode;
     if (type === "video") {
-      return <VideoPreview uri={uri} />;
+      media = <VideoPreview uri={uri} />;
+    } else if (type === "audio") {
+      media = <AudioPreview uri={uri} />;
+    } else {
+      media = (
+        <View style={styles.image} onLayout={onLayout}>
+          <GestureDetector gesture={zoomGesture}>
+            <Animated.View
+              style={contentContainerAnimatedStyle as unknown as ViewStyle}
+              onLayout={onLayoutContent}
+            >
+              <Image
+                source={{ uri }}
+                style={styles.image}
+                resizeMode="contain"
+              />
+            </Animated.View>
+          </GestureDetector>
+        </View>
+      );
     }
-    if (type === "audio") {
-      return <AudioPreview uri={uri} />;
-    }
-    return (
-      <GestureDetector gesture={gesture}>
-        <AnimatedImage
-          source={{ uri }}
-          style={[styles.image, animatedStyle]}
-          resizeMode="contain"
-        />
-      </GestureDetector>
-    );
+    return media;
   };
 
-  return (
+  const content = (
     <Modal
       transparent
       animationType="fade"
@@ -70,7 +86,6 @@ export default function MediaPreviewModal({
     >
       <GestureHandlerRootView style={styles.root}>
         <View style={styles.backdrop}>
-          {/* Sits behind the media; tapping anywhere outside it closes the modal */}
           <TouchableOpacity
             style={StyleSheet.absoluteFill}
             activeOpacity={1}
@@ -89,16 +104,16 @@ export default function MediaPreviewModal({
       </GestureHandlerRootView>
     </Modal>
   );
+  return content;
 }
 
-// Pinch/pan doesn't apply to video playback, so this skips
-// useImageZoomGesture entirely and just plays with native controls.
+// Video playback doesn't support pinch/pan, so this skips useZoomGesture and plays with native controls.
 function VideoPreview({ uri }: { uri: string }) {
   const player = useVideoPlayer(uri, (player) => {
     player.play();
   });
 
-  return (
+  const content = (
     <VideoView
       player={player}
       style={styles.image}
@@ -106,10 +121,10 @@ function VideoPreview({ uri }: { uri: string }) {
       nativeControls
     />
   );
+  return content;
 }
 
-// Audio has nothing to show and nothing to zoom, so it gets its own transport:
-// a play/pause toggle, elapsed/total time, and a progress bar.
+// Audio has nothing to show or zoom, so it gets a play/pause toggle, elapsed/total time, and a progress bar.
 function AudioPreview({ uri }: { uri: string }) {
   const player = useAudioPlayer(uri);
   const status = useAudioPlayerStatus(player);
@@ -122,14 +137,15 @@ function AudioPreview({ uri }: { uri: string }) {
       player.pause();
       return;
     }
-    // Replay from the start once the clip has run to the end.
     if (status.didJustFinish || status.currentTime >= status.duration) {
       player.seekTo(0);
     }
     player.play();
   };
 
-  return (
+  const progressFillStyle: ViewStyle = { width: `${progress}%` };
+
+  const content = (
     <View style={styles.audioContainer}>
       <MaterialIcons name="graphic-eq" size={64} color="#fff" />
 
@@ -147,7 +163,7 @@ function AudioPreview({ uri }: { uri: string }) {
       </TouchableOpacity>
 
       <View style={styles.progressTrack}>
-        <View style={[styles.progressFill, { width: `${progress}%` }]} />
+        <View style={[styles.progressFill, progressFillStyle]} />
       </View>
 
       <Text style={styles.audioTime}>
@@ -157,6 +173,7 @@ function AudioPreview({ uri }: { uri: string }) {
       </Text>
     </View>
   );
+  return content;
 }
 
 const styles = StyleSheet.create({

@@ -7,12 +7,13 @@ interface LoadingIndicatorProps {
 export default function LoadingIndicator({
   message = "Loading images...",
 }: LoadingIndicatorProps) {
-  return (
+  const content = (
     <View style={styles.container}>
       <ActivityIndicator size="large" color="#007AFF" />
       <Text style={styles.text}>{message}</Text>
     </View>
   );
+  return content;
 }
 
 const styles = StyleSheet.create({

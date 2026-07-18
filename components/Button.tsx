@@ -8,7 +8,6 @@ import {
 } from "react-native";
 
 interface ButtonProps {
-  // onPress may be async — the button awaits it and shows a spinner until it resolves
   onPress: () => void | Promise<void>;
   text: string;
   textStyle?: TextStyle;
@@ -16,6 +15,7 @@ interface ButtonProps {
   disabled?: boolean;
 }
 
+// Awaits onPress and shows a spinner while it resolves, guarding against double-taps.
 export default function Button({
   onPress,
   text,
@@ -25,11 +25,10 @@ export default function Button({
 }: ButtonProps) {
   const [isLoading, setIsLoading] = useState(false);
 
-  // Disabled if the caller says so, or while the async onPress is running
   const isDisabled = disabled || isLoading;
 
   const handlePress = async () => {
-    if (isLoading) return; // guard against double-taps while running
+    if (isLoading) return;
     try {
       setIsLoading(true);
       await onPress();
@@ -38,11 +37,13 @@ export default function Button({
     }
   };
 
-  return (
+  const backgroundColorStyle = backgroundColor ? { backgroundColor } : null;
+
+  const content = (
     <TouchableOpacity
       style={[
         styles.button,
-        backgroundColor ? { backgroundColor } : null,
+        backgroundColorStyle,
         isDisabled && styles.disabled,
       ]}
       onPress={handlePress}
@@ -56,6 +57,7 @@ export default function Button({
       )}
     </TouchableOpacity>
   );
+  return content;
 }
 
 const styles = StyleSheet.create({

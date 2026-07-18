@@ -6,10 +6,11 @@ import { useUserSession } from "@/hooks/welcome/useUserSession";
 
 export default function ChangeProfilePicture() {
   const { profileImagePath } = useUserSession();
+  const changeProfilePictureOptions = { currentImagePath: profileImagePath };
   const { displayImagePath, isSaving, canSave, pickImage, handleSave } =
-    useChangeProfilePicture({ currentImagePath: profileImagePath });
+    useChangeProfilePicture(changeProfilePictureOptions);
 
-  return (
+  const content = (
     <View style={styles.container}>
       <TouchableOpacity onPress={pickImage} activeOpacity={0.7}>
         <PolaroidFrame>
@@ -36,6 +37,7 @@ export default function ChangeProfilePicture() {
       </View>
     </View>
   );
+  return content;
 }
 
 const styles = StyleSheet.create({

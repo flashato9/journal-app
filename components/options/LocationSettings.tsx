@@ -26,16 +26,16 @@ export default function LocationSettings() {
   } = useLocationSettings();
 
   if (loading) {
-    return (
+    const loadingContent = (
       <View style={styles.loadingContainer}>
         <LoadingIndicator message="Loading settings..." />
       </View>
     );
+    return loadingContent;
   }
 
-  return (
+  const content = (
     <View style={styles.content}>
-      {/* Fetch Frequency */}
       <View style={styles.setting}>
         <Text style={styles.label}>Fetch Frequency (seconds)</Text>
         <TextInput
@@ -51,7 +51,6 @@ export default function LocationSettings() {
         </Text>
       </View>
 
-      {/* Notification Threshold */}
       <View style={styles.setting}>
         <Text style={styles.label}>Notification Threshold (meters)</Text>
         <TextInput
@@ -67,7 +66,6 @@ export default function LocationSettings() {
         </Text>
       </View>
 
-      {/* Rest Threshold */}
       <View style={styles.setting}>
         <Text style={styles.label}>Rest Threshold (seconds)</Text>
         <TextInput
@@ -82,7 +80,6 @@ export default function LocationSettings() {
         </Text>
       </View>
 
-      {/* Location Tracking Poll Frequency */}
       <View style={styles.setting}>
         <Text style={styles.label}>
           Location Tracking Poll Frequency (seconds)
@@ -100,7 +97,6 @@ export default function LocationSettings() {
         </Text>
       </View>
 
-      {/* Save Button */}
       <TouchableOpacity
         style={[
           styles.saveButton,
@@ -120,6 +116,7 @@ export default function LocationSettings() {
       </TouchableOpacity>
     </View>
   );
+  return content;
 }
 
 const styles = StyleSheet.create({

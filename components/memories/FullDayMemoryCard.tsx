@@ -15,13 +15,14 @@ export default function FullDayMemoryCard({ memory }: FullDayMemoryCardProps) {
   const router = useRouter();
 
   const handleSeeMore = () => {
-    router.push({
+    const destination: Parameters<typeof router.push>[0] = {
       pathname: "/(memories)/daymemories",
       params: { id: memory.id, day: memory.day },
-    });
+    };
+    router.push(destination);
   };
 
-  return (
+  const content = (
     <TouchableOpacity
       onPress={handleSeeMore}
       style={styles.card}
@@ -44,6 +45,7 @@ export default function FullDayMemoryCard({ memory }: FullDayMemoryCardProps) {
       </View>
     </TouchableOpacity>
   );
+  return content;
 }
 
 const styles = StyleSheet.create({

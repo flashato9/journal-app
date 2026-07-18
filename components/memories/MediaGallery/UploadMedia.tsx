@@ -25,6 +25,9 @@ import RecordAudioModal from "./RecordAudioModal";
 const MAX_MEDIA = 6;
 
 export interface MediaItem {
+  // Set only for media already saved to the DB; absent for newly-picked items
+  // this session — lets edit-save tell "kept" from "brand new" apart.
+  id?: number;
   uri: string;
   type: MediaType;
   // Set only for gallery-stored images/videos; carried through to the DB so a

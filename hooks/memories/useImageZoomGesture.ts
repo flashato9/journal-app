@@ -6,37 +6,32 @@ import {
   withTiming,
 } from "react-native-reanimated";
 
-// Pinch-to-zoom + pan-while-zoomed for a single image, e.g. inside
+// Pinch-to-zoom for a single image, e.g. inside
 // components/memories/MediaGallery/MediaPreviewModal.tsx. Kept separate from
 // that component so its rendering stays focused on the modal chrome
 // (backdrop, close button) rather than gesture math.
 export function useImageZoomGesture() {
   const scale = useSharedValue(1);
   const savedScale = useSharedValue(1);
-  const translateX = useSharedValue(0);
-  const translateY = useSharedValue(0);
-  const savedTranslateX = useSharedValue(0);
-  const savedTranslateY = useSharedValue(0);
+  const focalX = useSharedValue(0);
+  const focalY = useSharedValue(0);
 
   const reset = useCallback(() => {
     scale.value = 1;
     savedScale.value = 1;
-    translateX.value = 0;
-    translateY.value = 0;
-    savedTranslateX.value = 0;
-    savedTranslateY.value = 0;
-  }, [
-    scale,
-    savedScale,
-    translateX,
-    translateY,
-    savedTranslateX,
-    savedTranslateY,
-  ]);
+    focalX.value = 0;
+    focalY.value = 0;
+  }, [scale, savedScale, focalX, focalY]);
 
-  const pinchGesture = Gesture.Pinch()
+  // No pan gesture — the image intentionally can't be dragged. Instead, the
+  // pinch's own focal point drives the transform (translate to focal point,
+  // scale, translate back), so zooming anchors on wherever the fingers are
+  // rather than always scaling from dead center.
+  const gesture = Gesture.Pinch()
     .onUpdate((event) => {
       scale.value = savedScale.value * event.scale;
+      focalX.value = event.focalX;
+      focalY.value = event.focalY;
     })
     .onEnd(() => {
       // Don't allow zooming out past the image's original size.
@@ -44,28 +39,13 @@ export function useImageZoomGesture() {
       scale.value = withTiming(savedScale.value);
     });
 
-  const panGesture = Gesture.Pan()
-    // Without this, a two-finger pinch also feeds its centroid movement into
-    // this gesture's onUpdate, translating the image while it's being
-    // zoomed instead of scaling in place around center.
-    .minPointers(1)
-    .maxPointers(1)
-    .onUpdate((event) => {
-      translateX.value = savedTranslateX.value + event.translationX;
-      translateY.value = savedTranslateY.value + event.translationY;
-    })
-    .onEnd(() => {
-      savedTranslateX.value = translateX.value;
-      savedTranslateY.value = translateY.value;
-    });
-
-  const gesture = Gesture.Simultaneous(pinchGesture, panGesture);
-
   const animatedStyle = useAnimatedStyle(() => ({
     transform: [
-      { translateX: translateX.value },
-      { translateY: translateY.value },
+      { translateX: focalX.value },
+      { translateY: focalY.value },
       { scale: scale.value },
+      { translateX: -focalX.value },
+      { translateY: -focalY.value },
     ],
   }));
 

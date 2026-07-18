@@ -7,10 +7,9 @@ import {
   getAppDirectory,
   StorageMode,
 } from "@/services/filesystem";
+import type { MediaType } from "@/types/media";
 
-// The kinds of media a memory can hold. Images and videos follow StorageMode
-// (gallery in prod, local in dev); audio is always app-private.
-export type MediaType = "image" | "video" | "audio";
+export type { MediaType };
 
 // Result of persisting a media file. `mediaLibraryAssetId` is only populated
 // for gallery-stored (production) images/videos — it's what lets a later export

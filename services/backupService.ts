@@ -1,37 +1,14 @@
 import { Directory, File, Paths } from "expo-file-system";
 import { unzip, zip } from "react-native-zip-archive";
 import {
-  createDayMemoryForImport,
-  createTimeMemoryForImport,
-  createTimeMemoryMedia,
-  createTimeMemoryQA,
-  deleteTimeMemoryMediaByTimeMemoryId,
-  deleteTimeMemoryQAByTimeMemoryId,
-  getAllLocationsByUserId,
-  getDayMemoriesByUserId,
-  getDayMemoryById,
-  getDayMemoryByUserIdAndDay,
-  getLocationById,
-  getLocationSettingsByUserId,
-  getNotificationsByUserId,
-  getRegisteredUserId,
-  getTimeMemoriesByDayMemoryId,
-  getTimeMemoryByDayMemoryIdAndTime,
-  getTimeMemoryMediaByTimeMemoryId,
-  getTimeMemoryQAByTimeMemoryId,
-  getUserIdByUsername,
-  getUserProfile,
-  insertLocationForImport,
-  insertNotificationForImport,
-  insertUserIntoDB,
-  locationExistsAtTime,
-  notificationExistsAtTime,
-  createLocationSettings,
-  setUserPreferredLoginMethod,
-  setUserProfileImagePath,
-  updateDayMemoryForImport,
-  updateLocationSettings,
-  updateTimeMemoryForImport,
+  DayMemoryTable,
+  LocationTable,
+  LocationSettingsTable,
+  NotificationTable,
+  TimeMemoryTable,
+  TimeMemoryMediaTable,
+  TimeMemoryQATable,
+  UserTable,
 } from "@/services/database";
 import {
   deleteMedia,
@@ -187,7 +164,7 @@ const cleanUp = (dir: Directory) => {
 // Builds a .zip snapshot of the user's data and returns a file:// uri to it,
 // ready to hand to Sharing.shareAsync.
 export const buildExportZip = async (userId: number): Promise<string> => {
-  const profile = getUserProfile(userId);
+  const profile = UserTable.getUserProfile(userId);
   if (!profile) {
     throw new Error("No user profile found to export");
   }
@@ -232,14 +209,16 @@ export const buildExportZip = async (userId: number): Promise<string> => {
     }
 
     const dayMemories: BackupDayMemory[] = [];
-    for (const dayMemory of getDayMemoriesByUserId(userId)) {
+    for (const dayMemory of DayMemoryTable.getDayMemoriesByUserId(userId)) {
       const timeMemories: BackupTimeMemory[] = [];
 
-      for (const timeMemory of getTimeMemoriesByDayMemoryId(dayMemory.id)) {
+      for (const timeMemory of TimeMemoryTable.getTimeMemoriesByDayMemoryId(
+        dayMemory.id,
+      )) {
         // Inline this memory's own location snapshot; ids don't travel.
         let location: BackupLocation | null = null;
         if (timeMemory.locationId) {
-          const row = getLocationById(timeMemory.locationId);
+          const row = LocationTable.getLocationById(timeMemory.locationId);
           if (row) {
             location = {
               latitude: row.latitude,
@@ -250,7 +229,9 @@ export const buildExportZip = async (userId: number): Promise<string> => {
         }
 
         const media: BackupMedia[] = [];
-        for (const item of getTimeMemoryMediaByTimeMemoryId(timeMemory.id)) {
+        for (const item of TimeMemoryMediaTable.getTimeMemoryMediaByTimeMemoryId(
+          timeMemory.id,
+        )) {
           const zipPath = await stageMedia(
             item.mediaUri,
             item.mediaType,
@@ -268,9 +249,9 @@ export const buildExportZip = async (userId: number): Promise<string> => {
           lastUpdatedTime: timeMemory.lastUpdatedTime,
           location,
           media,
-          questionnaire: getTimeMemoryQAByTimeMemoryId(timeMemory.id).map(
-            (qa) => ({ question: qa.question, answer: qa.answer }),
-          ),
+          questionnaire: TimeMemoryQATable.getTimeMemoryQAByTimeMemoryId(
+            timeMemory.id,
+          ).map((qa) => ({ question: qa.question, answer: qa.answer })),
         });
       }
 
@@ -283,7 +264,7 @@ export const buildExportZip = async (userId: number): Promise<string> => {
       });
     }
 
-    const settings = getLocationSettingsByUserId(userId);
+    const settings = LocationSettingsTable.getLocationSettingsByUserId(userId);
 
     const data: BackupData = {
       user: {
@@ -300,16 +281,18 @@ export const buildExportZip = async (userId: number): Promise<string> => {
               settings.locationTrackingPollFrequency,
           }
         : null,
-      locations: getAllLocationsByUserId(userId).map((row) => ({
+      locations: LocationTable.getAllLocationsByUserId(userId).map((row) => ({
         latitude: row.latitude,
         longitude: row.longitude,
         altitude: row.altitude,
         createdDateTime: row.createdDateTime,
       })),
-      notifications: getNotificationsByUserId(userId).map((row) => ({
-        notificationMessage: row.notificationMessage,
-        createdAt: row.createdAt,
-      })),
+      notifications: NotificationTable.getNotificationsByUserId(userId).map(
+        (row) => ({
+          notificationMessage: row.notificationMessage,
+          createdAt: row.createdAt,
+        }),
+      ),
       dayMemories,
     };
 
@@ -387,7 +370,7 @@ const writeTimeMemoryChildren = async (
   for (const entry of timeMemory.media) {
     const restored = await restoreMedia(extractedDir, entry);
     if (restored) {
-      createTimeMemoryMedia(
+      TimeMemoryMediaTable.createTimeMemoryMedia(
         timeMemoryId,
         restored.uri,
         entry.mediaType,
@@ -396,7 +379,7 @@ const writeTimeMemoryChildren = async (
     }
   }
   for (const qa of timeMemory.questionnaire) {
-    createTimeMemoryQA(timeMemoryId, qa.question, qa.answer);
+    TimeMemoryQATable.createTimeMemoryQA(timeMemoryId, qa.question, qa.answer);
   }
 };
 
@@ -407,7 +390,8 @@ const replaceTimeMemoryChildren = async (
   extractedDir: Directory,
   timeMemory: BackupTimeMemory,
 ) => {
-  const oldMedia = getTimeMemoryMediaByTimeMemoryId(timeMemoryId);
+  const oldMedia =
+    TimeMemoryMediaTable.getTimeMemoryMediaByTimeMemoryId(timeMemoryId);
   await Promise.all(
     oldMedia.map((item) =>
       deleteMedia(item.mediaUri, item.mediaType).catch((error) => {
@@ -415,8 +399,8 @@ const replaceTimeMemoryChildren = async (
       }),
     ),
   );
-  deleteTimeMemoryMediaByTimeMemoryId(timeMemoryId);
-  deleteTimeMemoryQAByTimeMemoryId(timeMemoryId);
+  TimeMemoryMediaTable.deleteTimeMemoryMediaByTimeMemoryId(timeMemoryId);
+  TimeMemoryQATable.deleteTimeMemoryQAByTimeMemoryId(timeMemoryId);
 
   await writeTimeMemoryChildren(timeMemoryId, extractedDir, timeMemory);
 };
@@ -425,11 +409,11 @@ const replaceTimeMemoryChildren = async (
 // blank. Returns null if a *different* user is already registered — this app
 // is single-user everywhere else, so import shouldn't invent a second account.
 const resolveImportUserId = (username: string): number | null => {
-  const existingId = getRegisteredUserId();
+  const existingId = UserTable.getRegisteredUserId();
   if (existingId === null) {
-    return insertUserIntoDB(username);
+    return UserTable.insertUserIntoDB(username);
   }
-  const matchingId = getUserIdByUsername(username);
+  const matchingId = UserTable.getUserIdByUsername(username);
   return matchingId === existingId ? existingId : null;
 };
 
@@ -463,13 +447,19 @@ export const applyImportZip = async (zipUri: string): Promise<void> => {
 
     // --- User profile ---
     if (data.user.preferredLoginMethod) {
-      setUserPreferredLoginMethod(userId, data.user.preferredLoginMethod);
+      UserTable.setUserPreferredLoginMethod(
+        userId,
+        data.user.preferredLoginMethod,
+      );
     }
     if (data.user.profileImagePath) {
       const source = new File(extractedDir, data.user.profileImagePath);
       if (source.exists) {
         try {
-          setUserProfileImagePath(userId, await saveProfilePicture(source.uri));
+          UserTable.setUserProfileImagePath(
+            userId,
+            await saveProfilePicture(source.uri),
+          );
         } catch (error) {
           console.warn("Failed to restore profile picture:", error);
         }
@@ -479,8 +469,8 @@ export const applyImportZip = async (zipUri: string): Promise<void> => {
     // --- Location settings ---
     if (data.locationSettings) {
       const s = data.locationSettings;
-      if (getLocationSettingsByUserId(userId)) {
-        updateLocationSettings(
+      if (LocationSettingsTable.getLocationSettingsByUserId(userId)) {
+        LocationSettingsTable.updateLocationSettings(
           userId,
           s.fetchFrequency,
           s.notificationThreshold,
@@ -488,7 +478,7 @@ export const applyImportZip = async (zipUri: string): Promise<void> => {
           s.locationTrackingPollFrequency,
         );
       } else {
-        createLocationSettings(
+        LocationSettingsTable.createLocationSettings(
           userId,
           s.fetchFrequency,
           s.notificationThreshold,
@@ -500,8 +490,8 @@ export const applyImportZip = async (zipUri: string): Promise<void> => {
 
     // --- Breadcrumbs & notifications (deduped on their timestamps) ---
     for (const row of data.locations) {
-      if (!locationExistsAtTime(userId, row.createdDateTime)) {
-        insertLocationForImport(
+      if (!LocationTable.locationExistsAtTime(userId, row.createdDateTime)) {
+        LocationTable.insertLocationForImport(
           userId,
           row.latitude,
           row.longitude,
@@ -511,8 +501,8 @@ export const applyImportZip = async (zipUri: string): Promise<void> => {
       }
     }
     for (const row of data.notifications) {
-      if (!notificationExistsAtTime(userId, row.createdAt)) {
-        insertNotificationForImport(
+      if (!NotificationTable.notificationExistsAtTime(userId, row.createdAt)) {
+        NotificationTable.insertNotificationForImport(
           userId,
           row.notificationMessage,
           row.createdAt,
@@ -526,24 +516,27 @@ export const applyImportZip = async (zipUri: string): Promise<void> => {
     let skipped = 0;
 
     for (const dayMemory of data.dayMemories) {
-      const existingDay = getDayMemoryByUserIdAndDay(userId, dayMemory.day);
+      const existingDay = DayMemoryTable.getDayMemoryByUserIdAndDay(
+        userId,
+        dayMemory.day,
+      );
       let dayMemoryId: number;
 
       if (existingDay) {
         dayMemoryId = existingDay.id;
-        const localDay = getDayMemoryById(dayMemoryId);
+        const localDay = DayMemoryTable.getDayMemoryById(dayMemoryId);
         if (
           localDay &&
           isNewerThan(dayMemory.lastUpdatedTime, localDay.lastUpdatedTime)
         ) {
-          updateDayMemoryForImport(
+          DayMemoryTable.updateDayMemoryForImport(
             dayMemoryId,
             dayMemory.summary,
             dayMemory.lastUpdatedTime,
           );
         }
       } else {
-        dayMemoryId = createDayMemoryForImport(
+        dayMemoryId = DayMemoryTable.createDayMemoryForImport(
           userId,
           dayMemory.day,
           dayMemory.summary,
@@ -553,7 +546,7 @@ export const applyImportZip = async (zipUri: string): Promise<void> => {
       }
 
       for (const timeMemory of dayMemory.timeMemories) {
-        const existing = getTimeMemoryByDayMemoryIdAndTime(
+        const existing = TimeMemoryTable.getTimeMemoryByDayMemoryIdAndTime(
           dayMemoryId,
           timeMemory.timeOfRecord,
         );
@@ -570,7 +563,7 @@ export const applyImportZip = async (zipUri: string): Promise<void> => {
 
         // The memory's location snapshot becomes a fresh Location row.
         const locationId = timeMemory.location
-          ? insertLocationForImport(
+          ? LocationTable.insertLocationForImport(
               userId,
               timeMemory.location.latitude,
               timeMemory.location.longitude,
@@ -580,7 +573,7 @@ export const applyImportZip = async (zipUri: string): Promise<void> => {
           : null;
 
         if (!existing) {
-          const timeMemoryId = createTimeMemoryForImport(
+          const timeMemoryId = TimeMemoryTable.createTimeMemoryForImport(
             dayMemoryId,
             locationId,
             timeMemory.timeOfRecord,
@@ -591,7 +584,7 @@ export const applyImportZip = async (zipUri: string): Promise<void> => {
           await writeTimeMemoryChildren(timeMemoryId, extractedDir, timeMemory);
           inserted += 1;
         } else {
-          updateTimeMemoryForImport(
+          TimeMemoryTable.updateTimeMemoryForImport(
             existing.id,
             locationId,
             timeMemory.summary,

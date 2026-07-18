@@ -13,7 +13,7 @@ export default function ChangeAuthMethod() {
     handleSave,
   } = useChangeAuthMethod();
 
-  return (
+  const content = (
     <View style={styles.container}>
       <View style={styles.row}>
         <Text style={styles.label}>Auth Method</Text>
@@ -36,6 +36,7 @@ export default function ChangeAuthMethod() {
       </View>
     </View>
   );
+  return content;
 }
 
 const styles = StyleSheet.create({

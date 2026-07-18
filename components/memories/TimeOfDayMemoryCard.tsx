@@ -29,21 +29,20 @@ export default function TimeOfDayMemoryCard({
 }: TimeOfDayMemoryCardProps) {
   const router = useRouter();
 
+  // Passes the raw ISO datetime to readoreditmemory, not the pre-formatted display string.
   const handleSeeMore = () => {
-    // Pass raw ISO datetime to readmemory
-    console.log("handleSeeMore - timeOfRecord (ISO):", memory.timeOfRecord);
-
-    router.push({
+    const destination: Parameters<typeof router.push>[0] = {
       pathname: "/readoreditmemory",
       params: {
         summary: memory.summary,
         timeOfRecord: memory.timeOfRecord,
         id: memory.id,
       },
-    });
+    };
+    router.push(destination);
   };
 
-  return (
+  const content = (
     <TouchableOpacity
       onPress={handleSeeMore}
       style={styles.card}
@@ -68,6 +67,7 @@ export default function TimeOfDayMemoryCard({
       </View>
     </TouchableOpacity>
   );
+  return content;
 }
 
 const styles = StyleSheet.create({

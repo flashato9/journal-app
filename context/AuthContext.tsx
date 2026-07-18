@@ -10,6 +10,7 @@ interface LocationSettings {
 interface AuthContextType {
   username: string | null;
   setUsername: (username: string | null) => void;
+  isLoggedIn: boolean;
   locationSettings: LocationSettings | null;
   setLocationSettings: (settings: LocationSettings | null) => void;
 }
@@ -17,6 +18,7 @@ interface AuthContextType {
 export const AuthContext = createContext<AuthContextType>({
   username: null,
   setUsername: () => {},
+  isLoggedIn: false,
   locationSettings: null,
   setLocationSettings: () => {},
 });
@@ -28,7 +30,13 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   return (
     <AuthContext.Provider
-      value={{ username, setUsername, locationSettings, setLocationSettings }}
+      value={{
+        username,
+        setUsername,
+        isLoggedIn: username !== null,
+        locationSettings,
+        setLocationSettings,
+      }}
     >
       {children}
     </AuthContext.Provider>

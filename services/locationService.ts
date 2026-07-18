@@ -5,25 +5,29 @@ import * as TaskManager from "expo-task-manager";
 import { getDistance } from "geolib";
 import { Platform } from "react-native";
 import {
-  getLatestLocation,
-  getLatestNotification,
-  getLatestTimeMemoryWithLocation,
-  getLocationSettingsByUserId,
-  getUserIdByUsername,
-  insertLocation,
-  insertNotification,
+  LocationTable,
+  LocationSettingsTable,
+  NotificationTable,
+  TimeMemoryTable,
+  UserTable,
 } from "./database";
 
 // Local notifications are unavailable only in Expo Go (SDK 53+); dev and
 // production builds support them. Background location requires a dev build
 // anyway, so this is effectively always true where tracking works.
-export const SEND_NOTIFICATIONS =
-  Constants.executionEnvironment !== ExecutionEnvironment.StoreClient;
+export const isSendNotificationsEnabled = (): boolean => {
+  const isNotExpoGo =
+    Constants.executionEnvironment !== ExecutionEnvironment.StoreClient;
+  return isNotExpoGo;
+};
 
 // Marker stored in a break notification's `data` payload, read by
-// app/_layout.tsx's tap handler to know to navigate to the create-memory
-// screen.
-export const BREAK_NOTIFICATION_TYPE = "break-reminder";
+// the break-notification-tap handler to know to navigate to the
+// create-memory screen.
+export const getBreakNotificationType = (): string => {
+  const breakNotificationType = "break-reminder";
+  return breakNotificationType;
+};
 
 // Lazy load notifications to avoid module initialization errors in Expo Go
 let NotificationsModule: any = null;
@@ -96,7 +100,7 @@ const stage2NotificationThresholdCheck = (
   distanceFromMemory: number | "FIRST_MEMORY";
   threshold: number;
 } => {
-  const latestMemory = getLatestTimeMemoryWithLocation(userId);
+  const latestMemory = TimeMemoryTable.getLatestTimeMemoryWithLocation(userId);
   if (!latestMemory || !latestMemory.latitude || !latestMemory.longitude) {
     // No previous memory to measure against — treat that as being
     // unboundedly far from "the last memory," so the check passes through
@@ -142,10 +146,11 @@ const stage2NotificationThresholdCheck = (
 
 // ===== HELPER: Live status notification text =====
 
-// One-line, weather-app-style status shown in the (patched, see
-// patches/expo-location+*.patch) "Journal is tracking your walk"
-// notification — purely informational, independent of whether an actual
-// break notification fires.
+// One-line, weather-app-style status shown in a separate live-status
+// notification (kept distinct from the mandatory foreground-service
+// notification, which can't be updated without patching expo-location) —
+// purely informational, independent of whether an actual break notification
+// fires.
 const buildStatusMessage = (
   isMoving: boolean,
   distanceFromMemory: number | "FIRST_MEMORY",
@@ -180,13 +185,27 @@ const buildStatusMessage = (
 
 const TRACKING_NOTIFICATION_TITLE = "Journal is tracking your walk";
 
+// Fixed identifier: scheduling with the same identifier again replaces this
+// notification's content in place instead of stacking a new one each cycle.
+const LIVE_STATUS_NOTIFICATION_ID = "live-status-notification";
+const STATUS_NOTIFICATION_CHANNEL_ID = "status-updates";
+
 const updateLiveStatusNotification = async (status: string): Promise<void> => {
+  if (!isSendNotificationsEnabled()) {
+    return;
+  }
+
   try {
-    await Location.updateForegroundServiceNotificationAsync(
-      LOCATION_TASK_NAME,
-      TRACKING_NOTIFICATION_TITLE,
-      status,
-    );
+    const Notifications = await getNotificationsModule();
+    await Notifications.scheduleNotificationAsync({
+      identifier: LIVE_STATUS_NOTIFICATION_ID,
+      content: {
+        title: TRACKING_NOTIFICATION_TITLE,
+        body: status,
+        sticky: true,
+      },
+      trigger: { channelId: STATUS_NOTIFICATION_CHANNEL_ID },
+    });
   } catch (err) {
     console.warn("⚠️  Could not update live status notification:", err);
   }
@@ -234,7 +253,7 @@ const stage3RestPeriodAndNotify = async (
   // Check for duplicate notification within 5 minutes. Compare against the
   // latest notification regardless of message text — the message embeds the
   // measured distance, so exact-match comparison would never find a duplicate
-  const latestNotification = getLatestNotification(userId);
+  const latestNotification = NotificationTable.getLatestNotification(userId);
   if (latestNotification) {
     const notificationTime = new Date(latestNotification.createdAt).getTime();
     const timeSinceNotification = (currentTime - notificationTime) / 1000; // seconds
@@ -250,17 +269,18 @@ const stage3RestPeriodAndNotify = async (
 
   // Send notification
   console.log(`📬 Sending notification: ${notificationMessage}`);
-  insertNotification(userId, notificationMessage);
+  NotificationTable.insertNotification(userId, notificationMessage);
 
-  if (SEND_NOTIFICATIONS) {
+  if (isSendNotificationsEnabled()) {
     try {
       const Notifications = await getNotificationsModule();
       await Notifications.scheduleNotificationAsync({
+        identifier: LIVE_STATUS_NOTIFICATION_ID,
         content: {
           title: "You're on a break!",
           body: notificationMessage,
           sound: "app_notification.mp3",
-          data: { type: BREAK_NOTIFICATION_TYPE },
+          data: { type: getBreakNotificationType() },
         },
         trigger: null,
       });
@@ -332,7 +352,7 @@ TaskManager.defineTask(LOCATION_TASK_NAME, async ({ data, error }) => {
 
     let settings: any = null;
     try {
-      settings = getLocationSettingsByUserId(userId);
+      settings = LocationSettingsTable.getLocationSettingsByUserId(userId);
     } catch (err) {
       console.error("❌ Failed to fetch location settings:", err);
       return;
@@ -355,7 +375,7 @@ TaskManager.defineTask(LOCATION_TASK_NAME, async ({ data, error }) => {
     // measures the rest period against its timestamp
     let previousLocation: PreviousLocation = null;
     try {
-      previousLocation = getLatestLocation(userId);
+      previousLocation = LocationTable.getLatestLocation(userId);
     } catch (err) {
       console.error("❌ Failed to fetch previous location:", err);
       return;
@@ -379,7 +399,12 @@ TaskManager.defineTask(LOCATION_TASK_NAME, async ({ data, error }) => {
 
     if (stage1Result) {
       try {
-        insertLocation(userId, currentLat, currentLon, currentAlt);
+        LocationTable.insertLocation(
+          userId,
+          currentLat,
+          currentLon,
+          currentAlt,
+        );
         console.log(
           `✅ Location recorded: ${currentLat.toFixed(4)}, ${currentLon.toFixed(4)}`,
         );
@@ -472,7 +497,7 @@ export const startLocationTracking = async () => {
     }
 
     // Request notification permission (skipped only in Expo Go)
-    if (SEND_NOTIFICATIONS) {
+    if (isSendNotificationsEnabled()) {
       try {
         const Notifications = await getNotificationsModule();
         if (Platform.OS === "android") {
@@ -483,6 +508,14 @@ export const startLocationTracking = async () => {
             importance: Notifications.AndroidImportance.HIGH,
             sound: "app_notification.mp3",
           });
+          await Notifications.setNotificationChannelAsync(
+            STATUS_NOTIFICATION_CHANNEL_ID,
+            {
+              name: "Tracking status",
+              importance: Notifications.AndroidImportance.DEFAULT,
+              sound: null,
+            },
+          );
         }
         await Notifications.requestPermissionsAsync();
       } catch (notifError) {
@@ -514,7 +547,7 @@ export const startLocationTracking = async () => {
       throw new Error("Could not determine user ID for location tracking");
     }
 
-    const settings = getLocationSettingsByUserId(userId);
+    const settings = LocationSettingsTable.getLocationSettingsByUserId(userId);
     const fetchFrequencySeconds = settings ? settings.fetchFrequency : 10;
     const fetchFrequencyMs = fetchFrequencySeconds * 1000;
 
@@ -527,7 +560,10 @@ export const startLocationTracking = async () => {
     // the device has moved that far, which breaks time-based updates and the
     // rest-period detection (no updates arrive while the user is resting)
     await Location.startLocationUpdatesAsync(LOCATION_TASK_NAME, {
-      accuracy: Location.Accuracy.High,
+      // Balanced (not High) so the fused provider can fall back to Wi-Fi/cell
+      // positioning indoors; High is GPS-primary and delivers no fixes without
+      // sky view, which silently stops the background task indoors.
+      accuracy: Location.Accuracy.Balanced,
       timeInterval: fetchFrequencyMs,
       distanceInterval: 0,
       mayShowUserSettingsDialog: true,
@@ -539,10 +575,22 @@ export const startLocationTracking = async () => {
         notificationTitle: "Journal is tracking your walk",
         notificationBody:
           "Location is used to remind you to journal when you take a break.",
+        // Accent color for the notification icon/background; matches the
+        // brand color used for expo-notifications in app.json. Doesn't fix
+        // the icon shape itself — that's still applicationInfo.icon inside
+        // expo-location's native code, unreachable without a patch.
+        notificationColor: "#7A5236",
       },
     });
 
     console.log(`✅ Location.startLocationUpdatesAsync() completed`);
+
+    // Post the live-status notification immediately instead of waiting for
+    // the first background task cycle (which can be up to fetchFrequency
+    // seconds away).
+    await updateLiveStatusNotification(
+      "Just started — gathering your location.",
+    );
 
     const isNowTracking =
       await TaskManager.isTaskRegisteredAsync(LOCATION_TASK_NAME);
@@ -600,7 +648,7 @@ const getUserIdFromStorage = async (): Promise<number | null> => {
     }
 
     // Get userId from database using username
-    const userId = getUserIdByUsername(username);
+    const userId = UserTable.getUserIdByUsername(username);
     return userId;
   } catch (error) {
     console.error("Error getting user ID from storage:", error);

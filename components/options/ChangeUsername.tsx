@@ -12,7 +12,7 @@ export default function ChangeUsername() {
     handleSave,
   } = useChangeUsername();
 
-  return (
+  const content = (
     <View style={styles.container}>
       <View style={styles.row}>
         <Text style={styles.label}>Username</Text>
@@ -20,7 +20,7 @@ export default function ChangeUsername() {
           style={[
             styles.input,
             styles.inputFlex,
-            usernameError ? styles.inputError : {},
+            usernameError && styles.inputError,
           ]}
           placeholder="Username"
           placeholderTextColor="#999"
@@ -42,6 +42,7 @@ export default function ChangeUsername() {
       </View>
     </View>
   );
+  return content;
 }
 
 const styles = StyleSheet.create({

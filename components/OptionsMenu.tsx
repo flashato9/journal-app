@@ -35,20 +35,18 @@ export default function OptionsMenu() {
     { label: "Exit App", onPress: handleExitApp },
   ];
 
-  return (
+  const content = (
     <Modal
       visible={menuVisible}
       transparent
       animationType="fade"
       onRequestClose={() => setMenuVisible(false)}
     >
-      {/* Overlay */}
       <TouchableOpacity
         style={styles.overlay}
         activeOpacity={1}
         onPress={() => setMenuVisible(false)}
       >
-        {/* Menu */}
         <View style={styles.menu}>
           {menuOptions.map((option, index) => (
             <TouchableOpacity
@@ -66,6 +64,7 @@ export default function OptionsMenu() {
       </TouchableOpacity>
     </Modal>
   );
+  return content;
 }
 
 const styles = StyleSheet.create({

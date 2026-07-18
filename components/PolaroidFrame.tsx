@@ -9,12 +9,13 @@ export default function PolaroidFrame({
   children,
   caption,
 }: PolaroidFrameProps) {
-  return (
+  const content = (
     <View style={styles.frame}>
       <View style={styles.photoArea}>{children}</View>
       {caption ? <Text style={styles.caption}>{caption}</Text> : null}
     </View>
   );
+  return content;
 }
 
 const styles = StyleSheet.create({

@@ -37,8 +37,7 @@ export default function Header({
   const { profileImagePath } = useUserSession();
   const router = useRouter();
 
-  // Refresh immediately on screen focus, instead of waiting for the next
-  // periodic poll in OptionsMenuContext.
+  // Refresh immediately on focus instead of waiting for OptionsMenuContext's next poll.
   useFocusEffect(
     useCallback(() => {
       refreshLocationTrackingStatus();
@@ -60,7 +59,7 @@ export default function Header({
     );
   };
 
-  return (
+  const content = (
     <View style={[styles.header, containerStyle]}>
       <Text style={styles.headerTitle}>{title}</Text>
       {actionIcons && (
@@ -92,6 +91,7 @@ export default function Header({
       </View>
     </View>
   );
+  return content;
 }
 
 const styles = StyleSheet.create({

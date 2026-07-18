@@ -1,26 +1,10 @@
 import { MaterialIcons } from "@expo/vector-icons";
-import {
-  RecordingPresets,
-  requestRecordingPermissionsAsync,
-  setAudioModeAsync,
-  useAudioRecorder,
-  useAudioRecorderState,
-} from "expo-audio";
-import { useCallback, useEffect, useState } from "react";
-import {
-  Alert,
-  Modal,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
-} from "react-native";
+import { Modal, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { useRecordAudioModal } from "@/hooks/memories/useRecordAudioModal";
 import { formatDuration } from "./formatDuration";
 
 interface RecordAudioModalProps {
   visible: boolean;
-  // Called with the recorder's temporary file URI once a recording is stopped.
-  // The caller is responsible for persisting it.
   onRecorded: (uri: string) => void;
   onClose: () => void;
 }
@@ -30,95 +14,17 @@ export default function RecordAudioModal({
   onRecorded,
   onClose,
 }: RecordAudioModalProps) {
-  const recorder = useAudioRecorder(RecordingPresets.HIGH_QUALITY);
-  const recorderState = useAudioRecorderState(recorder);
-  const [isPreparing, setIsPreparing] = useState(false);
+  const recordAudioModalOptions = { visible, onRecorded, onClose };
+  const {
+    recorderState,
+    isPreparing,
+    isRecording,
+    handleStart,
+    handleStop,
+    handleCancel,
+  } = useRecordAudioModal(recordAudioModalOptions);
 
-  const isRecording = recorderState.isRecording;
-
-  // Stop without handing the recording back — used by cancel and by unmount, so
-  // an abandoned recorder never keeps the mic open.
-  const discard = useCallback(async () => {
-    try {
-      if (recorder.isRecording) {
-        await recorder.stop();
-      }
-    } catch (error) {
-      console.warn("Failed to stop recorder while discarding:", error);
-    }
-  }, [recorder]);
-
-  // Ask for the mic up front: if it's denied there's nothing to show, so close.
-  useEffect(() => {
-    if (!visible) return;
-
-    let cancelled = false;
-    const prepare = async () => {
-      setIsPreparing(true);
-      try {
-        const permission = await requestRecordingPermissionsAsync();
-        if (cancelled) return;
-        if (!permission.granted) {
-          Alert.alert(
-            "Permission denied",
-            "Microphone access is required to record a sound",
-          );
-          onClose();
-          return;
-        }
-
-        // Required on iOS for the recorder to capture at all.
-        await setAudioModeAsync({
-          allowsRecording: true,
-          playsInSilentMode: true,
-        });
-        await recorder.prepareToRecordAsync();
-      } catch (error) {
-        if (cancelled) return;
-        console.error("Error preparing recorder:", error);
-        Alert.alert("Error", "Failed to start the recorder");
-        onClose();
-      } finally {
-        if (!cancelled) setIsPreparing(false);
-      }
-    };
-
-    prepare();
-    return () => {
-      cancelled = true;
-    };
-  }, [visible, recorder, onClose]);
-
-  const handleStart = () => {
-    try {
-      recorder.record();
-    } catch (error) {
-      console.error("Error starting recording:", error);
-      Alert.alert("Error", "Failed to start recording");
-    }
-  };
-
-  const handleStop = async () => {
-    try {
-      await recorder.stop();
-      const uri = recorder.uri;
-      if (!uri) {
-        throw new Error("Recorder produced no file");
-      }
-      onRecorded(uri);
-    } catch (error) {
-      console.error("Error stopping recording:", error);
-      Alert.alert("Error", "Failed to save recording");
-      onClose();
-    }
-  };
-
-  const handleCancel = async () => {
-    await discard();
-    onClose();
-  };
-
-  return (
+  const content = (
     <Modal
       transparent
       animationType="fade"
@@ -161,6 +67,7 @@ export default function RecordAudioModal({
       </View>
     </Modal>
   );
+  return content;
 }
 
 const styles = StyleSheet.create({

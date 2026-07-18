@@ -14,7 +14,7 @@ export default function ChangePassword() {
     handleSave,
   } = useChangePassword();
 
-  return (
+  const content = (
     <View style={styles.container}>
       <View style={styles.row}>
         <Text style={styles.label}>Current Password</Text>
@@ -34,7 +34,7 @@ export default function ChangePassword() {
           style={[
             styles.input,
             styles.inputFlex,
-            passwordError ? styles.inputError : {},
+            passwordError && styles.inputError,
           ]}
           placeholder="New Password"
           placeholderTextColor="#999"
@@ -57,6 +57,7 @@ export default function ChangePassword() {
       </View>
     </View>
   );
+  return content;
 }
 
 const styles = StyleSheet.create({

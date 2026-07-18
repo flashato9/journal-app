@@ -1,11 +1,6 @@
 import { useContext, useEffect, useState } from "react";
 import { AuthContext } from "@/context/AuthContext";
-import {
-  createLocationSettings,
-  getLocationSettingsByUserId,
-  getUserIdByUsername,
-  updateLocationSettings,
-} from "@/services/database";
+import { LocationSettingsTable, UserTable } from "@/services/database";
 import {
   startLocationTracking,
   stopLocationTracking,
@@ -34,20 +29,21 @@ export function useLocationSettings() {
           return;
         }
 
-        const userId = getUserIdByUsername(username);
+        const userId = UserTable.getUserIdByUsername(username);
         if (!userId) {
           console.warn("Could not find user ID");
           setLoading(false);
           return;
         }
 
-        let settings = getLocationSettingsByUserId(userId);
+        let settings =
+          LocationSettingsTable.getLocationSettingsByUserId(userId);
 
         // If settings don't exist, create dummy settings
         if (!settings) {
           console.log("Creating default location settings");
-          createLocationSettings(userId, 10, 1, 10);
-          settings = getLocationSettingsByUserId(userId);
+          LocationSettingsTable.createLocationSettings(userId, 10, 1, 10);
+          settings = LocationSettingsTable.getLocationSettingsByUserId(userId);
         }
 
         if (settings) {
@@ -76,7 +72,7 @@ export function useLocationSettings() {
         return;
       }
 
-      const userId = getUserIdByUsername(username);
+      const userId = UserTable.getUserIdByUsername(username);
       if (!userId) {
         console.warn("Could not find user ID");
         setIsSaving(false);
@@ -89,7 +85,7 @@ export function useLocationSettings() {
       const pollFreq = parseInt(pollFrequency) || 15;
 
       // Update database
-      updateLocationSettings(
+      LocationSettingsTable.updateLocationSettings(
         userId,
         fetchFreq,
         distThreshold,

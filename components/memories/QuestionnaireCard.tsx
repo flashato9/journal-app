@@ -25,7 +25,7 @@ export default function QuestionnaireCard({
 }: QuestionnaireCardProps) {
   const [isFocused, setIsFocused] = useState(false);
 
-  return (
+  const content = (
     <View style={styles.card}>
       {onRemove && (
         <TouchableOpacity
@@ -76,6 +76,7 @@ export default function QuestionnaireCard({
       />
     </View>
   );
+  return content;
 }
 
 const styles = StyleSheet.create({

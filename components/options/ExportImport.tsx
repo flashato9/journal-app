@@ -13,7 +13,7 @@ export default function ExportImport() {
 
   const busy = isExporting || isImporting;
 
-  return (
+  const content = (
     <View style={styles.content}>
       <View style={styles.setting}>
         <TouchableOpacity
@@ -62,6 +62,7 @@ export default function ExportImport() {
       </Text>
     </View>
   );
+  return content;
 }
 
 const styles = StyleSheet.create({

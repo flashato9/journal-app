@@ -6,12 +6,7 @@ import { ActionSheetIOS, Alert, Platform } from "react-native";
 import type { PreferredAuthMethod } from "@/constants/authMethod";
 import { usePasswordField } from "@/hooks/welcome/usePasswordField";
 import { useUsernameField } from "@/hooks/welcome/useUsernameField";
-import {
-  insertUserIntoDB,
-  isUserExists,
-  setUserPreferredLoginMethod,
-  setUserProfileImagePath,
-} from "@/services/database";
+import { UserTable } from "@/services/database";
 import {
   saveProfilePicture,
   savePlaceholderProfilePicture,
@@ -134,14 +129,14 @@ export function useRegister() {
       // available immediately (login otherwise has no way to know it
       // until the DB row is created on first successful login).
       try {
-        if (!isUserExists(username)) {
-          const userId = insertUserIntoDB(username);
-          setUserPreferredLoginMethod(userId, preferredAuthMethod);
+        if (!UserTable.isUserExists(username)) {
+          const userId = UserTable.insertUserIntoDB(username);
+          UserTable.setUserPreferredLoginMethod(userId, preferredAuthMethod);
 
           const profileImagePath = profileImageUri
             ? await saveProfilePicture(profileImageUri)
             : await savePlaceholderProfilePicture();
-          setUserProfileImagePath(userId, profileImagePath);
+          UserTable.setUserProfileImagePath(userId, profileImagePath);
         }
       } catch (dbError) {
         console.error("Error creating user in database:", dbError);

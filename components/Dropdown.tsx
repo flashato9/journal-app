@@ -22,7 +22,7 @@ export default function Dropdown<T extends string>({
 
   const selectedLabel = options.find((option) => option.value === value)?.label;
 
-  return (
+  const content = (
     <View style={styles.container}>
       <TouchableOpacity
         style={styles.dropdown}
@@ -54,6 +54,7 @@ export default function Dropdown<T extends string>({
       )}
     </View>
   );
+  return content;
 }
 
 const styles = StyleSheet.create({

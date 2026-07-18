@@ -21,7 +21,6 @@ export default function SummaryCard({
   const [editedText, setEditedText] = useState<string>(initialText);
   const [isEditingMode, setIsEditingMode] = useState(false);
 
-  // Update editedText when initialText changes
   useEffect(() => {
     setEditedText(initialText);
   }, [initialText]);
@@ -30,8 +29,8 @@ export default function SummaryCard({
     setIsEditingMode(true);
   }, []);
 
+  // Validates the summary length, then calls onSubmit and exits edit mode.
   const handleSave = useCallback(() => {
-    // Validate length
     if (editedText.trim().length < 10) {
       Alert.alert("Error", "Summary must be at least 10 characters long");
       return;
@@ -42,12 +41,11 @@ export default function SummaryCard({
       return;
     }
 
-    // Call the onSubmit callback
     onSubmit(editedText);
     setIsEditingMode(false);
   }, [editedText, onSubmit]);
 
-  return (
+  const content = (
     <View style={styles.summaryContainer}>
       {isEditingMode ? (
         <View style={styles.editSummaryContainer}>
@@ -80,6 +78,7 @@ export default function SummaryCard({
       </TouchableOpacity>
     </View>
   );
+  return content;
 }
 
 const styles = StyleSheet.create({

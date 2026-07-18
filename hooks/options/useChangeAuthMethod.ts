@@ -1,9 +1,6 @@
 import { useEffect, useState } from "react";
 import type { PreferredAuthMethod } from "@/constants/authMethod";
-import {
-  getRegisteredUserId,
-  setUserPreferredLoginMethod,
-} from "@/services/database";
+import { UserTable } from "@/services/database";
 import { useUserSession } from "@/hooks/welcome/useUserSession";
 
 // Custom hook that encapsulates the preferred authentication method change:
@@ -23,10 +20,10 @@ export function useChangeAuthMethod() {
   const handleSave = async () => {
     setIsSaving(true);
     try {
-      const userId = getRegisteredUserId();
+      const userId = UserTable.getRegisteredUserId();
       if (!userId) return;
 
-      setUserPreferredLoginMethod(userId, selectedMethod);
+      UserTable.setUserPreferredLoginMethod(userId, selectedMethod);
     } finally {
       setIsSaving(false);
     }

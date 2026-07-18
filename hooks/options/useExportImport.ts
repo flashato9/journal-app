@@ -4,7 +4,7 @@ import { useContext, useState } from "react";
 import { Alert } from "react-native";
 import { AuthContext } from "@/context/AuthContext";
 import { applyImportZip, buildExportZip } from "@/services/backupService";
-import { getUserIdByUsername } from "@/services/database";
+import { UserTable } from "@/services/database";
 
 // Owns the Backup & Restore section: building an export zip and handing it to
 // the OS share sheet, and picking a backup file to import back in.
@@ -21,7 +21,7 @@ export function useExportImport() {
         return;
       }
 
-      const userId = getUserIdByUsername(username);
+      const userId = UserTable.getUserIdByUsername(username);
       if (!userId) {
         throw new Error(`User not found in database: ${username}`);
       }

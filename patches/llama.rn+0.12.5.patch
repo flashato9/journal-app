@@ -1,3 +1,41 @@
+diff --git a/node_modules/llama.rn/install/download-native-artifacts.js b/node_modules/llama.rn/install/download-native-artifacts.js
+index 240d48a..032b79c 100644
+--- a/node_modules/llama.rn/install/download-native-artifacts.js
++++ b/node_modules/llama.rn/install/download-native-artifacts.js
+@@ -164,10 +164,30 @@ async function downloadArchive(url, outputPath) {
+   return hash.digest('hex')
+ }
+ 
++function resolveTarBinary() {
++  if (process.platform === 'win32') {
++    const systemTar = path.join(
++      process.env.SystemRoot || 'C:\\Windows',
++      'System32',
++      'tar.exe',
++    )
++
++    if (fs.existsSync(systemTar)) {
++      return systemTar
++    }
++  }
++
++  return 'tar'
++}
++
+ function extractArchive(archivePath) {
+-  const result = spawnSync('tar', ['-xzf', archivePath, '-C', packageRoot], {
+-    stdio: 'inherit',
+-  })
++  const tarBinary = resolveTarBinary()
++  const args =
++    tarBinary === 'tar'
++      ? ['--force-local', '-xzf', archivePath, '-C', packageRoot]
++      : ['-xzf', archivePath, '-C', packageRoot]
++
++  const result = spawnSync(tarBinary, args, { stdio: 'inherit' })
+ 
+   if (result.error) {
+     throw new Error(
 diff --git a/node_modules/llama.rn/lib/commonjs/expo-plugin/withLlamaRN.js b/node_modules/llama.rn/lib/commonjs/expo-plugin/withLlamaRN.js
 index 47bb21e..df79be3 100644
 --- a/node_modules/llama.rn/lib/commonjs/expo-plugin/withLlamaRN.js

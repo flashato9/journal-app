@@ -1,6 +1,6 @@
 import { useFocusEffect } from "@react-navigation/native";
 import { useCallback, useState } from "react";
-import { getRegisteredUserId, getUserProfile } from "@/services/database";
+import { UserTable } from "@/services/database";
 
 // Loads the profile (username + profile image + preferred login method) of
 // the user registered on this device, for screens that show it before login
@@ -16,10 +16,10 @@ export function useUserSession() {
 
   useFocusEffect(
     useCallback(() => {
-      const userId = getRegisteredUserId();
+      const userId = UserTable.getRegisteredUserId();
       if (!userId) return;
 
-      const profile = getUserProfile(userId);
+      const profile = UserTable.getUserProfile(userId);
       if (!profile) return;
 
       setUsername(profile.username);

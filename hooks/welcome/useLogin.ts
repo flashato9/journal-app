@@ -4,13 +4,7 @@ import * as SecureStore from "expo-secure-store";
 import { useContext, useState } from "react";
 import { Alert } from "react-native";
 import { AuthContext } from "@/context/AuthContext";
-import {
-  createLocationSettings,
-  getLocationSettingsByUserId,
-  getUserIdByUsername,
-  insertUserIntoDB,
-  isUserExists,
-} from "@/services/database";
+import { LocationSettingsTable, UserTable } from "@/services/database";
 import { startLocationTracking } from "@/services/locationService";
 
 // Custom hook that encapsulates the login flow (form state, validation,
@@ -44,21 +38,22 @@ export function useLogin() {
       // Login successful - ensure user exists in database
       console.log("Login successful:", { username });
       try {
-        if (!isUserExists(username)) {
-          insertUserIntoDB(username);
+        if (!UserTable.isUserExists(username)) {
+          UserTable.insertUserIntoDB(username);
         }
       } catch (dbError) {
         console.error("Error creating user in database:", dbError);
       }
 
       // Get userId and fetch/create LocationSettings
-      const userId = getUserIdByUsername(username);
+      const userId = UserTable.getUserIdByUsername(username);
       if (userId) {
-        let settings = getLocationSettingsByUserId(userId);
+        let settings =
+          LocationSettingsTable.getLocationSettingsByUserId(userId);
         if (!settings) {
           // Create dummy settings (10, 1, 10)
-          createLocationSettings(userId, 10, 1, 10);
-          settings = getLocationSettingsByUserId(userId);
+          LocationSettingsTable.createLocationSettings(userId, 10, 1, 10);
+          settings = LocationSettingsTable.getLocationSettingsByUserId(userId);
         }
         if (settings) {
           setLocationSettings({

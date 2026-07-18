@@ -26,7 +26,7 @@ export interface LocationInfo {
 export type LocationState = LocationInfo | null | "Loading";
 
 export interface MemoryFormState {
-  dateTimeOfCapture: string; // ISO format datetime
+  dateTimeOfCapture: string;
   summary: string;
   location: LocationState;
   media: MediaItem[];
@@ -44,44 +44,35 @@ export default function MemoryForm({
   onStorageChange,
 }: MemoryFormProps) {
   const handleSummaryChange = (newSummary: string) => {
-    onStorageChange({
-      ...storage,
-      summary: newSummary,
-    });
+    const nextStorage = { ...storage, summary: newSummary };
+    onStorageChange(nextStorage);
   };
 
   const handleMediaSelected = (newMedia: MediaItem[]) => {
-    onStorageChange({
-      ...storage,
-      media: newMedia,
-    });
+    const nextStorage = { ...storage, media: newMedia };
+    onStorageChange(nextStorage);
   };
 
   const handleQuestionnaireChange = (id: string, answer: string) => {
     const updated = storage.questionnaire.map((item) =>
       item.id === id ? { ...item, answer } : item,
     );
-    onStorageChange({
-      ...storage,
-      questionnaire: updated,
-    });
+    const nextStorage = { ...storage, questionnaire: updated };
+    onStorageChange(nextStorage);
   };
 
   const handleQuestionChange = (id: string, question: string) => {
     const updated = storage.questionnaire.map((item) =>
       item.id === id ? { ...item, question } : item,
     );
-    onStorageChange({
-      ...storage,
-      questionnaire: updated,
-    });
+    const nextStorage = { ...storage, questionnaire: updated };
+    onStorageChange(nextStorage);
   };
 
   const handleRemoveQuestionnaire = (id: string) => {
-    onStorageChange({
-      ...storage,
-      questionnaire: storage.questionnaire.filter((item) => item.id !== id),
-    });
+    const remaining = storage.questionnaire.filter((item) => item.id !== id);
+    const nextStorage = { ...storage, questionnaire: remaining };
+    onStorageChange(nextStorage);
   };
 
   const handleAddQuestionnaire = () => {
@@ -90,17 +81,16 @@ export default function MemoryForm({
       question: "enter your question here",
       answer: "enter your answer here",
     };
-    onStorageChange({
-      ...storage,
-      questionnaire: [...storage.questionnaire, newQuestionnaire],
-    });
+    const updated = [...storage.questionnaire, newQuestionnaire];
+    const nextStorage = { ...storage, questionnaire: updated };
+    onStorageChange(nextStorage);
   };
 
   const timeDisplay = storage.dateTimeOfCapture
     ? format(new Date(storage.dateTimeOfCapture), "h:mmaa")
     : "No time";
 
-  return (
+  const content = (
     <KeyboardAvoidingView
       behavior={Platform.OS === "ios" ? "padding" : "height"}
       style={styles.keyboardAvoidingView}
@@ -109,7 +99,6 @@ export default function MemoryForm({
         style={styles.scrollView}
         contentContainerStyle={styles.content}
       >
-        {/* Summary Section */}
         <View style={styles.inlineSection}>
           <Text style={styles.inlineLabel}>Summary:</Text>
           <TextInput
@@ -127,13 +116,11 @@ export default function MemoryForm({
           />
         </View>
 
-        {/* Time of Capture Section */}
         <View style={styles.inlineSection}>
           <Text style={styles.inlineLabel}>Time of Capture:</Text>
           <Text style={styles.inlineTimeDisplay}>{timeDisplay}</Text>
         </View>
 
-        {/* Location Section */}
         <View style={styles.section}>
           <Text style={styles.sectionLabel}>Location:</Text>
           {storage.location === "Loading" ? (
@@ -158,7 +145,6 @@ export default function MemoryForm({
           )}
         </View>
 
-        {/* Media Section (images, videos, and sound recordings) */}
         <View style={styles.section}>
           <Text style={styles.sectionLabel}>Media:</Text>
           <UploadMedia
@@ -170,7 +156,6 @@ export default function MemoryForm({
           />
         </View>
 
-        {/* Questionnaire Section */}
         <View style={styles.section}>
           <Text style={styles.sectionLabel}>Questionnaire:</Text>
           {storage.questionnaire.length === 0 ? (
@@ -213,6 +198,7 @@ export default function MemoryForm({
       </ScrollView>
     </KeyboardAvoidingView>
   );
+  return content;
 }
 
 const styles = StyleSheet.create({

@@ -1,11 +1,7 @@
 import * as ImagePicker from "expo-image-picker";
 import { useEffect, useState } from "react";
 import { ActionSheetIOS, Alert, Platform } from "react-native";
-import {
-  getRegisteredUserId,
-  getUserProfile,
-  setUserProfileImagePath,
-} from "@/services/database";
+import { UserTable } from "@/services/database";
 import {
   deleteProfilePictureFile,
   saveProfilePicture,
@@ -103,14 +99,15 @@ export function useChangeProfilePicture({
 
     setIsSaving(true);
     try {
-      const userId = getRegisteredUserId();
+      const userId = UserTable.getRegisteredUserId();
       if (!userId) return;
 
       // Read the old path before overwriting it in the DB.
-      const oldImagePath = getUserProfile(userId)?.profileImagePath ?? null;
+      const oldImagePath =
+        UserTable.getUserProfile(userId)?.profileImagePath ?? null;
 
       const newImagePath = await saveProfilePicture(tempImageUri);
-      setUserProfileImagePath(userId, newImagePath);
+      UserTable.setUserProfileImagePath(userId, newImagePath);
 
       if (oldImagePath) {
         await deleteProfilePictureFile(oldImagePath);

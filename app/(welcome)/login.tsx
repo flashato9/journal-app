@@ -33,7 +33,7 @@ export default function LoginScreen() {
   const showBiometricLogin =
     preferredLoginMethod === "BIOMETRIC" && !isBiometricLoginExhausted;
 
-  return (
+  const content = (
     <SafeAreaView style={styles.container}>
       <Header title="" />
 
@@ -85,6 +85,7 @@ export default function LoginScreen() {
       </KeyboardAvoidingView>
     </SafeAreaView>
   );
+  return content;
 }
 
 const styles = StyleSheet.create({

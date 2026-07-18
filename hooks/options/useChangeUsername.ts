@@ -3,7 +3,7 @@ import { useContext, useState } from "react";
 import { Alert } from "react-native";
 import { AuthContext } from "@/context/AuthContext";
 import { useUsernameField } from "@/hooks/welcome/useUsernameField";
-import { getRegisteredUserId, updateUsername } from "@/services/database";
+import { UserTable } from "@/services/database";
 
 // Custom hook that encapsulates the username change flow: reuses the same
 // validated username field as registration, then on save renames the
@@ -27,7 +27,7 @@ export function useChangeUsername() {
 
     setIsSaving(true);
     try {
-      const userId = getRegisteredUserId();
+      const userId = UserTable.getRegisteredUserId();
       if (!userId) return;
 
       // Move the password to the new SecureStore key.
@@ -45,7 +45,7 @@ export function useChangeUsername() {
         await SecureStore.setItemAsync("currentUsername", username);
       }
 
-      updateUsername(userId, username);
+      UserTable.updateUsername(userId, username);
       setAuthUsername(username);
     } catch (error) {
       console.error("Error changing username:", error);
