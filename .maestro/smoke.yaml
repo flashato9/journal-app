@@ -1,0 +1,7 @@
+appId: com.relentless.memory_journal
+---
+- clearState
+- launchApp
+- extendedWaitUntil:
+    visible: "Create Account"
+    timeout: 60000

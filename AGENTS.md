@@ -74,6 +74,10 @@ If an explanation is long, then put it in an .md file inside the `.md/` folder (
 
 In the md file always use a three phase approach. First present the TDLR at the top. Then zoom in to provide more details. Then in the third phase zoom in again to provide the exact code lines that are causing the issue. Make sure all code lines have correct SYNTAX HIGHLITING.
 
+# Maestro Config Changes
+
+Before writing or editing anything under `.maestro/` (flow YAML files), fetch and read the relevant command's page at `https://docs.maestro.dev/reference/commands-available/<command-name>.md` (e.g. `assertvisible.md`, `extendedwaituntil.md`) to confirm its exact syntax and valid properties. Do not guess property names (e.g. assuming `assertVisible` takes a `timeout` field when it doesn't) — verify against the docs first, every time, even for commands used before in this repo.
+
 # Best Practices Reference
 
 Before writing, modifying, or refactoring any React code in this repo:
