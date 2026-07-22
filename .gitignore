@@ -47,3 +47,5 @@ app-example
 
 # local reference material (not part of the repo)
 book-reference/
+react-native-intro/
+.md/
