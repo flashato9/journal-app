@@ -57,8 +57,7 @@ jobs:
             cd android && ./gradlew assembleRelease && cd ..
             adb install -r android/app/build/outputs/apk/release/app-release.apk
             curl -fsSL "https://get.maestro.mobile.dev" | bash
-            export PATH="$PATH:$HOME/.maestro/bin"
-            maestro test .maestro
+            $HOME/.maestro/bin/maestro test .maestro
 
       - name: Email result
         if: always()
