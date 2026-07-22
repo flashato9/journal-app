@@ -64,6 +64,8 @@ Not every `useEffect`/`useFocusEffect`/`useCallback` needs its own hook file. Ex
 
 If none of these apply — the effect is a couple of lines, directly tied to this component's own state, and not conceptually reusable — leave it inline. Don't extract just because an effect exists; extract when pulling it out actually makes the component's job (rendering) easier to see at a glance.
 
+**Screens are an unconditional exception to this list.** Every screen (the top-level component behind a route, i.e. anything in `app/`) gets its own hook holding all of its state and logic — e.g. `useCreateMemory`, `useDayMemories`, `useReadOrEditMemory`, `useMemoriesList` — regardless of whether the three conditions above are met. This keeps the screen component itself limited to deciding what to render, and is a consistently followed pattern in this codebase.
+
 # Where should you write Long Explanations?
 
 If an explanation is long, then put it in an .md file inside the `.md/` folder (create the folder if it doesn't exist yet) and ask the user to open it.
