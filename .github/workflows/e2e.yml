@@ -3,6 +3,11 @@ name: E2E Smoke Test
 on:
   push:
     branches: [master]
+  schedule:
+    # 16:00 UTC = 12:00 PM US Eastern during EDT (daylight saving).
+    # During EST (winter), this will run at 11:00 AM Eastern instead —
+    # GitHub Actions cron does not adjust for DST.
+    - cron: "0 16 * * *"
 
 jobs:
   e2e:

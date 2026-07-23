@@ -15,7 +15,7 @@
     "ios": "expo run:ios",
     "web": "expo start --web",
     "lint": "expo lint",
-    "e2e": "maestro test .maestro",
+    "e2e": "npx ts-node --esm --transpileOnly scripts/run-e2e.ts",
     "postinstall": "patch-package"
   },
   "dependencies": {
