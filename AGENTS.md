@@ -86,8 +86,9 @@ When adding a new native dependency (one with an `android/build.gradle` containi
 
 1. Add `"-DANDROID_CCACHE=ccache"` as the last entry in that `arguments` list (watch the trailing comma on the previous last item).
 2. Run `npx patch-package <package-name>` to capture the change.
-3. If that fails with a git error like `Filename too long` or `fatal: adding files failed`, the package's local `node_modules/<package>/android/build/` still has stale Gradle build artifacts from a prior local build. Re-run scoped to just the relevant file, e.g. `npx patch-package <package-name> --include "build\.gradle"`, instead of deleting the build directory.
-4. Pure-JS dependencies (no CMake/native build) need none of this.
+3. If that fails with a git error like `Filename too long` or `fatal: adding files failed`, the package's local `node_modules/<package>/android/build/` still has stale Gradle build artifacts from a prior local build. Re-run scoped with `--include`, e.g. `npx patch-package <package-name> --include "build\.gradle"`, instead of deleting the build directory.
+4. **If the package already has an existing patch file with other hunks** (e.g. `llama.rn+*.patch` also patches `install/download-native-artifacts.js` and `lib/commonjs/expo-plugin/withLlamaRN.js`), a narrow `--include` regex silently drops those other hunks from the regenerated patch instead of erroring — always check `git diff <prior-commit> -- patches/<file>.patch` after regenerating to confirm no existing hunk was lost, and widen the `--include` regex to match every previously-patched file if one is missing.
+5. Pure-JS dependencies (no CMake/native build) need none of this.
 
 # Best Practices Reference
 
