@@ -10,3 +10,8 @@ A: No — Playwright only automates web browsers, not native Android/iOS apps, s
 
 **Q: What are these patch files doing, and will I need to redo them for new native dependencies?**
 A: `patch-package` captures edits made inside `node_modules` (which isn't committed to git) as diff files, reapplied automatically via the `postinstall` hook on every install. New patches are only needed if you add another native (CMake) dependency you want ccache-accelerated, or if you upgrade one of these 4 packages' version (patch filenames are version-locked).
+
+# General
+
+**Q: How do I check which process has a lock on a file on Windows?**
+A: Open Resource Monitor (`resmon`) → CPU tab → search the file name in the "Associated Handles" box at the bottom; it lists the process name and PID holding it. Sysinternals `handle.exe <filename>` does the same from the CLI.
