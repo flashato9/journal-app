@@ -1,0 +1,14 @@
+diff --git a/node_modules/react-native-worklets/android/build.gradle b/node_modules/react-native-worklets/android/build.gradle
+index 021f5bc..4912491 100644
+--- a/node_modules/react-native-worklets/android/build.gradle
++++ b/node_modules/react-native-worklets/android/build.gradle
+@@ -196,7 +196,8 @@ android {
+                         "-DWORKLETS_BUNDLE_MODE=${BUNDLE_MODE}",
+                         "-DWORKLETS_VERSION=${WORKLETS_VERSION}",
+                         "-DANDROID_SUPPORT_FLEXIBLE_PAGE_SIZES=ON",
+-                        "-DWORKLETS_FEATURE_FLAGS=${WORKLETS_FEATURE_FLAGS}"
++                        "-DWORKLETS_FEATURE_FLAGS=${WORKLETS_FEATURE_FLAGS}",
++                        "-DANDROID_CCACHE=ccache"
+                 abiFilters (*reactNativeArchitectures())
+                 targets("worklets")
+             }

@@ -78,6 +78,17 @@ In the md file always use a three phase approach. First present the TDLR at the 
 
 Before writing or editing anything under `.maestro/` (flow YAML files), fetch and read the relevant command's page at `https://docs.maestro.dev/reference/commands-available/<command-name>.md` (e.g. `assertvisible.md`, `extendedwaituntil.md`) to confirm its exact syntax and valid properties. Do not guess property names (e.g. assuming `assertVisible` takes a `timeout` field when it doesn't) — verify against the docs first, every time, even for commands used before in this repo.
 
+# ccache for New Native Dependencies
+
+This repo patches native (CMake/NDK) dependencies so their Android build shares the CI ccache — see `patches/react-native-reanimated+*.patch`, `react-native-worklets+*.patch`, `react-native-gesture-handler+*.patch`, and `llama.rn+*.patch` for the established pattern.
+
+When adding a new native dependency (one with an `android/build.gradle` containing an `externalNativeBuild { cmake { arguments [...] } }` block):
+
+1. Add `"-DANDROID_CCACHE=ccache"` as the last entry in that `arguments` list (watch the trailing comma on the previous last item).
+2. Run `npx patch-package <package-name>` to capture the change.
+3. If that fails with a git error like `Filename too long` or `fatal: adding files failed`, the package's local `node_modules/<package>/android/build/` still has stale Gradle build artifacts from a prior local build. Re-run scoped to just the relevant file, e.g. `npx patch-package <package-name> --include "build\.gradle"`, instead of deleting the build directory.
+4. Pure-JS dependencies (no CMake/native build) need none of this.
+
 # Best Practices Reference
 
 Before writing, modifying, or refactoring any React code in this repo:
