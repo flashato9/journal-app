@@ -66,6 +66,7 @@
       ],
       "expo-asset",
       "./plugins/withLlamaRnFixed.js",
+      "./plugins/withKeyboardControllerLongPaths.js",
       [
         "expo-notifications",
         {

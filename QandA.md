@@ -1,7 +1,7 @@
 # General
 
-Q: Does the rough.js library let you draw stuff?
-A: Yes, but only pre-defined geometric primitives (lines, rectangles, circles, arcs, paths) — you tell it "draw a rectangle here" and it renders that shape with jittered, hand-sketched styling. It doesn't capture user pointer input itself; Excalidraw's own code handles mouse/touch drawing and hands the resulting shapes to Rough.js for the sketchy rendering.
+Q: Do people buy Bitcoin low, wait for it to rise (e.g. to $20k+), then sell for profit?
+A: Yes — that's standard spot trading (buy low, sell high). Profit is the price gain minus fees/taxes, but it's not guaranteed since price can also fall.
 
-Q: Why does the emulator window always start off-screen and need to be dragged into view?
-A: It remembers its last window position from a saved config file, and if that position no longer falls within the current monitor layout (resolution change, docking/undocking, etc.) it opens off-screen. Unrelated to the e2e script — it doesn't control the emulator's window placement.
+Q: Why do companies still mine Bitcoin if it's "not real"?
+A: Mining is real computational work that validates transactions and secures the network, paid in BTC + fees. It's "not physical," but the market prices it as a real scarce asset, so mining is a real business as long as BTC holds value.

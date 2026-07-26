@@ -36,6 +36,18 @@ export function useRegister() {
   const [preferredAuthMethod, setPreferredAuthMethod] =
     useState<PreferredAuthMethod>("PASSWORD");
   const [profileImageUri, setProfileImageUri] = useState<string | null>(null);
+  const [confirmPassword, setConfirmPassword] = useState("");
+
+  const handleConfirmPasswordChange = (text: string) => {
+    setConfirmPassword(text);
+  };
+
+  const confirmPasswordError =
+    confirmPassword !== "" && confirmPassword !== password
+      ? "Passwords do not match"
+      : "";
+  const isConfirmPasswordValid =
+    confirmPassword !== "" && confirmPassword === password;
 
   const takeProfilePicture = async () => {
     const permission = await ImagePicker.requestCameraPermissionsAsync();
@@ -109,6 +121,10 @@ export function useRegister() {
       return;
     }
 
+    if (password !== confirmPassword) {
+      return;
+    }
+
     try {
       const key = `login.${username}`;
 
@@ -144,7 +160,6 @@ export function useRegister() {
 
       console.log("Registration successful:", { username, storedIn: key });
 
-      Alert.alert("Success", "Account created! Please log in.");
       router.replace("/(welcome)/login");
     } catch (error) {
       console.error("Error during registration:", error);
@@ -155,13 +170,17 @@ export function useRegister() {
     }
   };
 
-  const isRegisterEnabled = isUsernameValid && isPasswordValid;
+  const isRegisterEnabled =
+    isUsernameValid && isPasswordValid && isConfirmPasswordValid;
 
   return {
     username,
     password,
     usernameError,
     passwordError,
+    confirmPassword,
+    confirmPasswordError,
+    handleConfirmPasswordChange,
     preferredAuthMethod,
     setPreferredAuthMethod,
     profileImageUri,

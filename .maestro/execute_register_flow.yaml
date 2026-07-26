@@ -1,0 +1,76 @@
+appId: com.relentless.memory_journal
+---
+- clearState
+- launchApp:
+    permissions:
+      camera: allow
+- extendedWaitUntil:
+    visible: "Create Account"
+    timeout: 60000
+
+- tapOn:
+    text: "Upload a profile picture"
+    waitToSettleTimeoutMs: 100
+- extendedWaitUntil:
+    visible: "Upload Profile Picture"
+    timeout: 10000
+- tapOn:
+    text: "Camera"
+    waitToSettleTimeoutMs: 100
+- extendedWaitUntil:
+    visible:
+      id: "com.android.camera2:id/shutter_button"
+    timeout: 15000
+- tapOn:
+    id: "com.android.camera2:id/shutter_button"
+    waitToSettleTimeoutMs: 100
+- extendedWaitUntil:
+    visible:
+      id: "com.android.camera2:id/done_button"
+    timeout: 10000
+- tapOn:
+    id: "com.android.camera2:id/done_button"
+    waitToSettleTimeoutMs: 100
+- extendedWaitUntil:
+    notVisible: "Upload a profile picture"
+    timeout: 10000
+- takeScreenshot: 01-upload-picture
+
+- tapOn:
+    text: "Username"
+    waitToSettleTimeoutMs: 100
+- inputText: "e2etestuser"
+- takeScreenshot: 02-enter-username
+- tapOn:
+    id: "register-password-input"
+    waitToSettleTimeoutMs: 100
+- inputText: "TestPass123"
+- takeScreenshot: 03-enter-password
+- scrollUntilVisible:
+    element: "Confirm Password"
+    direction: DOWN
+- tapOn:
+    text: "Confirm Password"
+    waitToSettleTimeoutMs: 100
+- inputText: "TestPass123"
+- hideKeyboard
+- takeScreenshot: 04-enter-confirm-password
+
+- tapOn:
+    id: "auth-method-dropdown-toggle"
+    waitToSettleTimeoutMs: 100
+- extendedWaitUntil:
+    visible:
+      id: "auth-method-dropdown-option-PASSWORD"
+    timeout: 30000
+- tapOn:
+    id: "auth-method-dropdown-option-PASSWORD"
+    waitToSettleTimeoutMs: 100
+
+- tapOn:
+    text: "Register"
+    waitToSettleTimeoutMs: 100
+- extendedWaitUntil:
+    visible: "e2etestuser"
+    timeout: 10000
+- takeScreenshot: 05-submit-register-form

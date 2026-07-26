@@ -15,3 +15,7 @@ _What do you typically say when some asks "How was your weekend". No need to str
    ```bash
    npx expo start
    ```
+
+## Prerequisites
+
+Before you can build and run this app locally, see the [Installation Guide](.md/installation-guide.md) for the full list of required tools (Node.js, Android Studio/SDK/NDK, ccache, etc.) and setup steps.

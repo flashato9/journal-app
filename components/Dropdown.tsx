@@ -1,6 +1,5 @@
-import { MaterialIcons } from "@expo/vector-icons";
-import { useState } from "react";
-import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { StyleSheet, Text } from "react-native";
+import { Dropdown as ElementDropdown } from "react-native-element-dropdown";
 
 interface DropdownOption<T extends string> {
   label: string;
@@ -11,61 +10,60 @@ interface DropdownProps<T extends string> {
   options: DropdownOption<T>[];
   value: T;
   onChange: (value: T) => void;
+  testID?: string;
+}
+
+interface DropdownItem<T extends string> {
+  label: string;
+  value: T;
+  itemTestID?: string;
 }
 
 export default function Dropdown<T extends string>({
   options,
   value,
   onChange,
+  testID,
 }: DropdownProps<T>) {
-  const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const data: DropdownItem<T>[] = options.map((option) => {
+    const item: DropdownItem<T> = {
+      label: option.label,
+      value: option.value,
+      itemTestID: testID ? `${testID}-option-${option.value}` : undefined,
+    };
+    return item;
+  });
 
-  const selectedLabel = options.find((option) => option.value === value)?.label;
+  const handleChange = (item: DropdownItem<T>) => {
+    onChange(item.value);
+  };
+
+  const renderDropdownItem = (item: DropdownItem<T>) => {
+    const content = <Text style={styles.itemText}>{item.label}</Text>;
+    return content;
+  };
 
   const content = (
-    <View style={styles.container}>
-      <TouchableOpacity
-        style={styles.dropdown}
-        onPress={() => setIsMenuOpen((open) => !open)}
-        activeOpacity={0.7}
-      >
-        <Text style={styles.dropdownText}>{selectedLabel}</Text>
-        <MaterialIcons
-          name={isMenuOpen ? "arrow-drop-up" : "arrow-drop-down"}
-          size={24}
-          color="#000"
-        />
-      </TouchableOpacity>
-      {isMenuOpen && (
-        <View style={styles.dropdownMenu}>
-          {options.map((option) => (
-            <TouchableOpacity
-              key={option.value}
-              style={styles.dropdownOption}
-              onPress={() => {
-                onChange(option.value);
-                setIsMenuOpen(false);
-              }}
-            >
-              <Text style={styles.dropdownOptionText}>{option.label}</Text>
-            </TouchableOpacity>
-          ))}
-        </View>
-      )}
-    </View>
+    <ElementDropdown
+      style={styles.dropdown}
+      selectedTextStyle={styles.selectedText}
+      containerStyle={styles.menuContainer}
+      itemContainerStyle={styles.item}
+      renderItem={renderDropdownItem}
+      data={data}
+      labelField="label"
+      valueField="value"
+      itemTestIDField="itemTestID"
+      value={value}
+      onChange={handleChange}
+      testID={testID ? `${testID}-toggle` : undefined}
+    />
   );
   return content;
 }
 
 const styles = StyleSheet.create({
-  container: {
-    position: "relative",
-    zIndex: 1,
-  },
   dropdown: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
     borderWidth: 1,
     borderColor: "#ddd",
     borderRadius: 8,
@@ -73,34 +71,24 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     backgroundColor: "#fff",
   },
-  dropdownText: {
+  selectedText: {
     fontSize: 16,
     color: "#000",
   },
-  dropdownMenu: {
-    position: "absolute",
-    top: "100%",
-    left: 0,
-    right: 0,
-    marginTop: 4,
+  menuContainer: {
     backgroundColor: "#fff",
     borderWidth: 1,
     borderColor: "#ddd",
     borderRadius: 8,
     overflow: "hidden",
-    elevation: 4,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.15,
-    shadowRadius: 4,
   },
-  dropdownOption: {
+  item: {
     paddingHorizontal: 16,
     paddingVertical: 12,
     borderBottomWidth: 1,
     borderBottomColor: "#f0f0f0",
   },
-  dropdownOptionText: {
+  itemText: {
     fontSize: 16,
     color: "#000",
   },

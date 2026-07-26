@@ -1,15 +1,17 @@
 import { useEffect } from "react";
 import {
   Image,
+  Keyboard,
   KeyboardAvoidingView,
   Platform,
+  Pressable,
   StyleSheet,
-  TextInput,
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import Button from "@/components/Button";
 import Header from "@/components/Header";
+import Input from "@/components/Input";
 import LoadingIndicator from "@/components/LoadingIndicator";
 import PolaroidFrame from "@/components/PolaroidFrame";
 import { useLogin } from "@/hooks/welcome/useLogin";
@@ -41,47 +43,47 @@ export default function LoginScreen() {
         behavior={Platform.OS === "ios" ? "padding" : "height"}
         style={styles.keyboardAvoidingView}
       >
-        <View style={styles.content}>
-          <PolaroidFrame caption={username}>
-            {profileImagePath ? (
-              <Image
-                source={{ uri: profileImagePath }}
-                style={styles.photoImage}
-                resizeMode="cover"
-              />
-            ) : (
-              <LoadingIndicator message="Loading..." />
-            )}
-          </PolaroidFrame>
+        <Pressable style={styles.pressableFill} onPress={Keyboard.dismiss}>
+          <View style={styles.content}>
+            <PolaroidFrame caption={username} isTilted={false} size={240}>
+              {profileImagePath ? (
+                <Image
+                  source={{ uri: profileImagePath }}
+                  style={styles.photoImage}
+                  resizeMode="cover"
+                />
+              ) : (
+                <LoadingIndicator message="Loading..." />
+              )}
+            </PolaroidFrame>
 
-          {showBiometricLogin ? (
-            <View style={styles.buttonWrapper}>
-              <Button
-                text="Login"
-                onPress={loginWithBiometrics}
-                backgroundColor="#007AFF"
-              />
-            </View>
-          ) : (
-            <>
-              <TextInput
-                style={styles.input}
-                placeholder="Password"
-                placeholderTextColor="#999"
-                value={password}
-                onChangeText={setPassword}
-                secureTextEntry
-              />
+            {showBiometricLogin ? (
               <View style={styles.buttonWrapper}>
                 <Button
                   text="Login"
-                  onPress={handleLogin}
+                  onPress={loginWithBiometrics}
                   backgroundColor="#007AFF"
                 />
               </View>
-            </>
-          )}
-        </View>
+            ) : (
+              <>
+                <Input
+                  placeholder="Password"
+                  value={password}
+                  onChangeText={setPassword}
+                  secureTextEntry
+                />
+                <View style={styles.buttonWrapper}>
+                  <Button
+                    text="Login"
+                    onPress={handleLogin}
+                    backgroundColor="#007AFF"
+                  />
+                </View>
+              </>
+            )}
+          </View>
+        </Pressable>
       </KeyboardAvoidingView>
     </SafeAreaView>
   );
@@ -96,11 +98,15 @@ const styles = StyleSheet.create({
   keyboardAvoidingView: {
     flex: 1,
   },
+  pressableFill: {
+    flex: 1,
+  },
   content: {
     flex: 1,
-    justifyContent: "center",
+    justifyContent: "flex-start",
     alignItems: "center",
     paddingHorizontal: 20,
+    paddingTop: 60,
     gap: 16,
   },
   photoImage: {
@@ -109,15 +115,5 @@ const styles = StyleSheet.create({
   },
   buttonWrapper: {
     width: "100%",
-  },
-  input: {
-    width: "100%",
-    borderWidth: 1,
-    borderColor: "#ddd",
-    borderRadius: 8,
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    fontSize: 16,
-    color: "#000",
   },
 });

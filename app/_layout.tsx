@@ -2,6 +2,7 @@ import { Stack } from "expo-router";
 import { ShareIntentProvider } from "expo-share-intent";
 import { useContext, useEffect, useState } from "react";
 import { StyleSheet, View } from "react-native";
+import { KeyboardProvider } from "react-native-keyboard-controller";
 import { AuthContext, AuthProvider } from "../context/AuthContext";
 import { OptionsMenuProvider } from "../context/OptionsMenuContext";
 import { initializeDatabase } from "../services/database";
@@ -56,14 +57,16 @@ function RootLayoutContent() {
 
 export default function RootLayout() {
   const content = (
-    <ShareIntentProvider>
-      <AuthProvider>
-        <OptionsMenuProvider>
-          <RootLayoutContent />
-          <OptionsMenu />
-        </OptionsMenuProvider>
-      </AuthProvider>
-    </ShareIntentProvider>
+    <KeyboardProvider>
+      <ShareIntentProvider>
+        <AuthProvider>
+          <OptionsMenuProvider>
+            <RootLayoutContent />
+            <OptionsMenu />
+          </OptionsMenuProvider>
+        </AuthProvider>
+      </ShareIntentProvider>
+    </KeyboardProvider>
   );
   return content;
 }

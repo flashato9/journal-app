@@ -24,6 +24,9 @@ android-signing/
 # Metro
 .metro-health-check*
 
+# E2E test output
+e2e-results/
+
 # debug
 npm-debug.*
 yarn-debug.*
@@ -32,6 +35,9 @@ yarn-error.*
 # macOS
 .DS_Store
 *.pem
+
+# IDE
+.idea/
 
 # local env files
 .env*.local

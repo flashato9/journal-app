@@ -40,6 +40,8 @@ Do not edit code files directly until the plan is approved. When asked to implem
 4. Always wrap code snippets in fenced code blocks with the correct language tag (e.g. `ts, `tsx, ```json) so they render with syntax highlighting/colors — never as plain, untagged text.
 5. This workflow applies to code files only. You can create and directly modify any `.md` file — including this one (AGENTS.md) — without presenting a plan first.
 6. Each distinct task gets its own plan file. Do not append a new, unrelated task onto an existing plan file that already covers a different task — start a fresh one instead.
+7. Structure every plan in layers, from high level to low level: start with a short Context section (why), then a High-level approach (the change in plain language, no code), then progressively more detailed layers, ending with the exact low-level code diffs. Do not lead with the diffs — a reader should be able to stop after any earlier layer and still understand the change at that level of detail.
+8. After drafting a plan, before presenting it for approval, consider whether there are any open questions or judgment calls baked into it — then ask the user to confirm their preference on those, rather than silently deciding and presenting only the finished plan.
 
 # Code Style
 
@@ -89,6 +91,10 @@ When adding a new native dependency (one with an `android/build.gradle` containi
 3. If that fails with a git error like `Filename too long` or `fatal: adding files failed`, the package's local `node_modules/<package>/android/build/` still has stale Gradle build artifacts from a prior local build. Re-run scoped with `--include`, e.g. `npx patch-package <package-name> --include "build\.gradle"`, instead of deleting the build directory.
 4. **If the package already has an existing patch file with other hunks** (e.g. `llama.rn+*.patch` also patches `install/download-native-artifacts.js` and `lib/commonjs/expo-plugin/withLlamaRN.js`), a narrow `--include` regex silently drops those other hunks from the regenerated patch instead of erroring — always check `git diff <prior-commit> -- patches/<file>.patch` after regenerating to confirm no existing hunk was lost, and widen the `--include` regex to match every previously-patched file if one is missing.
 5. Pure-JS dependencies (no CMake/native build) need none of this.
+
+# Prefer Existing Dependencies Over Custom Components
+
+When a UI element or piece of functionality we need to build (or fix) is the kind of thing a well-maintained library likely already solves — dropdowns, pickers, date/time widgets, and similar common patterns — search online for an existing dependency first, rather than defaulting to a hand-rolled component. Weigh maintenance recency and popularity (e.g. npm download counts, last-publish date) when choosing between candidates, and check whether it's pure JS or has native code (see the ccache section below if it does). Prefer this over building/fixing our own version when a suitable library exists, especially if our own version has already run into a nontrivial bug — don't re-solve a problem the ecosystem has already solved.
 
 # Best Practices Reference
 

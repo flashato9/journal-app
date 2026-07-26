@@ -23,6 +23,7 @@ import MediaPreviewModal from "./MediaPreviewModal";
 import RecordAudioModal from "./RecordAudioModal";
 
 const MAX_MEDIA = 6;
+const MAX_VIDEO_DURATION_SECONDS = 300;
 
 export interface MediaItem {
   // Set only for media already saved to the DB; absent for newly-picked items
@@ -62,26 +63,35 @@ export default function UploadMedia({
   };
   const handleUploadPress = async () => {
     try {
-      const options = ["Camera", "Photo Library", "Record Sound", "Cancel"];
+      const options = [
+        "Take Picture",
+        "Record Video",
+        "Media Gallery",
+        "Record Sound",
+        "Cancel",
+      ];
 
       if (Platform.OS === "ios") {
         ActionSheetIOS.showActionSheetWithOptions(
-          { options, cancelButtonIndex: 3 },
+          { options, cancelButtonIndex: 4 },
           async (buttonIndex) => {
             if (buttonIndex === 0) {
               await takePhoto();
             } else if (buttonIndex === 1) {
-              await pickFromLibrary();
+              await recordVideo();
             } else if (buttonIndex === 2) {
+              await pickFromLibrary();
+            } else if (buttonIndex === 3) {
               setIsRecording(true);
             }
           },
         );
       } else {
         Alert.alert("Upload Media", "Choose an option", [
-          { text: "Camera", onPress: takePhoto },
+          { text: "Take Picture", onPress: takePhoto },
+          { text: "Record Video", onPress: recordVideo },
           {
-            text: "Photo Library",
+            text: "Media Gallery",
             onPress: pickFromLibrary,
           },
           { text: "Record Sound", onPress: () => setIsRecording(true) },
@@ -137,30 +147,29 @@ export default function UploadMedia({
 
       const result = await ImagePicker.launchCameraAsync({
         allowsEditing: false,
-        aspect: [1, 1],
         quality: 1,
       });
 
       if (!result.canceled) {
         const asset = result.assets[0];
+
+        if (media.length >= MAX_MEDIA) {
+          Alert.alert(
+            "Maximum reached",
+            `You can add up to ${MAX_MEDIA} items`,
+          );
+          setTimeout(() => setIsLoading(false), 300);
+          return;
+        }
+
         // Use composite key for Android compatibility (assetId is null on Android)
         const assetId =
           asset.assetId || `${asset.fileSize}-${asset.width}-${asset.height}`;
 
-        console.log("Camera photo taken:");
-        console.log(`  assetId: "${asset.assetId}", composite: "${assetId}"`);
-        console.log(
-          `  fileSize: ${asset.fileSize}, dimensions: ${asset.width}x${asset.height}`,
-        );
-        console.log(`  existing ids:`, Array.from(imageAssetIds));
-        console.log(`  isDuplicate: ${imageAssetIds.has(assetId)}`);
-
-        // Check if already exists using composite key
-        if (!imageAssetIds.has(assetId) && media.length < MAX_MEDIA) {
+        if (!imageAssetIds.has(assetId)) {
           const newAssetIds = new Set(imageAssetIds);
           newAssetIds.add(assetId);
 
-          // Save image persistently
           try {
             const saved = await saveImagePersistently(asset.uri);
             onMediaSelected([
@@ -178,6 +187,59 @@ export default function UploadMedia({
             setTimeout(() => setIsLoading(false), 300);
             return;
           }
+        }
+        setTimeout(() => setIsLoading(false), 300);
+      } else {
+        setIsLoading(false);
+      }
+    } catch {
+      Alert.alert("Error", "Failed to access camera");
+      setIsLoading(false);
+    }
+  };
+
+  const recordVideo = async () => {
+    setIsLoading(true);
+    try {
+      const permission = await ImagePicker.requestCameraPermissionsAsync();
+      if (!permission.granted) {
+        Alert.alert("Permission denied", "Camera access is required");
+        setIsLoading(false);
+        return;
+      }
+
+      const result = await ImagePicker.launchCameraAsync({
+        mediaTypes: ["videos"],
+        videoMaxDuration: MAX_VIDEO_DURATION_SECONDS,
+      });
+
+      if (!result.canceled) {
+        const asset = result.assets[0];
+
+        if (media.length >= MAX_MEDIA) {
+          Alert.alert(
+            "Maximum reached",
+            `You can add up to ${MAX_MEDIA} items`,
+          );
+          setTimeout(() => setIsLoading(false), 300);
+          return;
+        }
+
+        try {
+          const saved = await saveVideoPersistently(asset.uri);
+          onMediaSelected([
+            ...media,
+            {
+              uri: saved.uri,
+              type: "video",
+              mediaLibraryAssetId: saved.mediaLibraryAssetId,
+            },
+          ]);
+        } catch (error) {
+          console.error("Error saving video:", error);
+          Alert.alert("Error", "Failed to save video");
+          setTimeout(() => setIsLoading(false), 300);
+          return;
         }
         setTimeout(() => setIsLoading(false), 300);
       } else {

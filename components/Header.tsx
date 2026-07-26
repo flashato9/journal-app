@@ -3,7 +3,6 @@ import { useFocusEffect } from "@react-navigation/native";
 import { useRouter } from "expo-router";
 import { useCallback, useContext } from "react";
 import {
-  Alert,
   Image,
   StyleSheet,
   Text,
@@ -11,6 +10,7 @@ import {
   View,
   ViewStyle,
 } from "react-native";
+import Tooltip from "@/components/Tooltip";
 import { AuthContext } from "@/context/AuthContext";
 import { OptionsMenuContext } from "@/context/OptionsMenuContext";
 import { useUserSession } from "@/hooks/welcome/useUserSession";
@@ -52,12 +52,9 @@ export default function Header({
     router.push("/profile-settings");
   };
 
-  const handleLocationIconPress = () => {
-    Alert.alert(
-      "Location Tracking",
-      locationTrackingActive ? "Online" : "Offline",
-    );
-  };
+  const locationTooltipText = locationTrackingActive
+    ? "Location Tracking: Online"
+    : "Location Tracking: Offline";
 
   const content = (
     <View style={[styles.header, containerStyle]}>
@@ -66,13 +63,13 @@ export default function Header({
         <View style={styles.actionIconsWrapper}>{actionIcons}</View>
       )}
       <View style={styles.rightIconsWrapper}>
-        <TouchableOpacity onPress={handleLocationIconPress}>
+        <Tooltip text={locationTooltipText}>
           <MaterialCommunityIcons
             name={locationTrackingActive ? "map-marker" : "map-marker-off"}
             size={22}
             color={locationTrackingActive ? "#4CAF50" : "#999"}
           />
-        </TouchableOpacity>
+        </Tooltip>
         {username && !hideProfileIcon && (
           <TouchableOpacity onPress={handleProfilePress}>
             {profileImagePath ? (
