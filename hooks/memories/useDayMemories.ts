@@ -60,7 +60,7 @@ function saveDaySummary(
 
     DayMemoryTable.updateDayMemory(dayMemoryId, newSummary);
     setDaySummary(newSummary);
-    Alert.alert("Success", "Summary updated successfully");
+    console.log("Summary updated successfully");
   } catch (error) {
     console.error("Error saving summary:", error);
     Alert.alert(

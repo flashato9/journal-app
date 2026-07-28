@@ -1,7 +1,6 @@
 import { MaterialCommunityIcons } from "@expo/vector-icons";
-import { useFocusEffect } from "@react-navigation/native";
 import { useRouter } from "expo-router";
-import { useCallback, useContext } from "react";
+import { useContext } from "react";
 import {
   Image,
   StyleSheet,
@@ -15,6 +14,7 @@ import Tooltip from "@/components/Tooltip";
 import { getColors } from "@/constants/colors";
 import { AuthContext } from "@/context/AuthContext";
 import { OptionsMenuContext } from "@/context/OptionsMenuContext";
+import { useRefreshLocationTrackingOnFocus } from "@/hooks/options/useRefreshLocationTrackingOnFocus";
 import { useUserSession } from "@/hooks/welcome/useUserSession";
 
 const colors = getColors();
@@ -44,12 +44,7 @@ export default function Header({
   const router = useRouter();
   const insets = useSafeAreaInsets();
 
-  // Refresh immediately on focus instead of waiting for OptionsMenuContext's next poll.
-  useFocusEffect(
-    useCallback(() => {
-      refreshLocationTrackingStatus();
-    }, [refreshLocationTrackingStatus]),
-  );
+  useRefreshLocationTrackingOnFocus(refreshLocationTrackingStatus);
 
   const handleOptions = () => {
     setMenuVisible(true);
@@ -89,6 +84,7 @@ export default function Header({
               name={locationIconName}
               size={22}
               color={colors.headerIconColor}
+              style={styles.iconGlyphShadow}
             />
           </View>
         </Tooltip>
@@ -112,6 +108,7 @@ export default function Header({
             name="cog-outline"
             size={22}
             color={colors.headerIconColor}
+            style={styles.iconGlyphShadow}
           />
         </TouchableOpacity>
       </View>
@@ -147,6 +144,9 @@ const styles = StyleSheet.create({
     fontSize: 22,
     fontWeight: "bold",
     color: colors.text,
+    textShadowColor: "rgba(0, 0, 0, 0.3)",
+    textShadowOffset: { width: 0, height: 2 },
+    textShadowRadius: 3,
   },
   actionIconsWrapper: {
     flexDirection: "row",
@@ -165,6 +165,12 @@ const styles = StyleSheet.create({
     backgroundColor: colors.headerChipBackground,
     justifyContent: "center",
     alignItems: "center",
+    boxShadow: "0px 4px 6px rgba(0, 0, 0, 0.2)",
+  },
+  iconGlyphShadow: {
+    textShadowColor: "rgba(0, 0, 0, 0.3)",
+    textShadowOffset: { width: 0, height: 2 },
+    textShadowRadius: 3,
   },
   profileIcon: {
     width: 34,

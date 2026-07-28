@@ -1,16 +1,33 @@
 import { MaterialIcons } from "@expo/vector-icons";
 import { format } from "date-fns/format";
-import { ActivityIndicator, StyleSheet, TouchableOpacity } from "react-native";
+import {
+  ActivityIndicator,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+} from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import Header from "@/components/Header";
 import MemoryForm from "@/components/memories/MemoryForm";
+import { getColors } from "@/constants/colors";
 import { useCreateMemory } from "@/hooks/memories/useCreateMemory";
 
-export default function CreateMemoryScreen() {
-  const { memoryState, setMemoryState, isSaving, handleSave } =
-    useCreateMemory();
+const colors = getColors();
 
-  const headerTitle = `Memory: ${format(new Date(memoryState.dateTimeOfCapture), "h:mmaa MMMM do, yyyy")}`;
+export default function CreateMemoryScreen() {
+  const {
+    memoryState,
+    setMemoryState,
+    isSaving,
+    handleSave,
+    handleRetryLocation,
+  } = useCreateMemory();
+
+  const headerTitle = "Daily Memory";
+  const captureTimeDisplay = format(
+    new Date(memoryState.dateTimeOfCapture),
+    "h:mm a",
+  ).toLowerCase();
 
   const actionIcons = (
     <TouchableOpacity
@@ -29,7 +46,14 @@ export default function CreateMemoryScreen() {
   const content = (
     <SafeAreaView style={styles.container} edges={["left", "right", "bottom"]}>
       <Header title={headerTitle} actionIcons={actionIcons} />
-      <MemoryForm storage={memoryState} onStorageChange={setMemoryState} />
+      <Text style={styles.screenHeading}>
+        {`What's Happening - ${captureTimeDisplay}`}
+      </Text>
+      <MemoryForm
+        storage={memoryState}
+        onStorageChange={setMemoryState}
+        onRetryLocation={handleRetryLocation}
+      />
     </SafeAreaView>
   );
   return content;
@@ -38,10 +62,23 @@ export default function CreateMemoryScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#fff",
+    backgroundColor: colors.screenBackground,
+  },
+  screenHeading: {
+    fontSize: 20,
+    fontWeight: "700",
+    color: colors.createMemoryTitleColor,
+    textAlign: "center",
+    marginBottom: 8,
   },
   headerSaveButton: {
-    marginRight: 16,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: colors.headerChipBackground,
+    justifyContent: "center",
+    alignItems: "center",
+    boxShadow: "0px 4px 6px rgba(0, 0, 0, 0.2)",
   },
   buttonDisabled: {
     opacity: 0.5,

@@ -1,5 +1,7 @@
-import { format } from "date-fns/format";
+import { MaterialIcons } from "@expo/vector-icons";
+import { useState } from "react";
 import {
+  ActivityIndicator,
   KeyboardAvoidingView,
   Platform,
   ScrollView,
@@ -9,7 +11,7 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import LoadingIndicator from "@/components/LoadingIndicator";
+import { getColors } from "@/constants/colors";
 import UploadMedia, {
   MediaItem,
 } from "@/components/memories/MediaGallery/UploadMedia";
@@ -17,13 +19,16 @@ import QuestionnaireCard, {
   QuestionnaireItem,
 } from "@/components/memories/QuestionnaireCard";
 
+const colors = getColors();
+const SUMMARY_MAX_LENGTH = 100;
+
 export interface LocationInfo {
   latitude: number;
   longitude: number;
   altitude: number | null;
 }
 
-export type LocationState = LocationInfo | null | "Loading";
+export type LocationState = LocationInfo | null | "Loading" | "Unretrievable";
 
 export interface MemoryFormState {
   dateTimeOfCapture: string;
@@ -37,12 +42,45 @@ export interface MemoryFormState {
 export interface MemoryFormProps {
   storage: MemoryFormState;
   onStorageChange: (storage: MemoryFormState) => void;
+  onRetryLocation?: () => void;
+}
+
+function isLocationLoading(location: LocationState): boolean {
+  const result = location === "Loading";
+  return result;
+}
+
+function isLocationUnretrievable(location: LocationState): boolean {
+  const result = location === "Unretrievable";
+  return result;
+}
+
+function getLocationLabel(location: LocationState): string {
+  if (location === "Loading") {
+    const label = "Locating...";
+    return label;
+  }
+  if (location === "Unretrievable") {
+    const label = "Unretrievable";
+    return label;
+  }
+  if (location === null) {
+    const label = "Not available";
+    return label;
+  }
+  const altitudeLabel =
+    location.altitude !== null ? `${location.altitude.toFixed(1)}m` : "N/A";
+  const label = `${location.longitude.toFixed(4)} / ${location.latitude.toFixed(4)} / ${altitudeLabel}`;
+  return label;
 }
 
 export default function MemoryForm({
   storage,
   onStorageChange,
+  onRetryLocation,
 }: MemoryFormProps) {
+  const [isSummaryFocused, setIsSummaryFocused] = useState(false);
+
   const handleSummaryChange = (newSummary: string) => {
     const nextStorage = { ...storage, summary: newSummary };
     onStorageChange(nextStorage);
@@ -86,9 +124,9 @@ export default function MemoryForm({
     onStorageChange(nextStorage);
   };
 
-  const timeDisplay = storage.dateTimeOfCapture
-    ? format(new Date(storage.dateTimeOfCapture), "h:mmaa")
-    : "No time";
+  const locationLabel = getLocationLabel(storage.location);
+  const locationIsLoading = isLocationLoading(storage.location);
+  const locationIsUnretrievable = isLocationUnretrievable(storage.location);
 
   const content = (
     <KeyboardAvoidingView
@@ -99,54 +137,80 @@ export default function MemoryForm({
         style={styles.scrollView}
         contentContainerStyle={styles.content}
       >
-        <View style={styles.inlineSection}>
-          <Text style={styles.inlineLabel}>Summary:</Text>
+        <View style={styles.card}>
+          <Text style={styles.cardTitle}>Summary</Text>
+
           <TextInput
             style={[
-              styles.inlineTextInput,
+              styles.summaryInput,
               !storage.isEditable && styles.inputReadOnly,
+              isSummaryFocused && styles.inputFocused,
             ]}
-            placeholder="What happened today?"
-            placeholderTextColor="#999"
+            placeholder="write about your day..."
+            placeholderTextColor={colors.createMemorySubtitleColor}
             value={storage.summary}
             onChangeText={storage.isEditable ? handleSummaryChange : undefined}
+            onFocus={() => setIsSummaryFocused(true)}
+            onBlur={() => setIsSummaryFocused(false)}
             editable={storage.isEditable}
             multiline
             numberOfLines={4}
+            maxLength={SUMMARY_MAX_LENGTH}
           />
+          <Text style={styles.charCounter}>
+            {storage.summary.length} / {SUMMARY_MAX_LENGTH} characters
+          </Text>
+
+          <View style={styles.locationRow}>
+            {locationIsLoading ? (
+              <ActivityIndicator
+                size="small"
+                color={colors.createMemorySubtitleColor}
+              />
+            ) : (
+              <MaterialIcons
+                name="place"
+                size={16}
+                color={
+                  locationIsUnretrievable
+                    ? colors.createMemoryLocationErrorText
+                    : colors.createMemorySubtitleColor
+                }
+              />
+            )}
+            <Text
+              style={[
+                styles.detailText,
+                locationIsUnretrievable && styles.detailTextError,
+              ]}
+            >
+              GPS Location: {locationLabel}
+            </Text>
+            {!locationIsLoading && onRetryLocation && (
+              <TouchableOpacity
+                onPress={onRetryLocation}
+                style={[
+                  styles.retryButton,
+                  locationIsUnretrievable && styles.retryButtonError,
+                ]}
+                activeOpacity={0.6}
+              >
+                <MaterialIcons
+                  name="refresh"
+                  size={16}
+                  color={
+                    locationIsUnretrievable
+                      ? colors.createMemoryLocationErrorText
+                      : colors.createMemorySubtitleColor
+                  }
+                />
+              </TouchableOpacity>
+            )}
+          </View>
         </View>
 
-        <View style={styles.inlineSection}>
-          <Text style={styles.inlineLabel}>Time of Capture:</Text>
-          <Text style={styles.inlineTimeDisplay}>{timeDisplay}</Text>
-        </View>
-
-        <View style={styles.section}>
-          <Text style={styles.sectionLabel}>Location:</Text>
-          {storage.location === "Loading" ? (
-            <LoadingIndicator message="Loading location..." />
-          ) : storage.location !== null ? (
-            <View style={styles.locationContent}>
-              <Text style={styles.locationText}>
-                Latitude: {storage.location.latitude.toFixed(6)}°
-              </Text>
-              <Text style={styles.locationText}>
-                Longitude: {storage.location.longitude.toFixed(6)}°
-              </Text>
-              <Text style={styles.locationText}>
-                Altitude:{" "}
-                {storage.location.altitude
-                  ? `${storage.location.altitude.toFixed(2)}m`
-                  : "N/A"}
-              </Text>
-            </View>
-          ) : (
-            <Text style={styles.locationLoadingText}>No Location Info</Text>
-          )}
-        </View>
-
-        <View style={styles.section}>
-          <Text style={styles.sectionLabel}>Media:</Text>
+        <View style={styles.card}>
+          <Text style={styles.cardTitle}>Media Gallery</Text>
           <UploadMedia
             media={storage.media}
             onMediaSelected={
@@ -156,36 +220,42 @@ export default function MemoryForm({
           />
         </View>
 
-        <View style={styles.section}>
-          <Text style={styles.sectionLabel}>Questionnaire:</Text>
-          {storage.questionnaire.length === 0 ? (
-            <Text style={styles.emptyText}>No questionnaires</Text>
-          ) : (
-            storage.questionnaire.map((item) => (
-              <QuestionnaireCard
-                key={item.id}
-                item={item}
-                onChange={
-                  storage.isEditable
-                    ? (id: string, answer: string) =>
-                        handleQuestionnaireChange(id, answer)
-                    : () => {}
-                }
-                onQuestionChange={
-                  storage.isEditable
-                    ? (id: string, question: string) =>
-                        handleQuestionChange(id, question)
-                    : undefined
-                }
-                onRemove={
-                  storage.isEditable
-                    ? () => handleRemoveQuestionnaire(item.id)
-                    : undefined
-                }
-                isEditable={storage.isEditable}
-              />
-            ))
-          )}
+        <View style={styles.card}>
+          <Text style={styles.cardTitle}>Questionnaire</Text>
+          <View style={styles.questionnaireList}>
+            {storage.questionnaire.length === 0 ? (
+              <Text style={styles.emptyText}>No questionnaires</Text>
+            ) : (
+              storage.questionnaire.map((item, index) => {
+                const questionnaireCard = (
+                  <QuestionnaireCard
+                    key={item.id}
+                    item={item}
+                    index={index + 1}
+                    onChange={
+                      storage.isEditable
+                        ? (id: string, answer: string) =>
+                            handleQuestionnaireChange(id, answer)
+                        : () => {}
+                    }
+                    onQuestionChange={
+                      storage.isEditable
+                        ? (id: string, question: string) =>
+                            handleQuestionChange(id, question)
+                        : undefined
+                    }
+                    onRemove={
+                      storage.isEditable
+                        ? () => handleRemoveQuestionnaire(item.id)
+                        : undefined
+                    }
+                    isEditable={storage.isEditable}
+                  />
+                );
+                return questionnaireCard;
+              })
+            )}
+          </View>
           {storage.isEditable && (
             <TouchableOpacity
               style={styles.addQuestionnaireButton}
@@ -210,86 +280,93 @@ const styles = StyleSheet.create({
   },
   content: {
     paddingHorizontal: 16,
-    paddingVertical: 20,
+    paddingTop: 12,
+    paddingBottom: 24,
   },
-  section: {
-    marginBottom: 24,
-  },
-  sectionLabel: {
-    fontSize: 16,
-    fontWeight: "600",
-    color: "#000",
-    marginBottom: 8,
-  },
-  inlineSection: {
-    flexDirection: "row",
-    alignItems: "center",
-    marginBottom: 24,
-    gap: 4,
-  },
-  inlineLabel: {
-    fontSize: 16,
-    fontWeight: "600",
-    color: "#000",
-  },
-  inlineTextInput: {
-    flex: 1,
+  card: {
+    backgroundColor: colors.createMemoryCardBackground,
     borderWidth: 1,
-    borderColor: "#e0e0e0",
-    borderRadius: 8,
+    borderColor: colors.createMemoryCardBorder,
+    borderRadius: 20,
+    padding: 16,
+    marginBottom: 16,
+    boxShadow: "0px 4px 6px rgba(0, 0, 0, 0.2)",
+  },
+  cardTitle: {
+    fontSize: 18,
+    fontWeight: "700",
+    color: colors.createMemoryTitleColor,
+  },
+  summaryInput: {
+    marginTop: 12,
+    borderWidth: 1,
+    borderColor: colors.createMemoryCardBorder,
+    borderRadius: 12,
+    backgroundColor: colors.createMemoryInputBackground,
     paddingHorizontal: 12,
     paddingVertical: 10,
     fontSize: 14,
-    color: "#000",
+    color: colors.text,
     textAlignVertical: "top",
   },
-  inlineTimeDisplay: {
-    flex: 1,
-    fontSize: 16,
-    color: "#333",
+  inputReadOnly: {
+    borderColor: colors.createMemoryCardBorder,
+    backgroundColor: colors.createMemoryCardBackground,
+  },
+  inputFocused: {
+    boxShadow: "0px 0px 6px rgba(0, 0, 0, 0.25)",
+  },
+  charCounter: {
+    fontSize: 12,
+    color: colors.createMemorySubtitleColor,
+    marginTop: 6,
+    marginBottom: 12,
+  },
+  locationRow: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    alignItems: "center",
+    gap: 6,
+  },
+  detailText: {
+    flexShrink: 1,
+    fontSize: 13,
+    color: colors.createMemorySubtitleColor,
     fontWeight: "500",
   },
-  inputReadOnly: {
-    borderColor: "#f0f0f0",
-    backgroundColor: "#f9f9f9",
+  detailTextError: {
+    color: colors.createMemoryLocationErrorText,
   },
-  locationContent: {
-    backgroundColor: "#f9f9f9",
-    borderRadius: 8,
-    padding: 12,
+  retryButton: {
+    padding: 2,
+  },
+  retryButtonError: {
+    backgroundColor: colors.createMemoryLocationErrorBackground,
     borderWidth: 1,
-    borderColor: "#e0e0e0",
+    borderColor: colors.createMemoryLocationErrorBorder,
+    borderRadius: 11,
   },
-  locationText: {
-    fontSize: 14,
-    color: "#333",
-    marginBottom: 6,
-    fontFamily: "monospace",
-  },
-  locationLoadingText: {
-    fontSize: 14,
-    color: "#999",
-    fontStyle: "italic",
-    fontFamily: "monospace",
-    padding: 12,
+  questionnaireList: {
+    marginTop: 12,
   },
   emptyText: {
     fontSize: 14,
-    color: "#999",
+    color: colors.createMemorySubtitleColor,
     fontStyle: "italic",
     textAlign: "center",
     marginBottom: 12,
   },
   addQuestionnaireButton: {
-    backgroundColor: "#007AFF",
+    backgroundColor: colors.dayMemoriesDateChipBackground,
     paddingHorizontal: 16,
     paddingVertical: 10,
-    borderRadius: 6,
+    borderRadius: 999,
     alignSelf: "center",
     marginTop: 12,
+    boxShadow: "0px 4px 6px rgba(0, 0, 0, 0.2)",
   },
   addQuestionnaireText: {
-    color: "#fff",
+    color: colors.dayMemoriesDateChipText,
     fontSize: 14,
     fontWeight: "600",
   },

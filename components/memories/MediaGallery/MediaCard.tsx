@@ -42,13 +42,15 @@ export default function MediaCard({
 
   const content = (
     <View style={styles.container}>
-      <TouchableOpacity
-        activeOpacity={onPress ? 0.8 : 1}
-        onPress={onPress}
-        disabled={!onPress}
-      >
-        {renderTile()}
-      </TouchableOpacity>
+      <View style={styles.imageWrapper}>
+        <TouchableOpacity
+          activeOpacity={onPress ? 0.8 : 1}
+          onPress={onPress}
+          disabled={!onPress}
+        >
+          {renderTile()}
+        </TouchableOpacity>
+      </View>
       {onRemove && (
         <TouchableOpacity
           style={styles.removeButton}
@@ -104,9 +106,15 @@ function AudioTile({ uri }: { uri: string }) {
 const styles = StyleSheet.create({
   container: {
     position: "relative",
-    width: "31%",
+    width: "22%",
     aspectRatio: 1,
-    margin: "1%",
+    marginBottom: 8,
+    borderRadius: 8,
+    boxShadow: "0px 4px 6px rgba(0, 0, 0, 0.2)",
+  },
+  imageWrapper: {
+    width: "100%",
+    height: "100%",
     borderRadius: 8,
     overflow: "hidden",
   },

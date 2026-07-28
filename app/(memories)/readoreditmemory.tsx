@@ -1,20 +1,19 @@
 import { MaterialIcons } from "@expo/vector-icons";
 import { format } from "date-fns/format";
-import { parseISO } from "date-fns/parseISO";
-import { ActivityIndicator, StyleSheet, TouchableOpacity } from "react-native";
+import {
+  ActivityIndicator,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+} from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import Header from "@/components/Header";
 import LoadingIndicator from "@/components/LoadingIndicator";
 import MemoryForm from "@/components/memories/MemoryForm";
+import { getColors } from "@/constants/colors";
 import { useReadOrEditMemory } from "@/hooks/memories/useReadOrEditMemory";
 
-function formatDate(isoDatetime: string): string {
-  try {
-    return format(parseISO(isoDatetime), "h:mmaa MMMM do, yyyy");
-  } catch {
-    return "Unknown date";
-  }
-}
+const colors = getColors();
 
 export default function ReadMemoryScreen() {
   const {
@@ -35,7 +34,11 @@ export default function ReadMemoryScreen() {
     return loadingContent;
   }
 
-  const headerTitle = `Memory: ${formatDate(memoryState.dateTimeOfCapture)}`;
+  const headerTitle = "Daily Memory";
+  const captureTimeDisplay = format(
+    new Date(memoryState.dateTimeOfCapture),
+    "h:mm a",
+  ).toLowerCase();
 
   const actionIcons = memoryState.isEditable ? (
     <TouchableOpacity
@@ -58,6 +61,9 @@ export default function ReadMemoryScreen() {
   const content = (
     <SafeAreaView style={styles.container} edges={["left", "right", "bottom"]}>
       <Header title={headerTitle} actionIcons={actionIcons} />
+      <Text style={styles.screenHeading}>
+        {`What Happened - ${captureTimeDisplay}`}
+      </Text>
       <MemoryForm storage={memoryState} onStorageChange={setMemoryState} />
     </SafeAreaView>
   );
@@ -67,10 +73,23 @@ export default function ReadMemoryScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#fff",
+    backgroundColor: colors.screenBackground,
+  },
+  screenHeading: {
+    fontSize: 20,
+    fontWeight: "700",
+    color: colors.createMemoryTitleColor,
+    textAlign: "center",
+    marginBottom: 8,
   },
   headerButton: {
-    paddingHorizontal: 4,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: colors.headerChipBackground,
+    justifyContent: "center",
+    alignItems: "center",
+    boxShadow: "0px 4px 6px rgba(0, 0, 0, 0.2)",
   },
   buttonDisabled: {
     opacity: 0.5,

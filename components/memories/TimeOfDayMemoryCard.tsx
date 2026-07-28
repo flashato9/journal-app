@@ -1,7 +1,14 @@
+import { MaterialIcons } from "@expo/vector-icons";
 import { format } from "date-fns/format";
 import { parseISO } from "date-fns/parseISO";
 import { useRouter } from "expo-router";
+import { useCallback } from "react";
 import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import Animated from "react-native-reanimated";
+import { getColors } from "@/constants/colors";
+import { useArrowSlideNavigate } from "@/hooks/memories/useArrowSlideNavigate";
+
+const colors = getColors();
 
 export interface TimeOfDayMemory {
   id: string;
@@ -14,12 +21,23 @@ interface TimeOfDayMemoryCardProps {
   day?: string;
 }
 
-// Helper function to format ISO datetime for display
-function formatTimeOfRecord(isoDatetime: string): string {
+function formatTime(isoDatetime: string): string {
   try {
-    return format(parseISO(isoDatetime), "h:mmaa");
+    const time = format(parseISO(isoDatetime), "h:mm");
+    return time;
   } catch {
-    return "Unknown time";
+    const fallbackTime = "--:--";
+    return fallbackTime;
+  }
+}
+
+function formatMeridiem(isoDatetime: string): string {
+  try {
+    const meridiem = format(parseISO(isoDatetime), "aa");
+    return meridiem;
+  } catch {
+    const fallbackMeridiem = "";
+    return fallbackMeridiem;
   }
 }
 
@@ -30,7 +48,7 @@ export default function TimeOfDayMemoryCard({
   const router = useRouter();
 
   // Passes the raw ISO datetime to readoreditmemory, not the pre-formatted display string.
-  const handleSeeMore = () => {
+  const navigateToMemoryDetail = useCallback(() => {
     const destination: Parameters<typeof router.push>[0] = {
       pathname: "/readoreditmemory",
       params: {
@@ -40,31 +58,38 @@ export default function TimeOfDayMemoryCard({
       },
     };
     router.push(destination);
-  };
+  }, [router, memory.summary, memory.timeOfRecord, memory.id]);
+
+  const { arrowStyle, handlePress } = useArrowSlideNavigate(
+    navigateToMemoryDetail,
+  );
 
   const content = (
     <TouchableOpacity
-      onPress={handleSeeMore}
+      onPress={handlePress}
       style={styles.card}
       activeOpacity={0.7}
     >
-      <View style={styles.content}>
-        <View style={styles.row}>
-          <Text style={styles.label}>Summary: </Text>
-          <Text style={styles.bold}>{memory.summary}</Text>
-        </View>
-
-        <View style={styles.row}>
-          <Text style={styles.label}>Time of Record: </Text>
-          <Text style={styles.bold}>
-            {formatTimeOfRecord(memory.timeOfRecord)}
-          </Text>
-        </View>
-
-        <TouchableOpacity onPress={handleSeeMore}>
-          <Text style={styles.seeMore}>See More ...</Text>
-        </TouchableOpacity>
+      <View style={styles.timeBadge}>
+        <Text style={styles.timeText}>{formatTime(memory.timeOfRecord)}</Text>
+        <Text style={styles.meridiemText}>
+          {formatMeridiem(memory.timeOfRecord)}
+        </Text>
       </View>
+
+      <Text style={styles.summary} numberOfLines={2}>
+        {memory.summary}
+      </Text>
+
+      <Animated.View style={arrowStyle}>
+        <View style={styles.seeMoreButton}>
+          <MaterialIcons
+            name="arrow-forward"
+            size={20}
+            color={colors.dayCardAccentText}
+          />
+        </View>
+      </Animated.View>
     </TouchableOpacity>
   );
   return content;
@@ -72,35 +97,48 @@ export default function TimeOfDayMemoryCard({
 
 const styles = StyleSheet.create({
   card: {
-    backgroundColor: "#f5f5f5",
-    borderRadius: 12,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+    backgroundColor: colors.dayCardBackground,
+    borderRadius: 16,
     marginHorizontal: 16,
     marginVertical: 8,
     paddingHorizontal: 16,
-    paddingVertical: 12,
+    paddingVertical: 16,
+    boxShadow: "0px 4px 6px rgba(0, 0, 0, 0.2)",
   },
-  content: {
-    gap: 8,
+  timeBadge: {
+    alignItems: "center",
+    backgroundColor: colors.dayCardBadgeBackground,
+    borderRadius: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    minWidth: 64,
   },
-  row: {
-    flexDirection: "row",
-    alignItems: "flex-start",
-  },
-  label: {
+  timeText: {
     fontSize: 20,
-    color: "#666",
-    fontWeight: "bold",
+    fontWeight: "700",
+    color: colors.text,
   },
-  bold: {
-    fontSize: 20,
-    fontWeight: "normal",
-    color: "#000",
+  meridiemText: {
+    fontSize: 12,
+    fontWeight: "600",
+    color: colors.textSecondary,
+  },
+  summary: {
     flex: 1,
+    fontSize: 15,
+    color: colors.text,
+    lineHeight: 20,
   },
-  seeMore: {
-    fontSize: 20,
-    color: "#007AFF",
-    fontWeight: "500",
-    marginTop: 4,
+  seeMoreButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: colors.dayCardAccent,
+    justifyContent: "center",
+    alignItems: "center",
+    boxShadow: "0px 2px 3px rgba(0, 0, 0, 0.25)",
   },
 });

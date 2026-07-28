@@ -20,6 +20,19 @@ export interface AppColors {
   screenBackground: string;
   inputBackground: string;
   loginButtonBackground: string;
+  dayMemoriesHeaderBackground: string;
+  dayMemoriesDateChipBackground: string;
+  dayMemoriesDateChipText: string;
+  dayMemoriesChipBackground: string;
+  dayMemoriesIconColor: string;
+  createMemoryCardBackground: string;
+  createMemoryCardBorder: string;
+  createMemoryTitleColor: string;
+  createMemorySubtitleColor: string;
+  createMemoryInputBackground: string;
+  createMemoryLocationErrorBackground: string;
+  createMemoryLocationErrorBorder: string;
+  createMemoryLocationErrorText: string;
 }
 
 export const getColors = (): AppColors => {
@@ -45,6 +58,19 @@ export const getColors = (): AppColors => {
     screenBackground: "#F2E8D5",
     inputBackground: "#FFFFFF",
     loginButtonBackground: "#3F86B3",
+    dayMemoriesHeaderBackground: "#CFE9FB",
+    dayMemoriesDateChipBackground: "#4FA8E0",
+    dayMemoriesDateChipText: "#FFFFFF",
+    dayMemoriesChipBackground: "#FFFFFF",
+    dayMemoriesIconColor: "#000000",
+    createMemoryCardBackground: "#FBF4E7",
+    createMemoryCardBorder: "#E6D9C2",
+    createMemoryTitleColor: "#3B2E22",
+    createMemorySubtitleColor: "#9C8B72",
+    createMemoryInputBackground: "#FFFFFF",
+    createMemoryLocationErrorBackground: "#FBEAEA",
+    createMemoryLocationErrorBorder: "#E8A0A0",
+    createMemoryLocationErrorText: "#C0392B",
   };
   return colors;
 };

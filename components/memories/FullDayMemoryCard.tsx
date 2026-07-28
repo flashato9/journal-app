@@ -1,27 +1,14 @@
 import { MaterialIcons } from "@expo/vector-icons";
-import { useFocusEffect } from "@react-navigation/native";
 import { format } from "date-fns/format";
 import { parse } from "date-fns/parse";
 import { useRouter } from "expo-router";
-import { useCallback, useRef } from "react";
+import { useCallback } from "react";
 import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
-import Animated, {
-  ReduceMotion,
-  useAnimatedStyle,
-  useSharedValue,
-  withTiming,
-} from "react-native-reanimated";
-import { runOnJS } from "react-native-worklets";
+import Animated from "react-native-reanimated";
 import { getColors } from "@/constants/colors";
+import { useArrowSlideNavigate } from "@/hooks/memories/useArrowSlideNavigate";
 
 const colors = getColors();
-
-const ARROW_LEFT_OFFSET_PX = 32;
-const ARROW_SLIDE_DURATION_MS = 400;
-const arrowSlideTimingConfig = {
-  duration: ARROW_SLIDE_DURATION_MS,
-  reduceMotion: ReduceMotion.Never,
-};
 
 export interface DailyMemorySummary {
   id: string;
@@ -35,44 +22,18 @@ interface FullDayMemoryCardProps {
 
 export default function FullDayMemoryCard({ memory }: FullDayMemoryCardProps) {
   const router = useRouter();
-  const arrowOffset = useSharedValue(-ARROW_LEFT_OFFSET_PX);
-  const isNavigatingRef = useRef(false);
 
-  useFocusEffect(
-    useCallback(() => {
-      arrowOffset.value = -ARROW_LEFT_OFFSET_PX;
-    }, [arrowOffset]),
-  );
-
-  const navigateToDayMemories = () => {
+  const navigateToDayMemories = useCallback(() => {
     const destination: Parameters<typeof router.push>[0] = {
       pathname: "/(memories)/daymemories",
       params: { id: memory.id, day: memory.day },
     };
     router.push(destination);
-  };
+  }, [router, memory.id, memory.day]);
 
-  const handleSlideComplete = (finished?: boolean) => {
-    isNavigatingRef.current = false;
-    if (finished) {
-      navigateToDayMemories();
-    }
-  };
-
-  const handleSeeMore = () => {
-    if (isNavigatingRef.current) {
-      return;
-    }
-    isNavigatingRef.current = true;
-    arrowOffset.value = withTiming(0, arrowSlideTimingConfig, (finished) => {
-      runOnJS(handleSlideComplete)(finished);
-    });
-  };
-
-  const arrowStyle = useAnimatedStyle(() => {
-    const animatedStyle = { transform: [{ translateX: arrowOffset.value }] };
-    return animatedStyle;
-  });
+  const { arrowStyle, handlePress } = useArrowSlideNavigate(
+    navigateToDayMemories,
+  );
 
   const parsedDay = parse(memory.day, "yyyy-MM-dd", new Date());
   const dayNumber = format(parsedDay, "d");
@@ -80,7 +41,7 @@ export default function FullDayMemoryCard({ memory }: FullDayMemoryCardProps) {
 
   const content = (
     <TouchableOpacity
-      onPress={handleSeeMore}
+      onPress={handlePress}
       style={styles.card}
       activeOpacity={0.7}
     >
@@ -135,6 +96,9 @@ const styles = StyleSheet.create({
     fontSize: 32,
     fontWeight: "700",
     color: colors.text,
+    textShadowColor: "rgba(0, 0, 0, 0.3)",
+    textShadowOffset: { width: 0, height: 2 },
+    textShadowRadius: 3,
   },
   dateDivider: {
     width: "80%",
@@ -146,12 +110,16 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: "600",
     color: colors.textSecondary,
+    textShadowColor: "rgba(0, 0, 0, 0.3)",
+    textShadowOffset: { width: 0, height: 2 },
+    textShadowRadius: 3,
   },
   summary: {
     flex: 1,
     fontSize: 16,
     color: colors.text,
     lineHeight: 22,
+    paddingRight: 24,
   },
   seeMoreButton: {
     width: 40,

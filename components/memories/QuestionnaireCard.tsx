@@ -1,6 +1,15 @@
 import { MaterialIcons } from "@expo/vector-icons";
 import { useState } from "react";
-import { StyleSheet, TextInput, TouchableOpacity, View } from "react-native";
+import {
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
+} from "react-native";
+import { getColors } from "@/constants/colors";
+
+const colors = getColors();
 
 export interface QuestionnaireItem {
   id: string;
@@ -10,6 +19,7 @@ export interface QuestionnaireItem {
 
 interface QuestionnaireCardProps {
   item: QuestionnaireItem;
+  index: number;
   onChange: (id: string, answer: string) => void;
   onQuestionChange?: (id: string, question: string) => void;
   onRemove?: () => void;
@@ -18,24 +28,29 @@ interface QuestionnaireCardProps {
 
 export default function QuestionnaireCard({
   item,
+  index,
   onChange,
   onQuestionChange,
   onRemove,
   isEditable = true,
 }: QuestionnaireCardProps) {
   const [isFocused, setIsFocused] = useState(false);
+  const [isAnswerFocused, setIsAnswerFocused] = useState(false);
 
   const content = (
     <View style={styles.card}>
-      {onRemove && (
-        <TouchableOpacity
-          style={styles.removeButton}
-          onPress={onRemove}
-          activeOpacity={0.6}
-        >
-          <MaterialIcons name="close" size={18} color="white" />
-        </TouchableOpacity>
-      )}
+      <View style={styles.headerRow}>
+        <Text style={styles.questionLabel}>Question {index}</Text>
+        {onRemove && (
+          <TouchableOpacity
+            style={styles.removeButton}
+            onPress={onRemove}
+            activeOpacity={0.6}
+          >
+            <MaterialIcons name="close" size={16} color="white" />
+          </TouchableOpacity>
+        )}
+      </View>
       {isEditable && isFocused ? (
         <TextInput
           style={styles.questionInput}
@@ -45,7 +60,7 @@ export default function QuestionnaireCard({
           onBlur={() => setIsFocused(false)}
           numberOfLines={1}
           maxLength={100}
-          placeholderTextColor="#999"
+          placeholderTextColor={colors.createMemorySubtitleColor}
           autoFocus
           scrollEnabled={true}
         />
@@ -59,20 +74,26 @@ export default function QuestionnaireCard({
           editable={isEditable}
           numberOfLines={1}
           maxLength={100}
-          placeholderTextColor="#999"
+          placeholderTextColor={colors.createMemorySubtitleColor}
           scrollEnabled={true}
         />
       )}
       <TextInput
-        style={[styles.input, !isEditable && styles.inputReadOnly]}
+        style={[
+          styles.input,
+          !isEditable && styles.inputReadOnly,
+          isAnswerFocused && styles.inputFocused,
+        ]}
         placeholder="Your answer..."
         value={item.answer}
         onChangeText={(text) => onChange(item.id, text)}
+        onFocus={() => setIsAnswerFocused(true)}
+        onBlur={() => setIsAnswerFocused(false)}
         editable={isEditable}
         multiline
         numberOfLines={3}
         maxLength={300}
-        placeholderTextColor="#999"
+        placeholderTextColor={colors.createMemorySubtitleColor}
       />
     </View>
   );
@@ -81,30 +102,38 @@ export default function QuestionnaireCard({
 
 const styles = StyleSheet.create({
   card: {
-    position: "relative",
-    backgroundColor: "#f9f9f9",
-    borderRadius: 8,
+    backgroundColor: colors.createMemoryCardBorder,
+    borderRadius: 14,
     padding: 12,
     marginBottom: 12,
     borderWidth: 1,
-    borderColor: "#e0e0e0",
+    borderColor: colors.createMemoryCardBorder,
+    boxShadow: "0px 4px 6px rgba(0, 0, 0, 0.2)",
+  },
+  headerRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 6,
+  },
+  questionLabel: {
+    fontSize: 12,
+    fontWeight: "600",
+    color: colors.createMemorySubtitleColor,
+    textTransform: "uppercase",
   },
   removeButton: {
-    position: "absolute",
-    top: 4,
-    right: 4,
     backgroundColor: "rgba(0, 0, 0, 0.6)",
-    borderRadius: 12,
-    width: 24,
-    height: 24,
+    borderRadius: 11,
+    width: 22,
+    height: 22,
     justifyContent: "center",
     alignItems: "center",
-    zIndex: 1,
   },
   questionText: {
-    fontSize: 14,
-    fontWeight: "600",
-    color: "#000",
+    fontSize: 15,
+    fontWeight: "700",
+    color: colors.createMemoryTitleColor,
     marginBottom: 8,
     borderWidth: 0,
     padding: 0,
@@ -112,30 +141,34 @@ const styles = StyleSheet.create({
   },
   questionInput: {
     borderWidth: 1,
-    borderColor: "#007AFF",
-    borderRadius: 6,
+    borderColor: colors.dayMemoriesDateChipBackground,
+    borderRadius: 8,
     paddingHorizontal: 10,
     paddingVertical: 8,
-    fontSize: 14,
-    fontWeight: "600",
-    color: "#000",
+    fontSize: 15,
+    fontWeight: "700",
+    color: colors.createMemoryTitleColor,
     marginBottom: 8,
-    backgroundColor: "#fff",
+    backgroundColor: colors.createMemoryInputBackground,
+    boxShadow: "0px 0px 6px rgba(0, 0, 0, 0.25)",
   },
   input: {
     borderWidth: 1,
-    borderColor: "#e0e0e0",
-    borderRadius: 6,
+    borderColor: colors.createMemoryCardBorder,
+    borderRadius: 10,
     paddingHorizontal: 10,
     paddingVertical: 8,
     fontSize: 13,
-    color: "#000",
+    color: colors.text,
     textAlignVertical: "top",
-    backgroundColor: "#fff",
+    backgroundColor: colors.createMemoryInputBackground,
   },
   inputReadOnly: {
-    borderColor: "#f0f0f0",
-    backgroundColor: "#f9f9f9",
-    color: "#333",
+    borderColor: colors.createMemoryCardBorder,
+    backgroundColor: colors.createMemoryCardBackground,
+    color: colors.createMemorySubtitleColor,
+  },
+  inputFocused: {
+    boxShadow: "0px 0px 6px rgba(0, 0, 0, 0.25)",
   },
 });

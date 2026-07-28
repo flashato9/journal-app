@@ -1,33 +1,20 @@
-import { MaterialIcons } from "@expo/vector-icons";
-import { format } from "date-fns/format";
-import { parse } from "date-fns/parse";
 import { useLocalSearchParams, useRouter } from "expo-router";
-import {
-  FlatList,
-  StyleSheet,
-  Text,
-  ToastAndroid,
-  TouchableOpacity,
-  View,
-} from "react-native";
+import { FlatList, StyleSheet, Text, ToastAndroid, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import Header from "@/components/Header";
-import SummaryCard from "@/components/memories/SummaryCard";
+import Button from "@/components/Button";
+import DayMemoriesHeader from "@/components/memories/DayMemoriesHeader";
 import TimeOfDayMemoryCard from "@/components/memories/TimeOfDayMemoryCard";
+import { getColors } from "@/constants/colors";
 import { useDayMemories } from "@/hooks/memories/useDayMemories";
 
-// Formats the raw yyyy-MM-dd day param into a display title, e.g. "July 24th, 2026 Memories".
-function formatDayTitle(day: string | string[] | undefined): string {
-  if (typeof day !== "string") {
-    return "Today's Memories";
+const colors = getColors();
+
+function getDayParam(day: string | string[] | undefined): string {
+  if (typeof day === "string") {
+    return day;
   }
-  try {
-    const parsedDay = parse(day, "yyyy-MM-dd", new Date());
-    const formattedTitle = `${format(parsedDay, "MMMM do, yyyy")} Memories`;
-    return formattedTitle;
-  } catch {
-    return "Today's Memories";
-  }
+  const today = new Date().toISOString().split("T")[0];
+  return today;
 }
 
 export default function DayMemoriesScreen() {
@@ -44,22 +31,17 @@ export default function DayMemoriesScreen() {
     ToastAndroid.show("Insert new memory", ToastAndroid.SHORT);
   };
 
-  const headerTitle = formatDayTitle(day);
-
-  const actionIcons = (
-    <TouchableOpacity
-      onPress={handleCreateMemory}
-      onLongPress={handleCreateMemoryLongPress}
-      delayLongPress={500}
-    >
-      <MaterialIcons name="add" size={28} color="#000" />
-    </TouchableOpacity>
-  );
+  const dayParam = getDayParam(day);
 
   const content = (
-    <SafeAreaView style={styles.container} edges={["left", "right", "bottom"]}>
-      <Header title={headerTitle} actionIcons={actionIcons} />
-      <SummaryCard initialText={daySummary} onSubmit={handleSaveSummary} />
+    <SafeAreaView style={styles.container}>
+      <DayMemoriesHeader
+        day={dayParam}
+        daySummary={daySummary}
+        onSaveSummary={handleSaveSummary}
+        onCreateMemory={handleCreateMemory}
+        onCreateMemoryLongPress={handleCreateMemoryLongPress}
+      />
       <FlatList
         data={memories}
         renderItem={({ item }) => <TimeOfDayMemoryCard memory={item} />}
@@ -68,7 +50,21 @@ export default function DayMemoriesScreen() {
         ListEmptyComponent={
           !isLoading ? (
             <View style={styles.emptyContainer}>
-              <Text style={styles.emptyText}>No memories for this day</Text>
+              <Text style={styles.emptyTitle}>A blank page awaits...</Text>
+              <Text style={styles.emptySubtitle}>
+                Capture your thoughts for today.
+              </Text>
+              <View style={styles.createFirstButtonWrapper}>
+                <Button
+                  text="Create First Memory"
+                  onPress={handleCreateMemory}
+                  iconName="plus-square-o"
+                  isShiny
+                  backgroundColor={colors.dayMemoriesDateChipBackground}
+                  style={styles.createFirstButton}
+                  textStyle={styles.createFirstButtonText}
+                />
+              </View>
             </View>
           ) : null
         }
@@ -81,7 +77,7 @@ export default function DayMemoriesScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#fff",
+    backgroundColor: colors.screenBackground,
   },
   listContent: {
     paddingVertical: 8,
@@ -90,10 +86,35 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
-    paddingVertical: 40,
+    paddingHorizontal: 32,
+    paddingTop: 60,
+    paddingBottom: 40,
   },
-  emptyText: {
-    fontSize: 16,
-    color: "#999",
+  emptyTitle: {
+    fontSize: 18,
+    fontWeight: "700",
+    color: colors.text,
+    textAlign: "center",
+  },
+  emptySubtitle: {
+    fontSize: 14,
+    color: colors.textSecondary,
+    textAlign: "center",
+    marginTop: 4,
+  },
+  createFirstButtonWrapper: {
+    width: "100%",
+    marginTop: 74,
+  },
+  createFirstButton: {
+    borderRadius: 999,
+    paddingHorizontal: 30,
+    paddingVertical: 18,
+    marginTop: 0,
+    boxShadow: "0px 6px 10px rgba(0, 0, 0, 0.25)",
+  },
+  createFirstButtonText: {
+    fontSize: 25,
+    fontWeight: "700",
   },
 });

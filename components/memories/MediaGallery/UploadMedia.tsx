@@ -18,11 +18,13 @@ import {
   saveVideoPersistently,
 } from "@/services/mediaStorage";
 import LoadingIndicator from "@/components/LoadingIndicator";
+import { getColors } from "@/constants/colors";
 import MediaCard from "./MediaCard";
 import MediaPreviewModal from "./MediaPreviewModal";
 import RecordAudioModal from "./RecordAudioModal";
 
-const MAX_MEDIA = 6;
+const colors = getColors();
+const MAX_MEDIA = 8;
 const MAX_VIDEO_DURATION_SECONDS = 300;
 
 export interface MediaItem {
@@ -36,10 +38,41 @@ export interface MediaItem {
   mediaLibraryAssetId?: string | null;
 }
 
+interface MediaGridSlot {
+  key: string;
+  item: MediaItem | null;
+  mediaIndex: number | null;
+}
+
 interface UploadMediaProps {
   media: MediaItem[];
   onMediaSelected: (newMedia: MediaItem[]) => void;
   isEditable?: boolean;
+}
+
+// Pads the filled media slots with empty (tappable "+") slots up to MAX_MEDIA when editable.
+function buildGridSlots(
+  media: MediaItem[],
+  isEditable: boolean,
+): MediaGridSlot[] {
+  const filledSlots: MediaGridSlot[] = media.map((item, index) => {
+    const slot = { key: `filled-${index}`, item, mediaIndex: index };
+    return slot;
+  });
+  if (!isEditable) {
+    return filledSlots;
+  }
+  const emptyCount = Math.max(0, MAX_MEDIA - media.length);
+  const arrayLengthOptions = { length: emptyCount };
+  const emptySlots: MediaGridSlot[] = Array.from(
+    arrayLengthOptions,
+    (_, index) => {
+      const slot = { key: `empty-${index}`, item: null, mediaIndex: null };
+      return slot;
+    },
+  );
+  const slots = [...filledSlots, ...emptySlots];
+  return slots;
 }
 
 export default function UploadMedia({
@@ -337,66 +370,57 @@ export default function UploadMedia({
     }
   };
 
-  return (
+  const gridSlots = buildGridSlots(media, isEditable);
+
+  const content = (
     <View style={styles.container}>
       {isLoading && isEditable ? (
         <LoadingIndicator message="Processing media..." />
-      ) : media.length === 0 && isEditable ? (
-        <TouchableOpacity
-          style={styles.uploadButton}
-          onPress={handleUploadPress}
-        >
-          <MaterialIcons name="add-photo-alternate" size={24} color="#007AFF" />
-          <Text style={styles.uploadButtonText}>Upload Media</Text>
-        </TouchableOpacity>
-      ) : media.length === 0 ? (
+      ) : gridSlots.length === 0 ? (
         <View style={styles.emptyContainer}>
           <Text style={styles.noImagesText}>No media</Text>
         </View>
       ) : (
-        <>
-          <FlatList
-            data={media}
-            renderItem={({ item, index }) => (
+        <FlatList
+          data={gridSlots}
+          columnWrapperStyle={styles.gridRow}
+          renderItem={({ item: slot }) => {
+            if (slot.item === null) {
+              const emptyTile = (
+                <TouchableOpacity
+                  style={styles.emptySlot}
+                  onPress={handleUploadPress}
+                  activeOpacity={0.7}
+                >
+                  <MaterialIcons
+                    name="add"
+                    size={28}
+                    color={colors.createMemorySubtitleColor}
+                  />
+                </TouchableOpacity>
+              );
+              return emptyTile;
+            }
+            const mediaItem = slot.item;
+            const mediaIndex = slot.mediaIndex;
+            const filledTile = (
               <MediaCard
-                uri={item.uri}
-                type={item.type}
-                onRemove={isEditable ? () => removeMedia(index) : undefined}
-                onPress={() => setPreviewItem(item)}
+                uri={mediaItem.uri}
+                type={mediaItem.type}
+                onRemove={
+                  isEditable && mediaIndex !== null
+                    ? () => removeMedia(mediaIndex)
+                    : undefined
+                }
+                onPress={() => setPreviewItem(mediaItem)}
               />
-            )}
-            keyExtractor={(item, index) => index.toString()}
-            numColumns={3}
-            scrollEnabled={false}
-            contentContainerStyle={styles.imageGrid}
-          />
-          {isEditable && (
-            <TouchableOpacity
-              style={[
-                styles.uploadMoreButton,
-                media.length >= MAX_MEDIA && styles.uploadMoreButtonDisabled,
-              ]}
-              onPress={handleUploadPress}
-              activeOpacity={0.7}
-              disabled={media.length >= MAX_MEDIA}
-            >
-              <MaterialIcons
-                name="add-photo-alternate"
-                size={20}
-                color={media.length >= MAX_MEDIA ? "#999" : "white"}
-              />
-              <Text
-                style={[
-                  styles.uploadMoreButtonText,
-                  media.length >= MAX_MEDIA &&
-                    styles.uploadMoreButtonTextDisabled,
-                ]}
-              >
-                {media.length >= MAX_MEDIA ? "Maximum reached" : "Add More"}
-              </Text>
-            </TouchableOpacity>
-          )}
-        </>
+            );
+            return filledTile;
+          }}
+          keyExtractor={(slot) => slot.key}
+          numColumns={4}
+          scrollEnabled={false}
+        />
       )}
       <MediaPreviewModal
         visible={previewItem !== null}
@@ -415,51 +439,25 @@ export default function UploadMedia({
       )}
     </View>
   );
+  return content;
 }
 
 const styles = StyleSheet.create({
   container: {
     marginTop: 8,
   },
-  uploadButton: {
-    borderWidth: 2,
-    borderStyle: "dashed",
-    borderColor: "#007AFF",
-    borderRadius: 8,
-    paddingVertical: 32,
-    alignItems: "center",
+  gridRow: {
+    justifyContent: "space-between",
+  },
+  emptySlot: {
+    width: "22%",
+    aspectRatio: 1,
+    marginBottom: 8,
+    borderRadius: 12,
+    backgroundColor: colors.createMemoryCardBorder,
     justifyContent: "center",
-    width: "100%",
-  },
-  uploadButtonText: {
-    color: "#007AFF",
-    fontSize: 14,
-    fontWeight: "600",
-    marginTop: 8,
-  },
-  imageGrid: {
-    marginBottom: 12,
-  },
-  uploadMoreButton: {
-    backgroundColor: "#007AFF",
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-    borderRadius: 8,
-    flexDirection: "row",
     alignItems: "center",
-    justifyContent: "center",
-    gap: 8,
-  },
-  uploadMoreButtonDisabled: {
-    backgroundColor: "#f0f0f0",
-  },
-  uploadMoreButtonText: {
-    color: "white",
-    fontSize: 14,
-    fontWeight: "600",
-  },
-  uploadMoreButtonTextDisabled: {
-    color: "#999",
+    boxShadow: "0px 4px 6px rgba(0, 0, 0, 0.2)",
   },
   emptyContainer: {
     alignItems: "center",
@@ -468,7 +466,7 @@ const styles = StyleSheet.create({
   },
   noImagesText: {
     fontSize: 14,
-    color: "#999",
+    color: colors.createMemorySubtitleColor,
     fontStyle: "italic",
   },
 });

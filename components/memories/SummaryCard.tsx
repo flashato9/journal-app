@@ -8,6 +8,11 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
+import { getColors } from "@/constants/colors";
+
+const colors = getColors();
+const SUMMARY_HEIGHT = 64;
+const SUMMARY_COUNTER_HEIGHT = 14;
 
 interface SummaryCardProps {
   initialText: string;
@@ -48,21 +53,18 @@ export default function SummaryCard({
   const content = (
     <View style={styles.summaryContainer}>
       {isEditingMode ? (
-        <View style={styles.editSummaryContainer}>
-          <TextInput
-            style={styles.summaryInput}
-            value={editedText}
-            onChangeText={setEditedText}
-            multiline
-            maxLength={100}
-            placeholder="Enter summary (10-100 characters)"
-            placeholderTextColor="#999"
-            autoFocus
-          />
-          <Text style={styles.charCountText}>{editedText.length}/100</Text>
-        </View>
+        <TextInput
+          style={styles.summaryInput}
+          value={editedText}
+          onChangeText={setEditedText}
+          multiline
+          maxLength={100}
+          placeholder="Enter summary (10-100 characters)"
+          placeholderTextColor={colors.textMuted}
+          autoFocus
+        />
       ) : (
-        <Text style={styles.summaryText}>
+        <Text style={styles.summaryText} numberOfLines={2}>
           {initialText || "No summary provided"}
         </Text>
       )}
@@ -72,10 +74,13 @@ export default function SummaryCard({
       >
         <MaterialIcons
           name={isEditingMode ? "save" : "edit"}
-          size={20}
-          color="#007AFF"
+          size={27}
+          color={colors.dayMemoriesDateChipBackground}
         />
       </TouchableOpacity>
+      {isEditingMode && (
+        <Text style={styles.charCountText}>{editedText.length}/100</Text>
+      )}
     </View>
   );
   return content;
@@ -83,43 +88,45 @@ export default function SummaryCard({
 
 const styles = StyleSheet.create({
   summaryContainer: {
-    flexDirection: "row",
-    alignItems: "flex-start",
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    backgroundColor: "#f9f9f9",
-    borderBottomWidth: 1,
-    borderBottomColor: "#e0e0e0",
-    gap: 8,
+    height: SUMMARY_HEIGHT,
+    overflow: "hidden",
   },
   summaryText: {
-    flex: 1,
-    fontSize: 14,
-    color: "#666",
-  },
-  editSummaryContainer: {
-    flex: 1,
-    gap: 4,
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 36,
+    fontSize: 18,
+    fontWeight: "500",
+    color: colors.text,
   },
   summaryInput: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 36,
+    bottom: SUMMARY_COUNTER_HEIGHT,
     borderWidth: 1,
-    borderColor: "#ddd",
-    borderRadius: 6,
-    padding: 8,
-    fontSize: 14,
-    color: "#333",
-    minHeight: 60,
+    borderColor: colors.border,
+    borderRadius: 8,
+    backgroundColor: colors.inputBackground,
+    paddingVertical: 2,
+    paddingHorizontal: 8,
+    fontSize: 16,
+    color: colors.text,
     textAlignVertical: "top",
   },
-  charCountText: {
-    fontSize: 12,
-    color: "#999",
-    textAlign: "right",
-  },
   summaryButton: {
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    justifyContent: "center",
-    alignItems: "center",
+    position: "absolute",
+    top: 0,
+    right: 0,
+    padding: 2,
+  },
+  charCountText: {
+    position: "absolute",
+    bottom: 0,
+    left: 0,
+    fontSize: 11,
+    color: colors.textMuted,
   },
 });

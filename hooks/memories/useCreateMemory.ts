@@ -37,6 +37,11 @@ async function fetchCurrentLocation(setMemoryState: SetMemoryState) {
     const { status } = await Location.requestForegroundPermissionsAsync();
     if (status !== "granted") {
       console.warn("Location permission not granted");
+      const applyUnretrievable = (prev: MemoryFormState) => {
+        const next: MemoryFormState = { ...prev, location: "Unretrievable" };
+        return next;
+      };
+      setMemoryState(applyUnretrievable);
       return;
     }
 
@@ -58,7 +63,22 @@ async function fetchCurrentLocation(setMemoryState: SetMemoryState) {
     setMemoryState(applyLocation);
   } catch (error) {
     console.error("Error getting location:", error);
+    const applyUnretrievable = (prev: MemoryFormState) => {
+      const next: MemoryFormState = { ...prev, location: "Unretrievable" };
+      return next;
+    };
+    setMemoryState(applyUnretrievable);
   }
+}
+
+// Resets location to Loading and re-attempts the GPS fetch.
+function retryLocation(setMemoryState: SetMemoryState) {
+  const applyLoading = (prev: MemoryFormState) => {
+    const next: MemoryFormState = { ...prev, location: "Loading" };
+    return next;
+  };
+  setMemoryState(applyLoading);
+  fetchCurrentLocation(setMemoryState);
 }
 
 // Validates and persists the memory (TimeMemory, location, media, and QA), then navigates back.
@@ -175,6 +195,13 @@ export function useCreateMemory() {
 
   const handleSave = () =>
     saveMemory(username, memoryState, router, setIsSaving);
+  const handleRetryLocation = () => retryLocation(setMemoryState);
 
-  return { memoryState, setMemoryState, isSaving, handleSave };
+  return {
+    memoryState,
+    setMemoryState,
+    isSaving,
+    handleSave,
+    handleRetryLocation,
+  };
 }
