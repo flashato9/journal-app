@@ -56,7 +56,7 @@ export default function ReadMemoryScreen() {
   );
 
   const content = (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={styles.container} edges={["left", "right", "bottom"]}>
       <Header title={headerTitle} actionIcons={actionIcons} />
       <MemoryForm storage={memoryState} onStorageChange={setMemoryState} />
     </SafeAreaView>

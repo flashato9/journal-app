@@ -1,6 +1,5 @@
 import { useFocusEffect } from "@react-navigation/native";
 import { format } from "date-fns/format";
-import { parse } from "date-fns/parse";
 import { useCallback, useContext, useState } from "react";
 import { AuthContext } from "@/context/AuthContext";
 import { DayMemoryTable, UserTable } from "@/services/database";
@@ -31,7 +30,7 @@ function fetchMemories(
     const memorySummaries = dayMemories.map((dm) => ({
       id: dm.id.toString(),
       summary: dm.summary || "",
-      day: format(parse(dm.day, "yyyy-MM-dd", new Date()), "MMMM do, yyyy"),
+      day: dm.day,
     }));
 
     setMemories(memorySummaries);

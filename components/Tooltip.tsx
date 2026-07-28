@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import {
   Dimensions,
+  LayoutChangeEvent,
   Modal,
   Pressable,
   StyleSheet,
@@ -9,8 +10,13 @@ import {
   View,
 } from "react-native";
 
-const TOOLTIP_GAP = 8;
+const TOOLTIP_GAP = 12;
 const TOOLTIP_AUTO_DISMISS_MS = 5000;
+const BUBBLE_HORIZONTAL_PADDING = 10;
+const BUBBLE_VERTICAL_PADDING = 6;
+const MEASUREMENT_WIDTH = 300;
+const ARROW_SIZE = 6;
+const WIDTH_SAFETY_BUFFER = 4;
 
 interface TriggerLayout {
   x: number;
@@ -31,6 +37,7 @@ export default function Tooltip({ text, children }: TooltipProps) {
     null,
   );
   const [isVisible, setIsVisible] = useState(false);
+  const [textWidth, setTextWidth] = useState<number | null>(null);
 
   const handleTriggerMeasured = (
     x: number,
@@ -43,6 +50,7 @@ export default function Tooltip({ text, children }: TooltipProps) {
     const layout = { x: pageX, y: pageY, width, height };
     setTriggerLayout(layout);
     setIsVisible(true);
+    console.log("Tooltip text:", text);
   };
 
   const handleTriggerPress = () => {
@@ -51,6 +59,10 @@ export default function Tooltip({ text, children }: TooltipProps) {
 
   const handleClose = () => {
     setIsVisible(false);
+  };
+
+  const handleTextMeasured = (event: LayoutChangeEvent) => {
+    setTextWidth(event.nativeEvent.layout.width);
   };
 
   useEffect(() => {
@@ -71,7 +83,14 @@ export default function Tooltip({ text, children }: TooltipProps) {
         right: windowWidth - (triggerLayout.x + triggerLayout.width),
       }
     : undefined;
-  const bubbleStyle = [styles.bubble, bubblePositionStyle];
+  const bubbleWidthStyle = textWidth
+    ? { width: textWidth + BUBBLE_HORIZONTAL_PADDING * 2 + WIDTH_SAFETY_BUFFER }
+    : undefined;
+  const bubbleStyle = [styles.bubble, bubblePositionStyle, bubbleWidthStyle];
+  const arrowPositionStyle = triggerLayout
+    ? { right: triggerLayout.width / 2 - ARROW_SIZE }
+    : undefined;
+  const arrowStyle = [styles.arrow, arrowPositionStyle];
 
   const content = (
     <>
@@ -87,8 +106,16 @@ export default function Tooltip({ text, children }: TooltipProps) {
         onRequestClose={handleClose}
       >
         <Pressable style={styles.backdrop} onPress={handleClose}>
+          <View
+            style={styles.measurementContainer}
+            importantForAccessibility="no-hide-descendants"
+          >
+            <Text style={styles.text} onLayout={handleTextMeasured}>
+              {text}
+            </Text>
+          </View>
           <Pressable style={bubbleStyle}>
-            <View style={styles.arrow} />
+            <View style={arrowStyle} />
             <Text style={styles.text}>{text}</Text>
           </Pressable>
         </Pressable>
@@ -105,19 +132,18 @@ const styles = StyleSheet.create({
   bubble: {
     position: "absolute",
     backgroundColor: "#000",
-    paddingHorizontal: 10,
-    paddingVertical: 6,
+    paddingHorizontal: BUBBLE_HORIZONTAL_PADDING,
+    paddingVertical: BUBBLE_VERTICAL_PADDING,
     borderRadius: 6,
   },
   arrow: {
     position: "absolute",
-    top: -6,
-    right: 5,
+    top: -ARROW_SIZE,
     width: 0,
     height: 0,
-    borderLeftWidth: 6,
-    borderRightWidth: 6,
-    borderBottomWidth: 6,
+    borderLeftWidth: ARROW_SIZE,
+    borderRightWidth: ARROW_SIZE,
+    borderBottomWidth: ARROW_SIZE,
     borderLeftColor: "transparent",
     borderRightColor: "transparent",
     borderBottomColor: "#000",
@@ -125,5 +151,12 @@ const styles = StyleSheet.create({
   text: {
     color: "#fff",
     fontSize: 13,
+  },
+  measurementContainer: {
+    position: "absolute",
+    alignItems: "flex-start",
+    opacity: 0,
+    left: -9999,
+    width: MEASUREMENT_WIDTH,
   },
 });

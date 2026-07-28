@@ -20,7 +20,7 @@ export default function DebugLogsScreen() {
   } = useDebugLogs();
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={styles.container} edges={["left", "right", "bottom"]}>
       <Header title="Debug Logs" />
 
       {/* Logs Content */}

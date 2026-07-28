@@ -1,4 +1,4 @@
-import { MaterialCommunityIcons, MaterialIcons } from "@expo/vector-icons";
+import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { useFocusEffect } from "@react-navigation/native";
 import { useRouter } from "expo-router";
 import { useCallback, useContext } from "react";
@@ -10,10 +10,16 @@ import {
   View,
   ViewStyle,
 } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Tooltip from "@/components/Tooltip";
+import { getColors } from "@/constants/colors";
 import { AuthContext } from "@/context/AuthContext";
 import { OptionsMenuContext } from "@/context/OptionsMenuContext";
 import { useUserSession } from "@/hooks/welcome/useUserSession";
+
+const colors = getColors();
+
+const HEADER_CONTENT_PADDING = 8;
 
 interface HeaderProps {
   title: string;
@@ -36,6 +42,7 @@ export default function Header({
   const { username } = useContext(AuthContext);
   const { profileImagePath } = useUserSession();
   const router = useRouter();
+  const insets = useSafeAreaInsets();
 
   // Refresh immediately on focus instead of waiting for OptionsMenuContext's next poll.
   useFocusEffect(
@@ -55,23 +62,41 @@ export default function Header({
   const locationTooltipText = locationTrackingActive
     ? "Location Tracking: Online"
     : "Location Tracking: Offline";
+  const locationIconName = locationTrackingActive
+    ? "map-marker-outline"
+    : "map-marker-off-outline";
+  const headerPaddingTop = insets.top + HEADER_CONTENT_PADDING;
+  const dynamicHeaderStyle = { paddingTop: headerPaddingTop };
 
   const content = (
-    <View style={[styles.header, containerStyle]}>
-      <Text style={styles.headerTitle}>{title}</Text>
+    <View style={[styles.header, dynamicHeaderStyle, containerStyle]}>
+      <View style={styles.titleSlot}>
+        {title && (
+          <View style={styles.titlePill}>
+            <Text style={styles.headerTitle} numberOfLines={1}>
+              {title}
+            </Text>
+          </View>
+        )}
+      </View>
       {actionIcons && (
         <View style={styles.actionIconsWrapper}>{actionIcons}</View>
       )}
       <View style={styles.rightIconsWrapper}>
         <Tooltip text={locationTooltipText}>
-          <MaterialCommunityIcons
-            name={locationTrackingActive ? "map-marker" : "map-marker-off"}
-            size={22}
-            color={locationTrackingActive ? "#4CAF50" : "#999"}
-          />
+          <View style={styles.iconCircle}>
+            <MaterialCommunityIcons
+              name={locationIconName}
+              size={22}
+              color={colors.headerIconColor}
+            />
+          </View>
         </Tooltip>
         {username && !hideProfileIcon && (
-          <TouchableOpacity onPress={handleProfilePress}>
+          <TouchableOpacity
+            onPress={handleProfilePress}
+            style={styles.iconCircle}
+          >
             {profileImagePath ? (
               <Image
                 source={{ uri: profileImagePath }}
@@ -82,8 +107,12 @@ export default function Header({
             )}
           </TouchableOpacity>
         )}
-        <TouchableOpacity onPress={handleOptions} style={styles.optionsIcon}>
-          <MaterialIcons name="settings" size={28} color="#000" />
+        <TouchableOpacity onPress={handleOptions} style={styles.iconCircle}>
+          <MaterialCommunityIcons
+            name="cog-outline"
+            size={22}
+            color={colors.headerIconColor}
+          />
         </TouchableOpacity>
       </View>
     </View>
@@ -96,18 +125,28 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
+    backgroundColor: colors.headerBackground,
+    borderBottomLeftRadius: 16,
+    borderBottomRightRadius: 16,
+    marginBottom: 8,
+    paddingHorizontal: 16,
+    paddingBottom: HEADER_CONTENT_PADDING,
+    gap: 16,
+    boxShadow: "0px 6px 10px rgba(0, 0, 0, 0.25)",
+  },
+  titleSlot: {
+    flexShrink: 1,
+  },
+  titlePill: {
+    backgroundColor: colors.headerChipBackground,
+    borderRadius: 999,
     paddingHorizontal: 16,
     paddingVertical: 8,
-    borderBottomWidth: 1,
-    borderBottomColor: "#f0f0f0",
-    gap: 16,
   },
   headerTitle: {
     fontSize: 22,
     fontWeight: "bold",
-    color: "#000",
-    display: "flex",
-    flexShrink: 1,
+    color: colors.text,
   },
   actionIconsWrapper: {
     flexDirection: "row",
@@ -119,16 +158,23 @@ const styles = StyleSheet.create({
     alignItems: "center",
     gap: 12,
   },
-  optionsIcon: {},
+  iconCircle: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: colors.headerChipBackground,
+    justifyContent: "center",
+    alignItems: "center",
+  },
   profileIcon: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
+    width: 34,
+    height: 34,
+    borderRadius: 17,
   },
   profileIconPlaceholder: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
+    width: 34,
+    height: 34,
+    borderRadius: 17,
     backgroundColor: "#f0f0f0",
     borderWidth: 1,
     borderColor: "#ddd",

@@ -1,4 +1,6 @@
 import { MaterialIcons } from "@expo/vector-icons";
+import { format } from "date-fns/format";
+import { parse } from "date-fns/parse";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import {
   FlatList,
@@ -14,6 +16,20 @@ import SummaryCard from "@/components/memories/SummaryCard";
 import TimeOfDayMemoryCard from "@/components/memories/TimeOfDayMemoryCard";
 import { useDayMemories } from "@/hooks/memories/useDayMemories";
 
+// Formats the raw yyyy-MM-dd day param into a display title, e.g. "July 24th, 2026 Memories".
+function formatDayTitle(day: string | string[] | undefined): string {
+  if (typeof day !== "string") {
+    return "Today's Memories";
+  }
+  try {
+    const parsedDay = parse(day, "yyyy-MM-dd", new Date());
+    const formattedTitle = `${format(parsedDay, "MMMM do, yyyy")} Memories`;
+    return formattedTitle;
+  } catch {
+    return "Today's Memories";
+  }
+}
+
 export default function DayMemoriesScreen() {
   const { day } = useLocalSearchParams();
   const router = useRouter();
@@ -28,7 +44,7 @@ export default function DayMemoriesScreen() {
     ToastAndroid.show("Insert new memory", ToastAndroid.SHORT);
   };
 
-  const headerTitle = day ? `${day} Memories` : "Today's Memories";
+  const headerTitle = formatDayTitle(day);
 
   const actionIcons = (
     <TouchableOpacity
@@ -41,7 +57,7 @@ export default function DayMemoriesScreen() {
   );
 
   const content = (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={styles.container} edges={["left", "right", "bottom"]}>
       <Header title={headerTitle} actionIcons={actionIcons} />
       <SummaryCard initialText={daySummary} onSubmit={handleSaveSummary} />
       <FlatList

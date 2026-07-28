@@ -25,7 +25,7 @@ export default function ProfileSettingsScreen() {
   const [isBackupOpen, setIsBackupOpen] = useState(false);
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={styles.container} edges={["left", "right", "bottom"]}>
       <Header title="Profile Settings" hideProfileIcon />
       <KeyboardAvoidingView
         style={styles.keyboardAvoidingView}

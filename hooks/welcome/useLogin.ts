@@ -19,8 +19,21 @@ export function useLogin() {
   const [password, setPassword] = useState("");
   const [isBiometricLoginExhausted, setIsBiometricLoginExhausted] =
     useState(false);
+  const [loginError, setLoginError] = useState("");
+  const [shakeTrigger, setShakeTrigger] = useState(0);
   const { setUsername: setAuthUsername, setLocationSettings } =
     useContext(AuthContext);
+
+  // Shows an inline login error and re-triggers the Login button's shake.
+  const showLoginFailure = (message: string) => {
+    setLoginError(message);
+    setShakeTrigger((previousShakeTrigger) => previousShakeTrigger + 1);
+  };
+
+  const handlePasswordChange = (text: string) => {
+    setPassword(text);
+    setLoginError("");
+  };
 
   // Core auth check shared by password login and biometric login.
   const authenticate = async (username: string, credential: string) => {
@@ -31,7 +44,12 @@ export function useLogin() {
       const storedCredential = await SecureStore.getItemAsync(key);
 
       if (!storedCredential || storedCredential !== credential) {
-        Alert.alert("Login Failed", "Invalid username or password.");
+        const failureContext = { username };
+        console.warn(
+          "Login failed: invalid username or password",
+          failureContext,
+        );
+        showLoginFailure("Invalid username or password.");
         return;
       }
 
@@ -107,8 +125,8 @@ export function useLogin() {
           const storedToken = await SecureStore.getItemAsync(key);
 
           if (!storedToken) {
-            Alert.alert(
-              "No Fingerprint Registration",
+            console.warn("Login failed: no fingerprint registration");
+            showLoginFailure(
               "Fingerprint registration not found for this user.",
             );
             return;
@@ -122,7 +140,7 @@ export function useLogin() {
           `Error during biometric login attempt ${attempt}:`,
           error,
         );
-        Alert.alert("Biometric Login Failed", "Please try again.");
+        showLoginFailure("Biometric login failed. Please try again.");
       }
     }
 
@@ -132,7 +150,7 @@ export function useLogin() {
   // Validate the form fields, then log in with the entered credentials.
   const handleLogin = async () => {
     if (!username.trim() || !password.trim()) {
-      Alert.alert("Missing Fields", "Please enter both username and password.");
+      showLoginFailure("Please enter both username and password.");
       return;
     }
 
@@ -143,7 +161,9 @@ export function useLogin() {
     username,
     setUsername,
     password,
-    setPassword,
+    handlePasswordChange,
+    loginError,
+    shakeTrigger,
     handleLogin,
     loginWithBiometrics,
     isBiometricLoginExhausted,

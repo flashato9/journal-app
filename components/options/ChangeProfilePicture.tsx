@@ -12,8 +12,8 @@ export default function ChangeProfilePicture() {
 
   const content = (
     <View style={styles.container}>
-      <TouchableOpacity onPress={pickImage} activeOpacity={0.7}>
-        <PolaroidFrame>
+      <View>
+        <PolaroidFrame onPress={pickImage} isTilted={false}>
           {displayImagePath && (
             <Image
               source={{ uri: displayImagePath }}
@@ -22,10 +22,12 @@ export default function ChangeProfilePicture() {
             />
           )}
         </PolaroidFrame>
-        <Text style={styles.infoText}>
-          Click to upload a new profile picture
-        </Text>
-      </TouchableOpacity>
+        <TouchableOpacity onPress={pickImage} activeOpacity={0.7}>
+          <Text style={styles.infoText}>
+            Click to upload a new profile picture
+          </Text>
+        </TouchableOpacity>
+      </View>
 
       <View style={styles.buttonWrapper}>
         <Button

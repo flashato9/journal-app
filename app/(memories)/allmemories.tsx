@@ -3,15 +3,18 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import Header from "@/components/Header";
 import LoadingIndicator from "@/components/LoadingIndicator";
 import FullDayMemoryCard from "@/components/memories/FullDayMemoryCard";
+import { getColors } from "@/constants/colors";
 import { useLogoutOnBackPress } from "@/hooks/memories/useLogoutOnBackPress";
 import { useMemoriesList } from "@/hooks/memories/useMemoriesList";
+
+const colors = getColors();
 
 export default function AllMemoriesScreen() {
   const { memories, isLoading } = useMemoriesList();
   useLogoutOnBackPress();
 
   const content = (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={styles.container} edges={["left", "right", "bottom"]}>
       <Header title="All Memories" />
       <FlatList
         data={memories}
@@ -34,7 +37,7 @@ export default function AllMemoriesScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#fff",
+    backgroundColor: colors.screenBackground,
   },
   emptyText: {
     fontSize: 16,
@@ -43,6 +46,6 @@ const styles = StyleSheet.create({
     marginTop: 32,
   },
   listContent: {
-    paddingVertical: 8,
+    paddingBottom: 8,
   },
 });

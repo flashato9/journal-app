@@ -9,7 +9,10 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import Button from "@/components/Button";
 import Header from "@/components/Header";
+import { getColors } from "@/constants/colors";
 import { useDebugLlm } from "@/hooks/options/useDebugLlm";
+
+const colors = getColors();
 
 const ACTIVATE_BUTTON_LABEL: Record<string, string> = {
   idle: "Activate Model",
@@ -46,7 +49,7 @@ export default function DebugLlmScreen() {
   const isDownloading = downloadState === "downloading";
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={styles.container} edges={["left", "right", "bottom"]}>
       <Header title="Debug LLM" />
       <ScrollView contentContainerStyle={styles.content}>
         <View style={styles.section}>
@@ -202,6 +205,7 @@ const styles = StyleSheet.create({
     color: "#000",
   },
   input: {
+    backgroundColor: colors.inputBackground,
     borderWidth: 1,
     borderColor: "#ddd",
     borderRadius: 8,

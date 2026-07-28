@@ -30,6 +30,10 @@ Dated QandA archive files (`QandA_M_D_YYYY.md`) go in the `.md/` folder, not the
 
 Always ask for permission before removing a file, even if it seems clearly unused or the task otherwise implies deletion.
 
+# Design Ideas Before Planning
+
+When I propose a visual/design idea that isn't yet a concrete spec (a new look, a redesign, a "let's make X feel more like Y"), don't jump straight into plan mode. First give three distinct AI-image-generator description options I can paste into an image generator to see rendered. Wait for me to pick/refine one (this may take a few rounds of tweaking a description). Only once a direction is settled do you enter plan mode and produce an implementation plan for it.
+
 # Implementation Workflow
 
 Do not edit code files directly until the plan is approved. When asked to implement a change:

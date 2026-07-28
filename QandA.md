@@ -1,7 +1,7 @@
-# General
+# Tooltip.tsx
 
-Q: Do people buy Bitcoin low, wait for it to rise (e.g. to $20k+), then sell for profit?
-A: Yes — that's standard spot trading (buy low, sell high). Profit is the price gain minus fees/taxes, but it's not guaranteed since price can also fall.
+**Q: Why do we need both `Text` elements in the tooltip?**
+A: The visible one (in the black bubble) needs an explicit `width` because absolutely-positioned boxes shrink-to-fit unreliably on Android. The second, invisible one is a "ruler" — it measures the text's true width in an unambiguous layout context via `onLayout`, and that measured value is what makes the visible bubble's width reliable.
 
-Q: Why do companies still mine Bitcoin if it's "not real"?
-A: Mining is real computational work that validates transactions and secures the network, paid in BTC + fees. It's "not physical," but the market prices it as a real scarce asset, so mining is a real business as long as BTC holds value.
+**Q: How does the measurement container text stay hidden from display?**
+A: Two things together: `opacity: 0` makes it fully transparent, and `position: "absolute"` + `left: -9999` pushes it thousands of pixels off the left edge of the screen. `importantForAccessibility="no-hide-descendants"` on its wrapper also hides it from screen readers.

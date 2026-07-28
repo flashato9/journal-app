@@ -37,15 +37,12 @@ export default function RegisterScreen() {
       >
         <Text style={styles.title}>Create Account</Text>
 
-        <TouchableOpacity
-          style={styles.profilePictureWrapper}
-          onPress={pickProfilePicture}
-          activeOpacity={0.7}
-        >
+        <View style={styles.profilePictureWrapper}>
           <PolaroidFrame
             isTilted={false}
             caption={username}
             placeholder="Username"
+            onPress={pickProfilePicture}
           >
             {profileImageUri ? (
               <Image
@@ -57,7 +54,7 @@ export default function RegisterScreen() {
               <Text style={styles.uploadText}>Upload a profile picture</Text>
             )}
           </PolaroidFrame>
-        </TouchableOpacity>
+        </View>
 
         <Input
           placeholder="Username"
