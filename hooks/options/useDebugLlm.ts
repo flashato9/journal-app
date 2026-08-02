@@ -12,8 +12,12 @@ import {
   downloadModel,
   getDownloadProgress,
   getDownloadState,
+  isModelActive,
+  MODEL_PROFILES,
+  ModelProfile,
   pauseDownload,
   verifyModelFiles,
+  VISION_MODEL_PROFILE,
 } from "@/services/llmService";
 
 type ActivationStatus = "idle" | "loading" | "ready" | "error";
@@ -24,6 +28,8 @@ type ScreenDownloadState = "checking" | DownloadState;
 // (loading it into memory), asking plain-text questions, and describing a
 // picked image — all via services/llmService.ts.
 export function useDebugLlm() {
+  const [selectedProfile, setSelectedProfile] =
+    useState<ModelProfile>(VISION_MODEL_PROFILE);
   const [downloadState, setDownloadState] =
     useState<ScreenDownloadState>("checking");
   const [downloadProgress, setDownloadProgress] = useState(0);
@@ -51,15 +57,16 @@ export function useDebugLlm() {
     let pollInterval: ReturnType<typeof setInterval> | undefined;
 
     (async () => {
-      const state = await getDownloadState();
+      const state = await getDownloadState(selectedProfile);
       setDownloadState(state);
-      setDownloadProgress(await getDownloadProgress());
+      setDownloadProgress(await getDownloadProgress(selectedProfile));
+      setActivationStatus(isModelActive(selectedProfile) ? "ready" : "idle");
 
       if (state === "downloading") {
         pollInterval = setInterval(async () => {
-          const polledState = await getDownloadState();
+          const polledState = await getDownloadState(selectedProfile);
           setDownloadState(polledState);
-          setDownloadProgress(await getDownloadProgress());
+          setDownloadProgress(await getDownloadProgress(selectedProfile));
           if (polledState !== "downloading" && pollInterval) {
             clearInterval(pollInterval);
           }
@@ -70,21 +77,21 @@ export function useDebugLlm() {
     return () => {
       if (pollInterval) clearInterval(pollInterval);
     };
-  }, []);
+  }, [selectedProfile]);
 
   const handleStartDownload = async () => {
     if (downloadState === "downloading") return;
 
     setDownloadState("downloading");
     try {
-      await downloadModel((fraction) => {
+      await downloadModel(selectedProfile, (fraction) => {
         setDownloadProgress(fraction);
         setDownloadState("downloading");
       });
       setDownloadProgress(1);
       setDownloadState("downloaded");
     } catch (error) {
-      setDownloadState(await getDownloadState());
+      setDownloadState(await getDownloadState(selectedProfile));
       if (error instanceof DownloadPausedError) return;
       console.error("Error downloading model:", error);
       Alert.alert("Error", "Failed to download the model. Please try again.");
@@ -109,7 +116,7 @@ export function useDebugLlm() {
           text: "Delete",
           style: "destructive",
           onPress: async () => {
-            await deleteModelFiles();
+            await deleteModelFiles(selectedProfile);
             setDownloadState("not_started");
             setDownloadProgress(0);
             setActivationStatus("idle");
@@ -122,8 +129,8 @@ export function useDebugLlm() {
   const handleCheckDownload = async () => {
     setIsVerifying(true);
     try {
-      const { model, mmproj } = await verifyModelFiles();
-      if (model.isComplete && mmproj.isComplete) {
+      const checks = await verifyModelFiles(selectedProfile);
+      if (checks.every((check) => check.isComplete)) {
         Alert.alert(
           "Download Check",
           "Yes — both files are downloaded correctly.",
@@ -131,7 +138,7 @@ export function useDebugLlm() {
         return;
       }
 
-      const describeFile = (file: typeof model) =>
+      const describeFile = (file: (typeof checks)[number]) =>
         `${file.filename}: ${
           file.exists ? `${file.localSize} bytes` : "missing"
         }${
@@ -140,10 +147,8 @@ export function useDebugLlm() {
             : " (couldn't reach server to check expected size)"
         }`;
 
-      Alert.alert(
-        "Download Check",
-        `No —\n${describeFile(model)}\n${describeFile(mmproj)}`,
-      );
+      const summary = checks.map(describeFile).join("\n");
+      Alert.alert("Download Check", `No —\n${summary}`);
     } catch (error) {
       console.error("Error checking model files:", error);
       Alert.alert(
@@ -158,7 +163,7 @@ export function useDebugLlm() {
   const handleActivateModel = async () => {
     setActivationStatus("loading");
     try {
-      await activateModel();
+      await activateModel(selectedProfile);
       setActivationStatus("ready");
     } catch (error) {
       console.error("Error activating LLM:", error);
@@ -255,7 +260,14 @@ export function useDebugLlm() {
     }
   };
 
+  const handleSelectProfile = (profileId: ModelProfile["id"]) => {
+    const profile = MODEL_PROFILES.find((p) => p.id === profileId);
+    if (profile) setSelectedProfile(profile);
+  };
+
   return {
+    selectedProfile,
+    handleSelectProfile,
     downloadState,
     downloadProgress,
     handleStartDownload,

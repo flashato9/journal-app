@@ -36,7 +36,7 @@ export default function FullDayMemoryCard({ memory }: FullDayMemoryCardProps) {
   );
 
   const parsedDay = parse(memory.day, "yyyy-MM-dd", new Date());
-  const dayNumber = format(parsedDay, "d");
+  const dayNumber = format(parsedDay, "dd");
   const monthAbbreviation = format(parsedDay, "MMM");
 
   const content = (

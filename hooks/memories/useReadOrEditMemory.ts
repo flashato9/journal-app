@@ -240,5 +240,6 @@ export function useReadOrEditMemory() {
     setMemoryState,
     handleSave,
     handleEditMode,
+    timeMemoryId,
   };
 }

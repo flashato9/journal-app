@@ -1,3 +1,4 @@
+import { format } from "date-fns/format";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { FlatList, StyleSheet, Text, ToastAndroid, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -17,10 +18,16 @@ function getDayParam(day: string | string[] | undefined): string {
   return today;
 }
 
+function isDayInPast(day: string): boolean {
+  const today = format(new Date(), "yyyy-MM-dd");
+  const isPast = day < today;
+  return isPast;
+}
+
 export default function DayMemoriesScreen() {
   const { day } = useLocalSearchParams();
   const router = useRouter();
-  const { memories, isLoading, daySummary, handleSaveSummary } =
+  const { memories, isLoading, daySummary, dayMemoryId, handleSaveSummary } =
     useDayMemories();
 
   const handleCreateMemory = () => {
@@ -32,15 +39,18 @@ export default function DayMemoriesScreen() {
   };
 
   const dayParam = getDayParam(day);
+  const isDayPast = isDayInPast(dayParam);
 
   const content = (
     <SafeAreaView style={styles.container}>
       <DayMemoriesHeader
         day={dayParam}
         daySummary={daySummary}
+        dayMemoryId={dayMemoryId}
         onSaveSummary={handleSaveSummary}
         onCreateMemory={handleCreateMemory}
         onCreateMemoryLongPress={handleCreateMemoryLongPress}
+        isCreateMemoryAllowed={!isDayPast}
       />
       <FlatList
         data={memories}
@@ -50,21 +60,27 @@ export default function DayMemoriesScreen() {
         ListEmptyComponent={
           !isLoading ? (
             <View style={styles.emptyContainer}>
-              <Text style={styles.emptyTitle}>A blank page awaits...</Text>
+              {!isDayPast && (
+                <Text style={styles.emptyTitle}>A blank page awaits...</Text>
+              )}
               <Text style={styles.emptySubtitle}>
-                Capture your thoughts for today.
+                {isDayPast
+                  ? "No memories were recorded for this day."
+                  : "Capture your thoughts for today."}
               </Text>
-              <View style={styles.createFirstButtonWrapper}>
-                <Button
-                  text="Create First Memory"
-                  onPress={handleCreateMemory}
-                  iconName="plus-square-o"
-                  isShiny
-                  backgroundColor={colors.dayMemoriesDateChipBackground}
-                  style={styles.createFirstButton}
-                  textStyle={styles.createFirstButtonText}
-                />
-              </View>
+              {!isDayPast && (
+                <View style={styles.createFirstButtonWrapper}>
+                  <Button
+                    text="Create First Memory"
+                    onPress={handleCreateMemory}
+                    iconName="plus-square-o"
+                    isShiny
+                    backgroundColor={colors.dayMemoriesDateChipBackground}
+                    style={styles.createFirstButton}
+                    textStyle={styles.createFirstButtonText}
+                  />
+                </View>
+              )}
             </View>
           ) : null
         }

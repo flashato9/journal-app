@@ -23,8 +23,7 @@ export default function CreateMemoryScreen() {
     handleRetryLocation,
   } = useCreateMemory();
 
-  const headerTitle = "Daily Memory";
-  const captureTimeDisplay = format(
+  const headerTitle = format(
     new Date(memoryState.dateTimeOfCapture),
     "h:mm a",
   ).toLowerCase();
@@ -46,13 +45,12 @@ export default function CreateMemoryScreen() {
   const content = (
     <SafeAreaView style={styles.container} edges={["left", "right", "bottom"]}>
       <Header title={headerTitle} actionIcons={actionIcons} />
-      <Text style={styles.screenHeading}>
-        {`What's Happening - ${captureTimeDisplay}`}
-      </Text>
+      <Text style={styles.screenHeading}>What&apos;s Happening</Text>
       <MemoryForm
         storage={memoryState}
         onStorageChange={setMemoryState}
         onRetryLocation={handleRetryLocation}
+        timeMemoryId={null}
       />
     </SafeAreaView>
   );

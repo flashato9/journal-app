@@ -1,3 +1,5 @@
+import { format } from "date-fns/format";
+import { parseISO } from "date-fns/parseISO";
 import { fetch } from "expo/fetch";
 import { File } from "expo-file-system";
 import { initLlama, LlamaContext } from "llama.rn";
@@ -14,8 +16,52 @@ const MMPROJ_FILENAME = "mmproj-SmolVLM2-500M-Video-Instruct-Q8_0.gguf";
 const MODEL_BASE_URL =
   "https://huggingface.co/ggml-org/SmolVLM2-500M-Video-Instruct-GGUF/resolve/main";
 
+const TEXT_MODEL_FILENAME = "gemma-3-1b-it-qat-Q4_0.gguf";
+const TEXT_MODEL_BASE_URL =
+  "https://huggingface.co/ggml-org/gemma-3-1b-it-qat-GGUF/resolve/main";
+
+export interface ModelProfile {
+  id: "vision" | "text";
+  label: string;
+  filename: string;
+  mmprojFilename?: string;
+  baseUrl: string;
+}
+
+export const VISION_MODEL_PROFILE: ModelProfile = {
+  id: "vision",
+  label: "SmolVLM2 (Vision)",
+  filename: MODEL_FILENAME,
+  mmprojFilename: MMPROJ_FILENAME,
+  baseUrl: MODEL_BASE_URL,
+};
+
+export const TEXT_MODEL_PROFILE: ModelProfile = {
+  id: "text",
+  label: "Gemma 3 (Text)",
+  filename: TEXT_MODEL_FILENAME,
+  baseUrl: TEXT_MODEL_BASE_URL,
+};
+
+export const MODEL_PROFILES: ModelProfile[] = [
+  VISION_MODEL_PROFILE,
+  TEXT_MODEL_PROFILE,
+];
+
+const getProfileFiles = (profile: ModelProfile): { filename: string }[] => {
+  const files = profile.mmprojFilename
+    ? [{ filename: profile.filename }, { filename: profile.mmprojFilename }]
+    : [{ filename: profile.filename }];
+  return files;
+};
+
 // Module-level singleton, same style as services/database.ts's `db`.
 let llamaContext: LlamaContext | null = null;
+
+// Which profile llamaContext currently holds, if any — lets isModelActive
+// and activateModel tell "no model loaded" apart from "a different model
+// is loaded", since only one model is ever kept in memory at a time.
+let activeProfileId: ModelProfile["id"] | null = null;
 
 // Set while a download's stream is being read, so pauseDownload() has
 // something to abort. Only one file downloads at a time.
@@ -129,11 +175,12 @@ const downloadFileWithProgress = async (
   }
 };
 
-export const isModelDownloaded = async (): Promise<boolean> => {
+export const isModelDownloaded = async (
+  profile: ModelProfile,
+): Promise<boolean> => {
   const dir = await getModelsDir();
-  return (
-    new File(dir, MODEL_FILENAME).exists &&
-    new File(dir, MMPROJ_FILENAME).exists
+  return getProfileFiles(profile).every(
+    ({ filename }) => new File(dir, filename).exists,
   );
 };
 
@@ -147,6 +194,7 @@ export const isDownloadInProgress = (): boolean => activeDownloadAbort !== null;
 // given moment — otherwise the fraction would hit 1 as soon as the larger
 // model file finished while the mmproj file still had data left to fetch.
 export const downloadModel = async (
+  profile: ModelProfile,
   onProgress?: (fraction: number) => void,
 ): Promise<void> => {
   if (isDownloadInProgress()) {
@@ -154,17 +202,19 @@ export const downloadModel = async (
   }
 
   const dir = await getModelsDir();
-  const candidates = [
-    { filename: MODEL_FILENAME, file: new File(dir, MODEL_FILENAME) },
-    { filename: MMPROJ_FILENAME, file: new File(dir, MMPROJ_FILENAME) },
-  ];
+  const candidates = getProfileFiles(profile).map(({ filename }) => ({
+    filename,
+    file: new File(dir, filename),
+  }));
   const needed = candidates.filter(({ file }) => !file.exists);
 
   const fileTotals = new Map<string, { received: number; total: number }>();
   if (onProgress) {
     await Promise.all(
       needed.map(async ({ filename }) => {
-        const size = await getExpectedFileSize(`${MODEL_BASE_URL}/${filename}`);
+        const size = await getExpectedFileSize(
+          `${profile.baseUrl}/${filename}`,
+        );
         if (size) fileTotals.set(filename, { received: 0, total: size });
       }),
     );
@@ -187,7 +237,7 @@ export const downloadModel = async (
 
   for (const { filename, file } of needed) {
     await downloadFileWithProgress(
-      `${MODEL_BASE_URL}/${filename}`,
+      `${profile.baseUrl}/${filename}`,
       file,
       onProgress &&
         ((received, total) => reportCombined(filename, received, total)),
@@ -197,18 +247,21 @@ export const downloadModel = async (
 
 // Deletes cached model files (and any ".part" leftovers), releasing the
 // active context first so it isn't left pointing at deleted files.
-export const deleteModelFiles = async (): Promise<void> => {
+export const deleteModelFiles = async (
+  profile: ModelProfile,
+): Promise<void> => {
   if (isDownloadInProgress()) {
     throw new Error("Cannot delete while a download is in progress");
   }
 
-  if (llamaContext) {
+  if (llamaContext && activeProfileId === profile.id) {
     await llamaContext.release();
     llamaContext = null;
+    activeProfileId = null;
   }
 
   const dir = await getModelsDir();
-  for (const filename of [MODEL_FILENAME, MMPROJ_FILENAME]) {
+  for (const { filename } of getProfileFiles(profile)) {
     const file = new File(dir, filename);
     const partFile = new File(`${file.uri}.part`);
     if (file.exists) file.delete();
@@ -223,13 +276,15 @@ export type DownloadState =
 // actively running right now), the rest are derived purely from what's on
 // disk, so the screen can reflect reality on mount or after any download
 // attempt ends, rather than tracking transitions by hand.
-export const getDownloadState = async (): Promise<DownloadState> => {
+export const getDownloadState = async (
+  profile: ModelProfile,
+): Promise<DownloadState> => {
   if (isDownloadInProgress()) return "downloading";
-  if (await isModelDownloaded()) return "downloaded";
+  if (await isModelDownloaded(profile)) return "downloaded";
 
   const dir = await getModelsDir();
-  const hasPartFile = [MODEL_FILENAME, MMPROJ_FILENAME].some(
-    (filename) => new File(`${new File(dir, filename).uri}.part`).exists,
+  const hasPartFile = getProfileFiles(profile).some(
+    ({ filename }) => new File(`${new File(dir, filename).uri}.part`).exists,
   );
   return hasPartFile ? "paused" : "not_started";
 };
@@ -241,12 +296,14 @@ export const getDownloadState = async (): Promise<DownloadState> => {
 // needed), so it's consistent with downloadModel()'s live combined
 // progress and never claims 100% just because the larger model file landed
 // while mmproj hasn't.
-export const getDownloadProgress = async (): Promise<number> => {
+export const getDownloadProgress = async (
+  profile: ModelProfile,
+): Promise<number> => {
   const dir = await getModelsDir();
   let receivedSum = 0;
   let totalSum = 0;
 
-  for (const filename of [MODEL_FILENAME, MMPROJ_FILENAME]) {
+  for (const { filename } of getProfileFiles(profile)) {
     const file = new File(dir, filename);
     if (file.exists) {
       receivedSum += file.size;
@@ -256,7 +313,7 @@ export const getDownloadProgress = async (): Promise<number> => {
 
     const partFile = new File(`${file.uri}.part`);
     const expectedSize = await getExpectedFileSize(
-      `${MODEL_BASE_URL}/${filename}`,
+      `${profile.baseUrl}/${filename}`,
     );
     if (!expectedSize) continue;
 
@@ -306,39 +363,39 @@ const checkFile = async (
 // compares each cached file's size against the real size reported by the
 // server, to catch a truncated/corrupt file that `isModelDownloaded`'s
 // plain existence check wouldn't.
-export const verifyModelFiles = async (): Promise<{
-  model: ModelFileCheck;
-  mmproj: ModelFileCheck;
-}> => {
+export const verifyModelFiles = async (
+  profile: ModelProfile,
+): Promise<ModelFileCheck[]> => {
   const dir = await getModelsDir();
-  const [model, mmproj] = await Promise.all([
-    checkFile(
-      new File(dir, MODEL_FILENAME),
-      `${MODEL_BASE_URL}/${MODEL_FILENAME}`,
-      MODEL_FILENAME,
+  const checks = await Promise.all(
+    getProfileFiles(profile).map(({ filename }) =>
+      checkFile(
+        new File(dir, filename),
+        `${profile.baseUrl}/${filename}`,
+        filename,
+      ),
     ),
-    checkFile(
-      new File(dir, MMPROJ_FILENAME),
-      `${MODEL_BASE_URL}/${MMPROJ_FILENAME}`,
-      MMPROJ_FILENAME,
-    ),
-  ]);
-
-  return { model, mmproj };
+  );
+  return checks;
 };
 
-export const isModelActive = (): boolean => llamaContext !== null;
+export const isModelActive = (profile: ModelProfile): boolean =>
+  llamaContext !== null && activeProfileId === profile.id;
 
-export const activateModel = async (): Promise<void> => {
-  if (llamaContext) return;
+export const activateModel = async (profile: ModelProfile): Promise<void> => {
+  if (llamaContext && activeProfileId === profile.id) return;
+  if (llamaContext) {
+    await llamaContext.release();
+    llamaContext = null;
+    activeProfileId = null;
+  }
 
-  if (!(await isModelDownloaded())) {
+  if (!(await isModelDownloaded(profile))) {
     throw new Error("Model files are not downloaded yet");
   }
 
   const dir = await getModelsDir();
-  const modelFile = new File(dir, MODEL_FILENAME);
-  const mmprojFile = new File(dir, MMPROJ_FILENAME);
+  const modelFile = new File(dir, profile.filename);
 
   const context = await initLlama({
     model: modelFile.uri,
@@ -347,18 +404,23 @@ export const activateModel = async (): Promise<void> => {
     ctx_shift: false, // required for multimodal models
   });
 
-  await context.initMultimodal({
-    path: mmprojFile.uri,
-    use_gpu: true,
-  });
+  if (profile.mmprojFilename) {
+    const mmprojFile = new File(dir, profile.mmprojFilename);
+    await context.initMultimodal({
+      path: mmprojFile.uri,
+      use_gpu: true,
+    });
+  }
 
   llamaContext = context;
+  activeProfileId = profile.id;
 };
 
 export const deactivateModel = async (): Promise<void> => {
   if (llamaContext) {
     await llamaContext.release();
     llamaContext = null;
+    activeProfileId = null;
   }
 };
 
@@ -394,4 +456,126 @@ export const describeImage = async (imageUri: string): Promise<string> => {
   });
 
   return result.text;
+};
+
+const SUMMARY_MAX_LENGTH = 100;
+const SUMMARY_N_PREDICT = -1;
+const SUMMARY_TEMPERATURE = 0;
+const DAY_SUMMARY_INSTRUCTION = `You are a strict journal summarizer. Your task is to extract facts directly from the provided timestamped entries and format them into a single sentence.
+
+CRITICAL CONSTRAINTS (ZERO TOLERANCE FOR HALLUCINATION):
+1. FACTUAL BOUNDARY: Use ONLY explicit facts contained in the entries. Do NOT assume, infer, or extrapolate.
+2. NO INVENTED DETAILS: Never introduce people, events, future plans, meetings, weather, emotions, or tone that are not directly stated in the text.
+3. OUTPUT FORMAT: Write exactly ONE upbeat sentence summarizing the verifiable highlights. Keep it under 100 characters.
+4. NO METADATA: Do not reference timestamps, list entries individually, or describe the user's location coordinates/placeholders literally unless a meaningful event is attached.
+
+FALLBACK RULE:
+If the entries contain only generic greetings, status tests, or lack meaningful activities (e.g., "hi", "my location", "my memory"), DO NOT invent a story. Reply EXACTLY with:
+"A quiet day with a few brief check-ins noted!"`;
+
+export interface DaySummaryEntry {
+  timeOfRecord: string;
+  summary: string;
+}
+
+const formatEntriesForPrompt = (entries: DaySummaryEntry[]): string => {
+  const sortedEntries = [...entries].sort((a, b) =>
+    a.timeOfRecord.localeCompare(b.timeOfRecord),
+  );
+  const lines = sortedEntries.map((entry) => {
+    const time = format(parseISO(entry.timeOfRecord), "h:mm a");
+    const line = `${time} - ${entry.summary}`;
+    return line;
+  });
+  const entriesText = lines.join("\n");
+  return entriesText;
+};
+
+const truncateToLimit = (text: string, maxLength: number): string => {
+  if (text.length <= maxLength) return text;
+  const truncated = text.slice(0, maxLength);
+  const lastSpaceIndex = truncated.lastIndexOf(" ");
+  const trimmedText =
+    lastSpaceIndex > 0 ? truncated.slice(0, lastSpaceIndex) : truncated;
+  return trimmedText;
+};
+
+// Builds the model's raw prompt by hand — Gemma's official template has no system role at all (it errors if you pass one), so the instruction is folded into the single user turn ourselves.
+export const generateDaySummary = async (
+  entries: DaySummaryEntry[],
+  existingSummary: string | null,
+): Promise<string> => {
+  if (!llamaContext) {
+    throw new Error("Text model is not activated yet.");
+  }
+
+  const entriesText = formatEntriesForPrompt(entries);
+  const existingSummaryBlock = existingSummary
+    ? `\n\nExisting summary to revise: "${existingSummary}"`
+    : "";
+  const userContent = `Journal Entries:\n${entriesText}${existingSummaryBlock}`;
+
+  const rawPrompt = `<start_of_turn>user\n${DAY_SUMMARY_INSTRUCTION}\n\n${userContent}<end_of_turn>\n<start_of_turn>model\n`;
+  console.log("generateDaySummary prompt:", rawPrompt);
+
+  const result = await llamaContext.completion({
+    prompt: rawPrompt,
+    n_predict: SUMMARY_N_PREDICT,
+    temperature: SUMMARY_TEMPERATURE,
+  });
+
+  console.log("generateDaySummary raw response:", result.text);
+
+  const trimmedText = truncateToLimit(result.text.trim(), SUMMARY_MAX_LENGTH);
+  return trimmedText;
+};
+
+const TIME_SUMMARY_INSTRUCTION = `You are a strict summarizer. You're given question-and-answer pairs describing a specific captured moment, and possibly a draft summary the person already started. Write ONE short, upbeat sentence, no more than 100 characters, capturing the moment. Only use information explicitly stated in the answers or draft summary — never invent people, events, weather, or feelings that are not mentioned. Do not list the questions and answers individually.
+
+FALLBACK RULE:
+If there is no meaningful content in the answers or draft summary, reply EXACTLY with:
+"No memorable moments yet"`;
+
+export interface TimeSummaryQA {
+  question: string;
+  answer: string;
+}
+
+const formatQAForPrompt = (qaPairs: TimeSummaryQA[]): string => {
+  const lines = qaPairs.map((qa) => {
+    const line = `Q: ${qa.question}\nA: ${qa.answer}`;
+    return line;
+  });
+  const qaText = lines.join("\n\n");
+  return qaText;
+};
+
+// Builds the model's raw prompt by hand, same as generateDaySummary — Gemma has no system role.
+export const generateTimeSummary = async (
+  qaPairs: TimeSummaryQA[],
+  currentSummary: string,
+): Promise<string> => {
+  if (!llamaContext) {
+    throw new Error("Text model is not activated yet.");
+  }
+
+  const qaText = formatQAForPrompt(qaPairs);
+  const currentSummaryBlock = currentSummary.trim()
+    ? `\n\nCurrent draft summary: "${currentSummary.trim()}"`
+    : "";
+  const userContent = `${qaText}${currentSummaryBlock}`;
+
+  const rawPrompt = `<start_of_turn>user\n${TIME_SUMMARY_INSTRUCTION}\n\n${userContent}<end_of_turn>\n<start_of_turn>model\n`;
+  console.log("generateTimeSummary prompt:", rawPrompt);
+
+  const result = await llamaContext.completion({
+    prompt: rawPrompt,
+    n_predict: SUMMARY_N_PREDICT,
+    temperature: SUMMARY_TEMPERATURE,
+  });
+
+  console.log("generateTimeSummary raw response:", result.text);
+
+  const trimmedText = truncateToLimit(result.text.trim(), SUMMARY_MAX_LENGTH);
+  return trimmedText;
 };

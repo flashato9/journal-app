@@ -61,7 +61,7 @@
         {
           "photosPermission": "Allow $(PRODUCT_NAME) to access your photos.",
           "savePhotosPermission": "Allow $(PRODUCT_NAME) to save photos.",
-          "granularPermissions": ["photo"]
+          "granularPermissions": ["photo", "video"]
         }
       ],
       "expo-asset",

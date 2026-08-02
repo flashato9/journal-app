@@ -1,3 +1,4 @@
+import { useRouter } from "expo-router";
 import { useState } from "react";
 import {
   KeyboardAvoidingView,
@@ -17,12 +18,21 @@ import LocationSettings from "@/components/options/LocationSettings";
 import Header from "@/components/Header";
 
 export default function ProfileSettingsScreen() {
+  const router = useRouter();
   const [isProfilePictureOpen, setIsProfilePictureOpen] = useState(false);
   const [isUsernameOpen, setIsUsernameOpen] = useState(false);
   const [isPasswordOpen, setIsPasswordOpen] = useState(false);
   const [isAuthMethodOpen, setIsAuthMethodOpen] = useState(false);
   const [isLocationSettingsOpen, setIsLocationSettingsOpen] = useState(false);
   const [isBackupOpen, setIsBackupOpen] = useState(false);
+
+  const handleDebugLogs = () => {
+    router.push("/debug-logs");
+  };
+
+  const handleDebugLlm = () => {
+    router.push("/debug-llm");
+  };
 
   return (
     <SafeAreaView style={styles.container} edges={["left", "right", "bottom"]}>
@@ -72,6 +82,14 @@ export default function ProfileSettingsScreen() {
           </TouchableOpacity>
 
           {isLocationSettingsOpen && <LocationSettings />}
+
+          <TouchableOpacity onPress={handleDebugLogs}>
+            <Text style={styles.link}>Debug Logs</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity onPress={handleDebugLlm}>
+            <Text style={styles.link}>Debug LLM</Text>
+          </TouchableOpacity>
 
           <TouchableOpacity onPress={() => setIsBackupOpen((open) => !open)}>
             <Text style={styles.link}>Backup &amp; Restore</Text>

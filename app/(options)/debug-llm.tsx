@@ -8,9 +8,11 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import Button from "@/components/Button";
+import Dropdown from "@/components/Dropdown";
 import Header from "@/components/Header";
 import { getColors } from "@/constants/colors";
 import { useDebugLlm } from "@/hooks/options/useDebugLlm";
+import { MODEL_PROFILES } from "@/services/llmService";
 
 const colors = getColors();
 
@@ -23,6 +25,8 @@ const ACTIVATE_BUTTON_LABEL: Record<string, string> = {
 
 export default function DebugLlmScreen() {
   const {
+    selectedProfile,
+    handleSelectProfile,
     downloadState,
     downloadProgress,
     handleStartDownload,
@@ -52,6 +56,19 @@ export default function DebugLlmScreen() {
     <SafeAreaView style={styles.container} edges={["left", "right", "bottom"]}>
       <Header title="Debug LLM" />
       <ScrollView contentContainerStyle={styles.content}>
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Model</Text>
+          <Dropdown
+            options={MODEL_PROFILES.map((profile) => {
+              const option = { label: profile.label, value: profile.id };
+              return option;
+            })}
+            value={selectedProfile.id}
+            onChange={handleSelectProfile}
+            testID="debug-llm-model-picker"
+          />
+        </View>
+
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Model Download</Text>
           <View style={styles.buttonRow}>
@@ -135,33 +152,35 @@ export default function DebugLlmScreen() {
           {answer ? <Text style={styles.responseText}>{answer}</Text> : null}
         </View>
 
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Describe an Image</Text>
-          {imageUri && (
-            <Image source={{ uri: imageUri }} style={styles.imagePreview} />
-          )}
-          <View style={styles.buttonRow}>
-            <View style={styles.rowButton}>
-              <Button
-                text="Pick Image"
-                onPress={pickImage}
-                backgroundColor="#34C759"
-                disabled={!isReady}
-              />
+        {selectedProfile.mmprojFilename && (
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Describe an Image</Text>
+            {imageUri && (
+              <Image source={{ uri: imageUri }} style={styles.imagePreview} />
+            )}
+            <View style={styles.buttonRow}>
+              <View style={styles.rowButton}>
+                <Button
+                  text="Pick Image"
+                  onPress={pickImage}
+                  backgroundColor="#34C759"
+                  disabled={!isReady}
+                />
+              </View>
+              <View style={styles.rowButton}>
+                <Button
+                  text="Describe Image"
+                  onPress={handleDescribeImage}
+                  backgroundColor="#007AFF"
+                  disabled={!isReady || !imageUri || isDescribing}
+                />
+              </View>
             </View>
-            <View style={styles.rowButton}>
-              <Button
-                text="Describe Image"
-                onPress={handleDescribeImage}
-                backgroundColor="#007AFF"
-                disabled={!isReady || !imageUri || isDescribing}
-              />
-            </View>
+            {imageDescription ? (
+              <Text style={styles.responseText}>{imageDescription}</Text>
+            ) : null}
           </View>
-          {imageDescription ? (
-            <Text style={styles.responseText}>{imageDescription}</Text>
-          ) : null}
-        </View>
+        )}
       </ScrollView>
     </SafeAreaView>
   );

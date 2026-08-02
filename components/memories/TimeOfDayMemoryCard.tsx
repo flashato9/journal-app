@@ -23,7 +23,7 @@ interface TimeOfDayMemoryCardProps {
 
 function formatTime(isoDatetime: string): string {
   try {
-    const time = format(parseISO(isoDatetime), "h:mm");
+    const time = format(parseISO(isoDatetime), "hh:mm");
     return time;
   } catch {
     const fallbackTime = "--:--";
@@ -131,6 +131,7 @@ const styles = StyleSheet.create({
     fontSize: 15,
     color: colors.text,
     lineHeight: 20,
+    paddingRight: 24,
   },
   seeMoreButton: {
     width: 40,

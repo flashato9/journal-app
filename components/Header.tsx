@@ -2,6 +2,8 @@ import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { useContext } from "react";
 import {
+  Alert,
+  BackHandler,
   Image,
   StyleSheet,
   Text,
@@ -34,11 +36,8 @@ export default function Header({
   containerStyle,
   hideProfileIcon = false,
 }: HeaderProps) {
-  const {
-    setMenuVisible,
-    locationTrackingActive,
-    refreshLocationTrackingStatus,
-  } = useContext(OptionsMenuContext);
+  const { locationTrackingActive, refreshLocationTrackingStatus } =
+    useContext(OptionsMenuContext);
   const { username } = useContext(AuthContext);
   const { profileImagePath } = useUserSession();
   const router = useRouter();
@@ -46,8 +45,15 @@ export default function Header({
 
   useRefreshLocationTrackingOnFocus(refreshLocationTrackingStatus);
 
-  const handleOptions = () => {
-    setMenuVisible(true);
+  const handleExitApp = () => {
+    Alert.alert("Exit app?", "Are you sure you want to exit?", [
+      { text: "Cancel", style: "cancel" },
+      {
+        text: "Exit",
+        onPress: () => BackHandler.exitApp(),
+        style: "destructive",
+      },
+    ]);
   };
 
   const handleProfilePress = () => {
@@ -103,9 +109,9 @@ export default function Header({
             )}
           </TouchableOpacity>
         )}
-        <TouchableOpacity onPress={handleOptions} style={styles.iconCircle}>
+        <TouchableOpacity onPress={handleExitApp} style={styles.iconCircle}>
           <MaterialCommunityIcons
-            name="cog-outline"
+            name="exit-to-app"
             size={22}
             color={colors.headerIconColor}
             style={styles.iconGlyphShadow}

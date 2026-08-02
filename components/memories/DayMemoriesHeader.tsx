@@ -3,7 +3,15 @@ import { format } from "date-fns/format";
 import { parse } from "date-fns/parse";
 import { useRouter } from "expo-router";
 import { useContext } from "react";
-import { Image, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import {
+  Alert,
+  BackHandler,
+  Image,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+} from "react-native";
 import SummaryCard from "@/components/memories/SummaryCard";
 import Tooltip from "@/components/Tooltip";
 import { getColors } from "@/constants/colors";
@@ -23,9 +31,11 @@ interface DateParts {
 interface DayMemoriesHeaderProps {
   day: string;
   daySummary: string;
+  dayMemoryId: number | null;
   onSaveSummary: (text: string) => void;
   onCreateMemory: () => void;
   onCreateMemoryLongPress: () => void;
+  isCreateMemoryAllowed: boolean;
 }
 
 function formatDateParts(day: string): DateParts {
@@ -33,7 +43,7 @@ function formatDateParts(day: string): DateParts {
     const parsedDay = parse(day, "yyyy-MM-dd", new Date());
     const parts = {
       month: format(parsedDay, "MMM").toUpperCase(),
-      dayNumber: format(parsedDay, "d"),
+      dayNumber: format(parsedDay, "dd"),
       year: format(parsedDay, "yyyy"),
     };
     return parts;
@@ -47,23 +57,29 @@ function formatDateParts(day: string): DateParts {
 export default function DayMemoriesHeader({
   day,
   daySummary,
+  dayMemoryId,
   onSaveSummary,
   onCreateMemory,
   onCreateMemoryLongPress,
+  isCreateMemoryAllowed,
 }: DayMemoriesHeaderProps) {
-  const {
-    setMenuVisible,
-    locationTrackingActive,
-    refreshLocationTrackingStatus,
-  } = useContext(OptionsMenuContext);
+  const { locationTrackingActive, refreshLocationTrackingStatus } =
+    useContext(OptionsMenuContext);
   const { username } = useContext(AuthContext);
   const { profileImagePath } = useUserSession();
   const router = useRouter();
 
   useRefreshLocationTrackingOnFocus(refreshLocationTrackingStatus);
 
-  const handleOptions = () => {
-    setMenuVisible(true);
+  const handleExitApp = () => {
+    Alert.alert("Exit app?", "Are you sure you want to exit?", [
+      { text: "Cancel", style: "cancel" },
+      {
+        text: "Exit",
+        onPress: () => BackHandler.exitApp(),
+        style: "destructive",
+      },
+    ]);
   };
 
   const handleProfilePress = () => {
@@ -91,20 +107,26 @@ export default function DayMemoriesHeader({
         <Text style={styles.dateYear}>{yearNumber}</Text>
       </View>
       <View style={styles.rightColumn}>
-        <SummaryCard initialText={daySummary} onSubmit={onSaveSummary} />
+        <SummaryCard
+          initialText={daySummary}
+          onSubmit={onSaveSummary}
+          dayMemoryId={dayMemoryId}
+        />
         <View style={styles.actionsRow}>
-          <TouchableOpacity
-            onPress={onCreateMemory}
-            onLongPress={onCreateMemoryLongPress}
-            delayLongPress={500}
-            style={styles.actionChip}
-          >
-            <FontAwesome
-              name="plus-square-o"
-              size={22}
-              color={colors.dayMemoriesIconColor}
-            />
-          </TouchableOpacity>
+          {isCreateMemoryAllowed && (
+            <TouchableOpacity
+              onPress={onCreateMemory}
+              onLongPress={onCreateMemoryLongPress}
+              delayLongPress={500}
+              style={styles.actionChip}
+            >
+              <FontAwesome
+                name="plus-square-o"
+                size={22}
+                color={colors.dayMemoriesIconColor}
+              />
+            </TouchableOpacity>
+          )}
           <Tooltip text={locationTooltipText}>
             <View style={styles.actionChip}>
               <MaterialCommunityIcons
@@ -129,9 +151,9 @@ export default function DayMemoriesHeader({
               )}
             </TouchableOpacity>
           )}
-          <TouchableOpacity onPress={handleOptions} style={styles.actionChip}>
+          <TouchableOpacity onPress={handleExitApp} style={styles.actionChip}>
             <MaterialCommunityIcons
-              name="cog-outline"
+              name="exit-to-app"
               size={22}
               color={colors.dayMemoriesIconColor}
             />

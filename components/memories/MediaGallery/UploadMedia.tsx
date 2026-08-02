@@ -1,11 +1,10 @@
+import { useActionSheet } from "@expo/react-native-action-sheet";
 import { MaterialIcons } from "@expo/vector-icons";
 import * as ImagePicker from "expo-image-picker";
 import { useState } from "react";
 import {
-  ActionSheetIOS,
   Alert,
   FlatList,
-  Platform,
   StyleSheet,
   Text,
   TouchableOpacity,
@@ -80,6 +79,7 @@ export default function UploadMedia({
   onMediaSelected,
   isEditable = true,
 }: UploadMediaProps) {
+  const { showActionSheetWithOptions } = useActionSheet();
   const [isLoading, setIsLoading] = useState(false);
   const [imageAssetIds, setImageAssetIds] = useState<Set<string>>(new Set());
   const [previewItem, setPreviewItem] = useState<MediaItem | null>(null);
@@ -94,47 +94,90 @@ export default function UploadMedia({
     const newAssetIds = new Set<string>();
     setImageAssetIds(newAssetIds);
   };
-  const handleUploadPress = async () => {
-    try {
-      const options = [
-        "Take Picture",
-        "Record Video",
-        "Media Gallery",
-        "Record Sound",
-        "Cancel",
-      ];
+  const handleUploadPress = () => {
+    const options = [
+      "Take Picture",
+      "Record Video",
+      "Media Gallery",
+      "Record Sound",
+      "Cancel",
+    ];
+    const cancelButtonIndex = 4;
+    const optionIcons = [
+      <MaterialIcons
+        name="photo-camera"
+        size={22}
+        color={colors.createMemoryTitleColor}
+        key="take-picture-icon"
+      />,
+      <MaterialIcons
+        name="videocam"
+        size={22}
+        color={colors.createMemoryTitleColor}
+        key="record-video-icon"
+      />,
+      <MaterialIcons
+        name="photo-library"
+        size={22}
+        color={colors.createMemoryTitleColor}
+        key="media-gallery-icon"
+      />,
+      <MaterialIcons
+        name="mic"
+        size={22}
+        color={colors.createMemoryTitleColor}
+        key="record-sound-icon"
+      />,
+      <MaterialIcons
+        name="close"
+        size={22}
+        color={colors.createMemorySubtitleColor}
+        key="cancel-icon"
+      />,
+    ];
 
-      if (Platform.OS === "ios") {
-        ActionSheetIOS.showActionSheetWithOptions(
-          { options, cancelButtonIndex: 4 },
-          async (buttonIndex) => {
-            if (buttonIndex === 0) {
-              await takePhoto();
-            } else if (buttonIndex === 1) {
-              await recordVideo();
-            } else if (buttonIndex === 2) {
-              await pickFromLibrary();
-            } else if (buttonIndex === 3) {
-              setIsRecording(true);
-            }
-          },
-        );
-      } else {
-        Alert.alert("Upload Media", "Choose an option", [
-          { text: "Take Picture", onPress: takePhoto },
-          { text: "Record Video", onPress: recordVideo },
-          {
-            text: "Media Gallery",
-            onPress: pickFromLibrary,
-          },
-          { text: "Record Sound", onPress: () => setIsRecording(true) },
-          { text: "Cancel", style: "cancel" },
-        ]);
-      }
-    } catch (error) {
-      console.error("Error with media picker:", error);
-      Alert.alert("Error", "Failed to upload media");
-    }
+    showActionSheetWithOptions(
+      {
+        options,
+        cancelButtonIndex,
+        icons: optionIcons,
+        containerStyle: {
+          backgroundColor: colors.createMemoryCardBackground,
+          borderColor: colors.createMemoryCardBorder,
+          borderWidth: 1,
+          borderRadius: 20,
+          marginHorizontal: 16,
+          marginBottom: 24,
+          boxShadow: "0px 4px 6px rgba(0, 0, 0, 0.2)",
+        },
+        textStyle: {
+          color: colors.createMemoryTitleColor,
+          fontWeight: "600",
+          fontSize: 17,
+        },
+        showSeparators: true,
+        separatorStyle: {
+          backgroundColor: colors.createMemoryCardBorder,
+        },
+        cancelButtonTintColor: colors.createMemorySubtitleColor,
+      },
+      async (buttonIndex) => {
+        try {
+          if (buttonIndex === 0) {
+            await takePhoto();
+          } else if (buttonIndex === 1) {
+            await recordVideo();
+          } else if (buttonIndex === 2) {
+            await pickFromLibrary();
+          } else if (buttonIndex === 3) {
+            setIsRecording(true);
+          }
+        } catch (error) {
+          console.error("Error with media picker:", error);
+          Alert.alert("Error", "Failed to upload media");
+        }
+      },
+    );
   };
 
   // Recordings skip the imageAssetIds dedupe entirely — there's no asset ID to

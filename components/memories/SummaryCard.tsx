@@ -1,4 +1,4 @@
-import { MaterialIcons } from "@expo/vector-icons";
+import { MaterialCommunityIcons, MaterialIcons } from "@expo/vector-icons";
 import { useCallback, useEffect, useState } from "react";
 import {
   Alert,
@@ -8,7 +8,10 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
+import Animated from "react-native-reanimated";
 import { getColors } from "@/constants/colors";
+import { useAIDaySummary } from "@/hooks/memories/useAIDaySummary";
+import { useSpin } from "@/hooks/ui/useSpin";
 
 const colors = getColors();
 const SUMMARY_HEIGHT = 64;
@@ -17,14 +20,18 @@ const SUMMARY_COUNTER_HEIGHT = 14;
 interface SummaryCardProps {
   initialText: string;
   onSubmit: (text: string) => void;
+  dayMemoryId: number | null;
 }
 
 export default function SummaryCard({
   initialText,
   onSubmit,
+  dayMemoryId,
 }: SummaryCardProps) {
   const [editedText, setEditedText] = useState<string>(initialText);
   const [isEditingMode, setIsEditingMode] = useState(false);
+  const { isGenerating, generateSummary } = useAIDaySummary();
+  const { spinStyle } = useSpin(isGenerating);
 
   useEffect(() => {
     setEditedText(initialText);
@@ -33,6 +40,31 @@ export default function SummaryCard({
   const handleEdit = useCallback(() => {
     setIsEditingMode(true);
   }, []);
+
+  // Generates a draft summary and drops it into the textbox for review; never auto-saves.
+  const performGenerate = useCallback(async () => {
+    if (dayMemoryId === null) return;
+    const generatedSummary = await generateSummary(dayMemoryId, initialText);
+    if (generatedSummary !== null) {
+      setEditedText(generatedSummary);
+    }
+  }, [dayMemoryId, initialText, generateSummary]);
+
+  // Confirms before discarding an unsaved manual edit, then runs performGenerate.
+  const handleGenerate = useCallback(() => {
+    if (editedText !== initialText) {
+      Alert.alert(
+        "Replace Unsaved Edit?",
+        "Generating a new AI summary will replace the text you've typed. Continue?",
+        [
+          { text: "Cancel", style: "cancel" },
+          { text: "Generate", onPress: performGenerate },
+        ],
+      );
+      return;
+    }
+    performGenerate();
+  }, [editedText, initialText, performGenerate]);
 
   // Validates the summary length, then calls onSubmit and exits edit mode.
   const handleSave = useCallback(() => {
@@ -67,6 +99,29 @@ export default function SummaryCard({
         <Text style={styles.summaryText} numberOfLines={2}>
           {initialText || "No summary provided"}
         </Text>
+      )}
+      {isEditingMode && (
+        <TouchableOpacity
+          onPress={handleGenerate}
+          disabled={isGenerating}
+          style={styles.aiButton}
+        >
+          {isGenerating ? (
+            <Animated.View style={spinStyle}>
+              <MaterialCommunityIcons
+                name="loading"
+                size={24}
+                color={colors.dayMemoriesDateChipBackground}
+              />
+            </Animated.View>
+          ) : (
+            <MaterialCommunityIcons
+              name="robot-excited-outline"
+              size={24}
+              color={colors.dayMemoriesDateChipBackground}
+            />
+          )}
+        </TouchableOpacity>
       )}
       <TouchableOpacity
         onPress={isEditingMode ? handleSave : handleEdit}
@@ -104,7 +159,7 @@ const styles = StyleSheet.create({
     position: "absolute",
     top: 0,
     left: 0,
-    right: 36,
+    right: 72,
     bottom: SUMMARY_COUNTER_HEIGHT,
     borderWidth: 1,
     borderColor: colors.border,
@@ -115,6 +170,12 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: colors.text,
     textAlignVertical: "top",
+  },
+  aiButton: {
+    position: "absolute",
+    top: 0,
+    right: 36,
+    padding: 2,
   },
   summaryButton: {
     position: "absolute",

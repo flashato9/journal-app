@@ -1,7 +1,6 @@
-import { MaterialIcons } from "@expo/vector-icons";
-import { useState } from "react";
+import { MaterialCommunityIcons, MaterialIcons } from "@expo/vector-icons";
+import { useEffect, useState } from "react";
 import {
-  ActivityIndicator,
   KeyboardAvoidingView,
   Platform,
   ScrollView,
@@ -11,7 +10,10 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
+import Animated from "react-native-reanimated";
 import { getColors } from "@/constants/colors";
+import { useAITimeSummary } from "@/hooks/memories/useAITimeSummary";
+import { useSpin } from "@/hooks/ui/useSpin";
 import UploadMedia, {
   MediaItem,
 } from "@/components/memories/MediaGallery/UploadMedia";
@@ -21,6 +23,7 @@ import QuestionnaireCard, {
 
 const colors = getColors();
 const SUMMARY_MAX_LENGTH = 100;
+const BLINK_INTERVAL_MS = 250;
 
 export interface LocationInfo {
   latitude: number;
@@ -43,6 +46,7 @@ export interface MemoryFormProps {
   storage: MemoryFormState;
   onStorageChange: (storage: MemoryFormState) => void;
   onRetryLocation?: () => void;
+  timeMemoryId: number | null;
 }
 
 function isLocationLoading(location: LocationState): boolean {
@@ -78,12 +82,34 @@ export default function MemoryForm({
   storage,
   onStorageChange,
   onRetryLocation,
+  timeMemoryId,
 }: MemoryFormProps) {
   const [isSummaryFocused, setIsSummaryFocused] = useState(false);
+  const { isGenerating: isGeneratingSummary, generateSummary } =
+    useAITimeSummary();
+  const { spinStyle } = useSpin(isGeneratingSummary);
 
   const handleSummaryChange = (newSummary: string) => {
     const nextStorage = { ...storage, summary: newSummary };
     onStorageChange(nextStorage);
+  };
+
+  // Generates a summary from answered questions + the current draft, then fills the box.
+  const handleGenerateSummary = async () => {
+    const inputs = {
+      questionnaire: storage.questionnaire,
+      summary: storage.summary,
+    };
+    console.log("handleGenerateSummary inputs:", inputs);
+    const generatedSummary = await generateSummary(
+      timeMemoryId,
+      storage.questionnaire,
+      storage.summary,
+    );
+    console.log("handleGenerateSummary output:", generatedSummary);
+    if (generatedSummary !== null) {
+      handleSummaryChange(generatedSummary);
+    }
   };
 
   const handleMediaSelected = (newMedia: MediaItem[]) => {
@@ -128,6 +154,20 @@ export default function MemoryForm({
   const locationIsLoading = isLocationLoading(storage.location);
   const locationIsUnretrievable = isLocationUnretrievable(storage.location);
 
+  const [isLocationBlinkVisible, setIsLocationBlinkVisible] = useState(true);
+
+  useEffect(() => {
+    if (!locationIsLoading) {
+      setIsLocationBlinkVisible(true);
+      return;
+    }
+    const intervalId = setInterval(() => {
+      setIsLocationBlinkVisible((prev) => !prev);
+    }, BLINK_INTERVAL_MS);
+    const cleanup = () => clearInterval(intervalId);
+    return cleanup;
+  }, [locationIsLoading]);
+
   const content = (
     <KeyboardAvoidingView
       behavior={Platform.OS === "ios" ? "padding" : "height"}
@@ -140,32 +180,65 @@ export default function MemoryForm({
         <View style={styles.card}>
           <Text style={styles.cardTitle}>Summary</Text>
 
-          <TextInput
-            style={[
-              styles.summaryInput,
-              !storage.isEditable && styles.inputReadOnly,
-              isSummaryFocused && styles.inputFocused,
-            ]}
-            placeholder="write about your day..."
-            placeholderTextColor={colors.createMemorySubtitleColor}
-            value={storage.summary}
-            onChangeText={storage.isEditable ? handleSummaryChange : undefined}
-            onFocus={() => setIsSummaryFocused(true)}
-            onBlur={() => setIsSummaryFocused(false)}
-            editable={storage.isEditable}
-            multiline
-            numberOfLines={4}
-            maxLength={SUMMARY_MAX_LENGTH}
-          />
+          <View style={styles.summaryRow}>
+            <TextInput
+              style={[
+                styles.summaryInput,
+                !storage.isEditable && styles.inputReadOnly,
+                isSummaryFocused && styles.inputFocused,
+              ]}
+              placeholder="write about your day..."
+              placeholderTextColor={colors.createMemorySubtitleColor}
+              value={storage.summary}
+              onChangeText={
+                storage.isEditable ? handleSummaryChange : undefined
+              }
+              onFocus={() => setIsSummaryFocused(true)}
+              onBlur={() => setIsSummaryFocused(false)}
+              editable={storage.isEditable}
+              multiline
+              numberOfLines={4}
+              maxLength={SUMMARY_MAX_LENGTH}
+            />
+            {storage.isEditable && (
+              <TouchableOpacity
+                onPress={handleGenerateSummary}
+                disabled={isGeneratingSummary}
+                style={styles.aiButton}
+              >
+                {isGeneratingSummary ? (
+                  <Animated.View style={spinStyle}>
+                    <MaterialCommunityIcons
+                      name="loading"
+                      size={22}
+                      color={colors.createMemoryTitleColor}
+                    />
+                  </Animated.View>
+                ) : (
+                  <MaterialCommunityIcons
+                    name="robot-excited-outline"
+                    size={22}
+                    color={colors.createMemoryTitleColor}
+                  />
+                )}
+              </TouchableOpacity>
+            )}
+          </View>
           <Text style={styles.charCounter}>
             {storage.summary.length} / {SUMMARY_MAX_LENGTH} characters
           </Text>
 
           <View style={styles.locationRow}>
             {locationIsLoading ? (
-              <ActivityIndicator
-                size="small"
+              <MaterialIcons
+                name="place"
+                size={16}
                 color={colors.createMemorySubtitleColor}
+                style={
+                  isLocationBlinkVisible
+                    ? styles.locationBlinkVisible
+                    : styles.locationBlinkHidden
+                }
               />
             ) : (
               <MaterialIcons
@@ -182,6 +255,10 @@ export default function MemoryForm({
               style={[
                 styles.detailText,
                 locationIsUnretrievable && styles.detailTextError,
+                locationIsLoading &&
+                  (isLocationBlinkVisible
+                    ? styles.locationBlinkVisible
+                    : styles.locationBlinkHidden),
               ]}
             >
               GPS Location: {locationLabel}
@@ -298,7 +375,7 @@ const styles = StyleSheet.create({
     color: colors.createMemoryTitleColor,
   },
   summaryInput: {
-    marginTop: 12,
+    flex: 1,
     borderWidth: 1,
     borderColor: colors.createMemoryCardBorder,
     borderRadius: 12,
@@ -308,6 +385,15 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: colors.text,
     textAlignVertical: "top",
+  },
+  summaryRow: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    gap: 8,
+    marginTop: 12,
+  },
+  aiButton: {
+    padding: 4,
   },
   inputReadOnly: {
     borderColor: colors.createMemoryCardBorder,
@@ -336,6 +422,12 @@ const styles = StyleSheet.create({
   },
   detailTextError: {
     color: colors.createMemoryLocationErrorText,
+  },
+  locationBlinkVisible: {
+    opacity: 1,
+  },
+  locationBlinkHidden: {
+    opacity: 0,
   },
   retryButton: {
     padding: 2,

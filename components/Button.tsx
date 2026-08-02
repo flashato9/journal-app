@@ -89,8 +89,9 @@ export default function Button({
         onPress={handlePress}
         disabled={isDisabled}
         activeOpacity={0.7}
+        onLayout={handleShineLayout}
       >
-        <View style={styles.contentClip} onLayout={handleShineLayout}>
+        <View style={styles.contentClip}>
           {isLoading ? (
             <ActivityIndicator color="#fff" />
           ) : iconName ? (
@@ -101,20 +102,20 @@ export default function Button({
           ) : (
             <Text style={[styles.text, textStyle]}>{text}</Text>
           )}
-          {isShiny && (
-            <Animated.View
-              style={[styles.shineBand, shineStyle]}
-              pointerEvents="none"
-            >
-              <LinearGradient
-                colors={SHINE_GRADIENT_COLORS}
-                start={SHINE_GRADIENT_START}
-                end={SHINE_GRADIENT_END}
-                style={styles.shineGradientFill}
-              />
-            </Animated.View>
-          )}
         </View>
+        {isShiny && (
+          <Animated.View
+            style={[styles.shineBand, shineStyle]}
+            pointerEvents="none"
+          >
+            <LinearGradient
+              colors={SHINE_GRADIENT_COLORS}
+              start={SHINE_GRADIENT_START}
+              end={SHINE_GRADIENT_END}
+              style={styles.shineGradientFill}
+            />
+          </Animated.View>
+        )}
       </TouchableOpacity>
     </Animated.View>
   );
@@ -127,13 +128,12 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     alignItems: "center",
     marginTop: 8,
+    overflow: "hidden",
   },
   contentClip: {
     width: "100%",
     alignItems: "center",
     justifyContent: "center",
-    overflow: "hidden",
-    borderRadius: 999,
   },
   contentRow: {
     flexDirection: "row",

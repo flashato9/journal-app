@@ -93,5 +93,5 @@ export function useDayMemories() {
   const handleSaveSummary = (newSummary: string) =>
     saveDaySummary(dayMemoryId, newSummary, setDaySummary);
 
-  return { memories, isLoading, daySummary, handleSaveSummary };
+  return { memories, isLoading, daySummary, dayMemoryId, handleSaveSummary };
 }

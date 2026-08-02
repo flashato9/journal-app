@@ -23,6 +23,7 @@ export default function ReadMemoryScreen() {
     setMemoryState,
     handleSave,
     handleEditMode,
+    timeMemoryId,
   } = useReadOrEditMemory();
 
   if (isLoading) {
@@ -34,8 +35,7 @@ export default function ReadMemoryScreen() {
     return loadingContent;
   }
 
-  const headerTitle = "Daily Memory";
-  const captureTimeDisplay = format(
+  const headerTitle = format(
     new Date(memoryState.dateTimeOfCapture),
     "h:mm a",
   ).toLowerCase();
@@ -61,10 +61,12 @@ export default function ReadMemoryScreen() {
   const content = (
     <SafeAreaView style={styles.container} edges={["left", "right", "bottom"]}>
       <Header title={headerTitle} actionIcons={actionIcons} />
-      <Text style={styles.screenHeading}>
-        {`What Happened - ${captureTimeDisplay}`}
-      </Text>
-      <MemoryForm storage={memoryState} onStorageChange={setMemoryState} />
+      <Text style={styles.screenHeading}>What Happened</Text>
+      <MemoryForm
+        storage={memoryState}
+        onStorageChange={setMemoryState}
+        timeMemoryId={timeMemoryId}
+      />
     </SafeAreaView>
   );
   return content;

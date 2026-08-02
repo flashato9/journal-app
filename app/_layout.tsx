@@ -1,3 +1,4 @@
+import { ActionSheetProvider } from "@expo/react-native-action-sheet";
 import { Stack } from "expo-router";
 import { ShareIntentProvider } from "expo-share-intent";
 import { useContext, useEffect, useState } from "react";
@@ -8,7 +9,6 @@ import { OptionsMenuProvider } from "../context/OptionsMenuContext";
 import { initializeDatabase } from "../services/database";
 import { initializeLogger } from "../services/logger";
 import LoadingIndicator from "@/components/LoadingIndicator";
-import OptionsMenu from "@/components/OptionsMenu";
 import { useBreakNotificationNavigation } from "@/hooks/notifications/useBreakNotificationNavigation";
 import { useSharedMediaNavigation } from "@/hooks/shareIntent/useSharedMediaNavigation";
 
@@ -61,8 +61,9 @@ export default function RootLayout() {
       <ShareIntentProvider>
         <AuthProvider>
           <OptionsMenuProvider>
-            <RootLayoutContent />
-            <OptionsMenu />
+            <ActionSheetProvider>
+              <RootLayoutContent />
+            </ActionSheetProvider>
           </OptionsMenuProvider>
         </AuthProvider>
       </ShareIntentProvider>

@@ -31,6 +31,17 @@ const DEFAULT_QUESTIONNAIRE: QuestionnaireItem[] = [
   { id: "8", question: "Why did you decide to come here?", answer: "" },
 ];
 
+const LOCATION_FETCH_TIMEOUT_MS = 15000;
+
+function createLocationTimeout(timeoutMs: number): Promise<never> {
+  const timeoutPromise = new Promise<never>((_, reject) => {
+    setTimeout(() => {
+      reject(new Error("Location fetch timed out"));
+    }, timeoutMs);
+  });
+  return timeoutPromise;
+}
+
 // Requests foreground location permission and fills in the memory's location.
 async function fetchCurrentLocation(setMemoryState: SetMemoryState) {
   try {
@@ -45,9 +56,12 @@ async function fetchCurrentLocation(setMemoryState: SetMemoryState) {
       return;
     }
 
-    const currentLocation = await Location.getCurrentPositionAsync({
-      accuracy: Location.Accuracy.Balanced,
-    });
+    const currentLocation = await Promise.race([
+      Location.getCurrentPositionAsync({
+        accuracy: Location.Accuracy.Balanced,
+      }),
+      createLocationTimeout(LOCATION_FETCH_TIMEOUT_MS),
+    ]);
 
     const applyLocation = (prev: MemoryFormState) => {
       const next = {
@@ -147,7 +161,11 @@ async function saveMemory(
     }
 
     Alert.alert("Success", "Memory saved successfully");
-    router.back();
+    const destination: Parameters<typeof router.replace>[0] = {
+      pathname: "/(memories)/daymemories",
+      params: { id: dayMemory.id.toString(), day: today },
+    };
+    router.replace(destination);
   } catch (error) {
     console.error("Error saving memory:", error);
     Alert.alert(

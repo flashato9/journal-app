@@ -1,4 +1,3 @@
-import { useRouter } from "expo-router";
 import { useContext } from "react";
 import {
   BackHandler,
@@ -11,29 +10,14 @@ import {
 import { OptionsMenuContext } from "@/context/OptionsMenuContext";
 
 export default function OptionsMenu() {
-  const router = useRouter();
   const { menuVisible, setMenuVisible } = useContext(OptionsMenuContext);
-
-  const handleDebugLogs = () => {
-    setMenuVisible(false);
-    router.push("/debug-logs");
-  };
-
-  const handleDebugLlm = () => {
-    setMenuVisible(false);
-    router.push("/debug-llm");
-  };
 
   const handleExitApp = () => {
     setMenuVisible(false);
     BackHandler.exitApp();
   };
 
-  const menuOptions = [
-    { label: "Debug Logs", onPress: handleDebugLogs },
-    { label: "Debug LLM", onPress: handleDebugLlm },
-    { label: "Exit App", onPress: handleExitApp },
-  ];
+  const menuOptions = [{ label: "Exit App", onPress: handleExitApp }];
 
   const content = (
     <Modal
