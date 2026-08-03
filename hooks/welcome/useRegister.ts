@@ -5,6 +5,7 @@ import { useState } from "react";
 import { ActionSheetIOS, Alert, Platform } from "react-native";
 import type { PreferredAuthMethod } from "@/constants/authMethod";
 import { usePasswordField } from "@/hooks/welcome/usePasswordField";
+import { useReviewerAccess } from "@/hooks/welcome/useReviewerAccess";
 import { useUsernameField } from "@/hooks/welcome/useUsernameField";
 import { UserTable } from "@/services/database";
 import {
@@ -33,6 +34,7 @@ export function useRegister() {
     validatePassword,
     isPasswordValid,
   } = usePasswordField();
+  const reviewerAccess = useReviewerAccess();
   const [preferredAuthMethod, setPreferredAuthMethod] =
     useState<PreferredAuthMethod>("PASSWORD");
   const [profileImageUri, setProfileImageUri] = useState<string | null>(null);
@@ -189,5 +191,6 @@ export function useRegister() {
     handlePasswordChange,
     handleRegister,
     isRegisterEnabled,
+    ...reviewerAccess,
   };
 }

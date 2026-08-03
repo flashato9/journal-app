@@ -17,6 +17,7 @@
     "web": "expo start --web",
     "lint": "expo lint",
     "e2e": "npx ts-node --esm --transpileOnly scripts/run-e2e.ts",
+    "build:release-aab": "npx ts-node --esm --transpileOnly scripts/build-release-aab.ts",
     "postinstall": "patch-package"
   },
   "dependencies": {

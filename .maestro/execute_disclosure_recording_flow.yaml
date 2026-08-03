@@ -1,0 +1,46 @@
+appId: com.relentless.memory_journal
+---
+- clearState
+- launchApp:
+    permissions:
+      location: unset
+      notifications: unset
+
+- extendedWaitUntil:
+    visible: "Create Account"
+    timeout: 60000
+
+- startRecording: background-location-disclosure-demo
+
+- repeat:
+    times: 10
+    commands:
+      - tapOn:
+          text: "Create Account"
+          waitToSettleTimeoutMs: 100
+
+- extendedWaitUntil:
+    visible: "Reviewer Access Unlocked"
+    timeout: 10000
+- tapOn: "Yes"
+- extendedWaitUntil:
+    visible: "Permissions Needed"
+    timeout: 10000
+- tapOn: "OK"
+
+- extendedWaitUntil:
+    visible: "Allow"
+    timeout: 10000
+- tapOn: "Allow"
+
+- extendedWaitUntil:
+    visible: "Background Location Access"
+    timeout: 15000
+- tapOn: "Continue"
+
+- extendedWaitUntil:
+    visible: "While using the app"
+    timeout: 10000
+- tapOn: "While using the app"
+
+- stopRecording

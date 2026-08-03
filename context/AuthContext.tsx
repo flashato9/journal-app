@@ -1,6 +1,6 @@
 import { createContext, ReactNode, useState } from "react";
 
-interface LocationSettings {
+export interface LocationSettings {
   fetchFrequency: number;
   notificationThreshold: number;
   restThreshold: number;

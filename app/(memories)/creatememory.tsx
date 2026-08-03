@@ -38,6 +38,7 @@ export default function CreateMemoryScreen() {
       onPress={handleSave}
       disabled={isSaving}
       style={[styles.headerSaveButton, isSaving && styles.buttonDisabled]}
+      testID="create-memory-save-button"
     >
       {isSaving ? (
         <ActivityIndicator size="small" color="#007AFF" />

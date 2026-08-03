@@ -3,7 +3,7 @@ import * as Location from "expo-location";
 import * as SecureStore from "expo-secure-store";
 import * as TaskManager from "expo-task-manager";
 import { getDistance } from "geolib";
-import { Platform } from "react-native";
+import { Alert, Platform } from "react-native";
 import {
   LocationTable,
   LocationSettingsTable,
@@ -480,6 +480,30 @@ TaskManager.defineTask(LOCATION_TASK_NAME, async ({ data, error }) => {
 
 // ===== LOCATION TRACKING =====
 
+async function isBackgroundLocationPermissionGranted(): Promise<boolean> {
+  const { status } = await Location.getBackgroundPermissionsAsync();
+  const isGranted = status === "granted";
+  return isGranted;
+}
+
+// Play Store's required "prominent disclosure" shown before the system
+// background-location permission prompt: explains what's collected, that
+// it's collected in the background, and why. Resolves true if the user
+// chooses to continue to the system prompt.
+function isBackgroundLocationDisclosureAccepted(): Promise<boolean> {
+  const promise = new Promise<boolean>((resolve) => {
+    Alert.alert(
+      "Background Location Access",
+      "Memory Journal uses your location in the background to notice when you've arrived somewhere new or been resting, so it can prompt you to save a memory — even when the app isn't open. Location data stays on your device.",
+      [
+        { text: "Not Now", style: "cancel", onPress: () => resolve(false) },
+        { text: "Continue", onPress: () => resolve(true) },
+      ],
+    );
+  });
+  return promise;
+}
+
 export const startLocationTracking = async () => {
   try {
     // Check if already tracking
@@ -523,6 +547,14 @@ export const startLocationTracking = async () => {
           "⚠️  Notification permission request failed (non-blocking):",
           notifError,
         );
+      }
+    }
+
+    const isAlreadyGranted = await isBackgroundLocationPermissionGranted();
+    if (!isAlreadyGranted) {
+      const didUserContinue = await isBackgroundLocationDisclosureAccepted();
+      if (!didUserContinue) {
+        throw new Error("User declined background location disclosure");
       }
     }
 

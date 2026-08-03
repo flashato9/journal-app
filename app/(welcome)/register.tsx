@@ -1,4 +1,11 @@
-import { Image, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import {
+  Image,
+  Pressable,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+} from "react-native";
 import { KeyboardAwareScrollView } from "react-native-keyboard-controller";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { AUTH_METHOD_OPTIONS } from "@/constants/authMethod";
@@ -27,6 +34,7 @@ export default function RegisterScreen() {
     handlePasswordChange,
     handleRegister,
     isRegisterEnabled,
+    handleTitleTap,
   } = useRegister();
 
   return (
@@ -35,7 +43,9 @@ export default function RegisterScreen() {
         contentContainerStyle={styles.content}
         keyboardShouldPersistTaps="handled"
       >
-        <Text style={styles.title}>Create Account</Text>
+        <Pressable onPress={handleTitleTap}>
+          <Text style={styles.title}>Create Account</Text>
+        </Pressable>
 
         <View style={styles.profilePictureWrapper}>
           <PolaroidFrame

@@ -1,0 +1,65 @@
+appId: com.relentless.memory_journal
+---
+- clearState
+- launchApp:
+    permissions:
+      location: allow
+      notifications: allow
+      android.permission.ACCESS_BACKGROUND_LOCATION: allow
+
+- extendedWaitUntil:
+    visible: "Create Account"
+    timeout: 60000
+- takeScreenshot: 01-register-screen
+
+- repeat:
+    times: 10
+    commands:
+      - tapOn:
+          text: "Create Account"
+          waitToSettleTimeoutMs: 100
+
+- extendedWaitUntil:
+    visible: "Reviewer Access Unlocked"
+    timeout: 10000
+- tapOn: "Yes"
+- extendedWaitUntil:
+    visible: "Permissions Needed"
+    timeout: 10000
+- tapOn: "OK"
+
+- extendedWaitUntil:
+    visible: "All Memories"
+    timeout: 20000
+- takeScreenshot: 02-all-memories
+
+- tapOn: "Summary TBD"
+- extendedWaitUntil:
+    visible: "A blank page awaits..."
+    timeout: 10000
+- takeScreenshot: 03-day-memories-empty
+
+- tapOn: "Create First Memory"
+- extendedWaitUntil:
+    visible: "What's Happening"
+    timeout: 10000
+- takeScreenshot: 04-create-memory-empty
+
+- tapOn:
+    text: "write about your day..."
+    waitToSettleTimeoutMs: 100
+- inputText: "Walked along the river at sunset and watched the city lights turn on."
+- hideKeyboard
+- takeScreenshot: 05-create-memory-filled
+
+- tapOn:
+    id: "create-memory-save-button"
+    waitToSettleTimeoutMs: 100
+- extendedWaitUntil:
+    visible: "Success"
+    timeout: 10000
+- tapOn: "OK"
+- extendedWaitUntil:
+    notVisible: "A blank page awaits..."
+    timeout: 10000
+- takeScreenshot: 06-day-memories-filled

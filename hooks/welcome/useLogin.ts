@@ -4,8 +4,7 @@ import * as SecureStore from "expo-secure-store";
 import { useContext, useState } from "react";
 import { Alert } from "react-native";
 import { AuthContext } from "@/context/AuthContext";
-import { LocationSettingsTable, UserTable } from "@/services/database";
-import { startLocationTracking } from "@/services/locationService";
+import { completeUserSession } from "@/hooks/welcome/completeUserSession";
 
 // Custom hook that encapsulates the login flow (form state, validation,
 // auth check, DB sync, location settings load, and location tracking
@@ -53,52 +52,13 @@ export function useLogin() {
         return;
       }
 
-      // Login successful - ensure user exists in database
       console.log("Login successful:", { username });
-      try {
-        if (!UserTable.isUserExists(username)) {
-          UserTable.insertUserIntoDB(username);
-        }
-      } catch (dbError) {
-        console.error("Error creating user in database:", dbError);
-      }
-
-      // Get userId and fetch/create LocationSettings
-      const userId = UserTable.getUserIdByUsername(username);
-      if (userId) {
-        let settings =
-          LocationSettingsTable.getLocationSettingsByUserId(userId);
-        if (!settings) {
-          // Create dummy settings (10, 1, 10)
-          LocationSettingsTable.createLocationSettings(userId, 10, 1, 10);
-          settings = LocationSettingsTable.getLocationSettingsByUserId(userId);
-        }
-        if (settings) {
-          setLocationSettings({
-            fetchFrequency: settings.fetchFrequency,
-            notificationThreshold: settings.notificationThreshold,
-            restThreshold: settings.restThreshold,
-            locationTrackingPollFrequency:
-              settings.locationTrackingPollFrequency,
-          });
-          console.log("Location settings loaded:", settings);
-        }
-      }
-
-      // Store current username in SecureStore for location tracking
-      await SecureStore.setItemAsync("currentUsername", username);
-
-      // Start location tracking
-      try {
-        await startLocationTracking();
-        console.log("Location tracking started for user:", username);
-      } catch (locationError) {
-        console.error("Error starting location tracking:", locationError);
-        // Don't fail login if location tracking fails - just log it
-      }
-
-      setAuthUsername(username);
-      router.push("/(memories)/allmemories");
+      await completeUserSession(
+        username,
+        setAuthUsername,
+        setLocationSettings,
+        router,
+      );
     } catch (error) {
       console.error("Error during login:", error);
       Alert.alert("Login Failed", "An error occurred. Please try again.");
