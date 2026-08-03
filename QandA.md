@@ -31,3 +31,13 @@ A: That's Meta's Llama 3 token syntax, not our model's. We already applied the s
 
 **Q: Is there a Gemma model with image support?**
 A: Yes, but only at 4B/12B/27B params (with a separate mmproj file) — the 1B/270M text-only sizes we use for the text model have no vision support. Gemma 3 4B alone is ~2.49GB (Q4_K_M), bigger than the SmolVLM2-2.2B option we already ruled out, so not a lateral swap for the current vision use case.
+
+# UploadMedia.tsx
+
+Q: How is the media grid laid out, and could flex space-between fix the edge spacing?
+A: It's a FlatList with numColumns=4 and columnWrapperStyle using justifyContent: "space-between" (already flexbox), but space-between only spaces items apart, never adds outer edge padding, so a paddingHorizontal on the wrapping container was needed instead.
+
+# General
+
+Q: Why does "allmemories" throw a beforeRemove/native-stack desync warning?
+A: It's React Navigation's own useDismissedRouteError diagnostic firing when the native stack and JS state briefly diverge, most commonly from Fast Refresh mid-navigation during dev; no beforeRemove/usePreventRemove listener exists anywhere in this codebase, so it's not an actual navigation bug here.

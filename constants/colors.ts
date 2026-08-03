@@ -33,6 +33,11 @@ export interface AppColors {
   createMemoryLocationErrorBackground: string;
   createMemoryLocationErrorBorder: string;
   createMemoryLocationErrorText: string;
+  createMemoryGradientStart: string;
+  createMemoryGradientEnd: string;
+  createMemorySummaryBackground: string;
+  createMemoryOnGradientTextColor: string;
+  createMemoryAccentColor: string;
 }
 
 export const getColors = (): AppColors => {
@@ -63,14 +68,19 @@ export const getColors = (): AppColors => {
     dayMemoriesDateChipText: "#FFFFFF",
     dayMemoriesChipBackground: "#FFFFFF",
     dayMemoriesIconColor: "#000000",
-    createMemoryCardBackground: "#FBF4E7",
-    createMemoryCardBorder: "#E6D9C2",
-    createMemoryTitleColor: "#3B2E22",
-    createMemorySubtitleColor: "#9C8B72",
-    createMemoryInputBackground: "#FFFFFF",
+    createMemoryCardBackground: "rgba(253, 248, 235, 0.88)",
+    createMemoryCardBorder: "rgba(240, 234, 214, 0.5)",
+    createMemoryTitleColor: "#2F4F3A",
+    createMemorySubtitleColor: "#7A8C7A",
+    createMemoryInputBackground: "rgba(253, 250, 240, 0.9)",
     createMemoryLocationErrorBackground: "#FBEAEA",
     createMemoryLocationErrorBorder: "#E8A0A0",
     createMemoryLocationErrorText: "#C0392B",
+    createMemoryGradientStart: "#C9D9BA",
+    createMemoryGradientEnd: "#B7CEDE",
+    createMemorySummaryBackground: "#E8D9A8",
+    createMemoryOnGradientTextColor: "#2F4F3A",
+    createMemoryAccentColor: "#8FAE7D",
   };
   return colors;
 };

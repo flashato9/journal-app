@@ -1,4 +1,5 @@
 import { MaterialCommunityIcons, MaterialIcons } from "@expo/vector-icons";
+import { BlurView } from "expo-blur";
 import { useEffect, useState } from "react";
 import {
   KeyboardAvoidingView,
@@ -177,29 +178,33 @@ export default function MemoryForm({
         style={styles.scrollView}
         contentContainerStyle={styles.content}
       >
-        <View style={styles.card}>
+        <BlurView intensity={50} tint="light" style={styles.card}>
           <Text style={styles.cardTitle}>Summary</Text>
 
           <View style={styles.summaryRow}>
-            <TextInput
+            <View
               style={[
-                styles.summaryInput,
-                !storage.isEditable && styles.inputReadOnly,
-                isSummaryFocused && styles.inputFocused,
+                styles.summaryInputWrapper,
+                isSummaryFocused && styles.summaryInputWrapperFocused,
+                !storage.isEditable && styles.summaryInputWrapperReadOnly,
               ]}
-              placeholder="write about your day..."
-              placeholderTextColor={colors.createMemorySubtitleColor}
-              value={storage.summary}
-              onChangeText={
-                storage.isEditable ? handleSummaryChange : undefined
-              }
-              onFocus={() => setIsSummaryFocused(true)}
-              onBlur={() => setIsSummaryFocused(false)}
-              editable={storage.isEditable}
-              multiline
-              numberOfLines={4}
-              maxLength={SUMMARY_MAX_LENGTH}
-            />
+            >
+              <TextInput
+                style={styles.summaryInput}
+                placeholder="write about your day..."
+                placeholderTextColor="rgba(47, 79, 58, 0.5)"
+                value={storage.summary}
+                onChangeText={
+                  storage.isEditable ? handleSummaryChange : undefined
+                }
+                onFocus={() => setIsSummaryFocused(true)}
+                onBlur={() => setIsSummaryFocused(false)}
+                editable={storage.isEditable}
+                multiline
+                numberOfLines={4}
+                maxLength={SUMMARY_MAX_LENGTH}
+              />
+            </View>
             {storage.isEditable && (
               <TouchableOpacity
                 onPress={handleGenerateSummary}
@@ -284,9 +289,9 @@ export default function MemoryForm({
               </TouchableOpacity>
             )}
           </View>
-        </View>
+        </BlurView>
 
-        <View style={styles.card}>
+        <BlurView intensity={50} tint="light" style={styles.card}>
           <Text style={styles.cardTitle}>Media Gallery</Text>
           <UploadMedia
             media={storage.media}
@@ -295,9 +300,9 @@ export default function MemoryForm({
             }
             isEditable={storage.isEditable}
           />
-        </View>
+        </BlurView>
 
-        <View style={styles.card}>
+        <BlurView intensity={50} tint="light" style={styles.card}>
           <Text style={styles.cardTitle}>Questionnaire</Text>
           <View style={styles.questionnaireList}>
             {storage.questionnaire.length === 0 ? (
@@ -341,7 +346,7 @@ export default function MemoryForm({
               <Text style={styles.addQuestionnaireText}>Add Questionnaire</Text>
             </TouchableOpacity>
           )}
-        </View>
+        </BlurView>
       </ScrollView>
     </KeyboardAvoidingView>
   );
@@ -368,22 +373,32 @@ const styles = StyleSheet.create({
     padding: 16,
     marginBottom: 16,
     boxShadow: "0px 4px 6px rgba(0, 0, 0, 0.2)",
+    overflow: "hidden",
   },
   cardTitle: {
     fontSize: 18,
     fontWeight: "700",
     color: colors.createMemoryTitleColor,
   },
+  summaryInputWrapper: {
+    flex: 1,
+    borderRadius: 12,
+    borderWidth: 2,
+    borderColor: "transparent",
+    backgroundColor: colors.createMemorySummaryBackground,
+  },
+  summaryInputWrapperFocused: {
+    borderColor: colors.createMemoryAccentColor,
+  },
+  summaryInputWrapperReadOnly: {
+    opacity: 0.6,
+  },
   summaryInput: {
     flex: 1,
-    borderWidth: 1,
-    borderColor: colors.createMemoryCardBorder,
-    borderRadius: 12,
-    backgroundColor: colors.createMemoryInputBackground,
     paddingHorizontal: 12,
     paddingVertical: 10,
     fontSize: 14,
-    color: colors.text,
+    color: colors.createMemoryOnGradientTextColor,
     textAlignVertical: "top",
   },
   summaryRow: {
@@ -394,13 +409,6 @@ const styles = StyleSheet.create({
   },
   aiButton: {
     padding: 4,
-  },
-  inputReadOnly: {
-    borderColor: colors.createMemoryCardBorder,
-    backgroundColor: colors.createMemoryCardBackground,
-  },
-  inputFocused: {
-    boxShadow: "0px 0px 6px rgba(0, 0, 0, 0.25)",
   },
   charCounter: {
     fontSize: 12,
@@ -449,7 +457,7 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   addQuestionnaireButton: {
-    backgroundColor: colors.dayMemoriesDateChipBackground,
+    backgroundColor: colors.createMemoryAccentColor,
     paddingHorizontal: 16,
     paddingVertical: 10,
     borderRadius: 999,
@@ -458,7 +466,7 @@ const styles = StyleSheet.create({
     boxShadow: "0px 4px 6px rgba(0, 0, 0, 0.2)",
   },
   addQuestionnaireText: {
-    color: colors.dayMemoriesDateChipText,
+    color: colors.createMemoryTitleColor,
     fontSize: 14,
     fontWeight: "600",
   },

@@ -1,4 +1,5 @@
 import { MaterialIcons } from "@expo/vector-icons";
+import { BlurView } from "expo-blur";
 import { useState } from "react";
 import {
   StyleSheet,
@@ -38,7 +39,7 @@ export default function QuestionnaireCard({
   const [isAnswerFocused, setIsAnswerFocused] = useState(false);
 
   const content = (
-    <View style={styles.card}>
+    <BlurView intensity={40} tint="light" style={styles.card}>
       <View style={styles.headerRow}>
         <Text style={styles.questionLabel}>Question {index}</Text>
         {onRemove && (
@@ -95,7 +96,7 @@ export default function QuestionnaireCard({
         maxLength={300}
         placeholderTextColor={colors.createMemorySubtitleColor}
       />
-    </View>
+    </BlurView>
   );
   return content;
 }
@@ -109,6 +110,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.createMemoryCardBorder,
     boxShadow: "0px 4px 6px rgba(0, 0, 0, 0.2)",
+    overflow: "hidden",
   },
   headerRow: {
     flexDirection: "row",
@@ -141,7 +143,7 @@ const styles = StyleSheet.create({
   },
   questionInput: {
     borderWidth: 1,
-    borderColor: colors.dayMemoriesDateChipBackground,
+    borderColor: colors.createMemoryAccentColor,
     borderRadius: 8,
     paddingHorizontal: 10,
     paddingVertical: 8,
@@ -169,6 +171,6 @@ const styles = StyleSheet.create({
     color: colors.createMemorySubtitleColor,
   },
   inputFocused: {
-    boxShadow: "0px 0px 6px rgba(0, 0, 0, 0.25)",
+    boxShadow: "0px 0px 6px rgba(143, 174, 125, 0.5)",
   },
 });

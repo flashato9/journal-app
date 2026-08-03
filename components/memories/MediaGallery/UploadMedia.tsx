@@ -490,7 +490,7 @@ const styles = StyleSheet.create({
     marginTop: 8,
   },
   gridRow: {
-    justifyContent: "space-between",
+    justifyContent: "space-around",
   },
   emptySlot: {
     width: "22%",

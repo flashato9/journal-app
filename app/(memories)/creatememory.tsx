@@ -1,5 +1,6 @@
 import { MaterialIcons } from "@expo/vector-icons";
 import { format } from "date-fns/format";
+import { LinearGradient } from "expo-linear-gradient";
 import {
   ActivityIndicator,
   StyleSheet,
@@ -13,6 +14,10 @@ import { getColors } from "@/constants/colors";
 import { useCreateMemory } from "@/hooks/memories/useCreateMemory";
 
 const colors = getColors();
+const BACKGROUND_GRADIENT_COLORS = [
+  colors.createMemoryGradientStart,
+  colors.createMemoryGradientEnd,
+] as const;
 
 export default function CreateMemoryScreen() {
   const {
@@ -43,29 +48,39 @@ export default function CreateMemoryScreen() {
   );
 
   const content = (
-    <SafeAreaView style={styles.container} edges={["left", "right", "bottom"]}>
-      <Header title={headerTitle} actionIcons={actionIcons} />
-      <Text style={styles.screenHeading}>What&apos;s Happening</Text>
-      <MemoryForm
-        storage={memoryState}
-        onStorageChange={setMemoryState}
-        onRetryLocation={handleRetryLocation}
-        timeMemoryId={null}
-      />
-    </SafeAreaView>
+    <LinearGradient
+      colors={BACKGROUND_GRADIENT_COLORS}
+      style={styles.gradientBackground}
+    >
+      <SafeAreaView
+        style={styles.container}
+        edges={["left", "right", "bottom"]}
+      >
+        <Header title={headerTitle} actionIcons={actionIcons} />
+        <Text style={styles.screenHeading}>What&apos;s Happening</Text>
+        <MemoryForm
+          storage={memoryState}
+          onStorageChange={setMemoryState}
+          onRetryLocation={handleRetryLocation}
+          timeMemoryId={null}
+        />
+      </SafeAreaView>
+    </LinearGradient>
   );
   return content;
 }
 
 const styles = StyleSheet.create({
+  gradientBackground: {
+    flex: 1,
+  },
   container: {
     flex: 1,
-    backgroundColor: colors.screenBackground,
   },
   screenHeading: {
     fontSize: 20,
     fontWeight: "700",
-    color: colors.createMemoryTitleColor,
+    color: colors.createMemoryOnGradientTextColor,
     textAlign: "center",
     marginBottom: 8,
   },

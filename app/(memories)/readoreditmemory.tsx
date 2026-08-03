@@ -1,5 +1,6 @@
 import { MaterialIcons } from "@expo/vector-icons";
 import { format } from "date-fns/format";
+import { LinearGradient } from "expo-linear-gradient";
 import {
   ActivityIndicator,
   StyleSheet,
@@ -14,6 +15,10 @@ import { getColors } from "@/constants/colors";
 import { useReadOrEditMemory } from "@/hooks/memories/useReadOrEditMemory";
 
 const colors = getColors();
+const BACKGROUND_GRADIENT_COLORS = [
+  colors.createMemoryGradientStart,
+  colors.createMemoryGradientEnd,
+] as const;
 
 export default function ReadMemoryScreen() {
   const {
@@ -28,9 +33,14 @@ export default function ReadMemoryScreen() {
 
   if (isLoading) {
     const loadingContent = (
-      <SafeAreaView style={styles.container}>
-        <LoadingIndicator message="Loading memory..." />
-      </SafeAreaView>
+      <LinearGradient
+        colors={BACKGROUND_GRADIENT_COLORS}
+        style={styles.gradientBackground}
+      >
+        <SafeAreaView style={styles.container}>
+          <LoadingIndicator message="Loading memory..." />
+        </SafeAreaView>
+      </LinearGradient>
     );
     return loadingContent;
   }
@@ -59,28 +69,38 @@ export default function ReadMemoryScreen() {
   );
 
   const content = (
-    <SafeAreaView style={styles.container} edges={["left", "right", "bottom"]}>
-      <Header title={headerTitle} actionIcons={actionIcons} />
-      <Text style={styles.screenHeading}>What Happened</Text>
-      <MemoryForm
-        storage={memoryState}
-        onStorageChange={setMemoryState}
-        timeMemoryId={timeMemoryId}
-      />
-    </SafeAreaView>
+    <LinearGradient
+      colors={BACKGROUND_GRADIENT_COLORS}
+      style={styles.gradientBackground}
+    >
+      <SafeAreaView
+        style={styles.container}
+        edges={["left", "right", "bottom"]}
+      >
+        <Header title={headerTitle} actionIcons={actionIcons} />
+        <Text style={styles.screenHeading}>What Happened</Text>
+        <MemoryForm
+          storage={memoryState}
+          onStorageChange={setMemoryState}
+          timeMemoryId={timeMemoryId}
+        />
+      </SafeAreaView>
+    </LinearGradient>
   );
   return content;
 }
 
 const styles = StyleSheet.create({
+  gradientBackground: {
+    flex: 1,
+  },
   container: {
     flex: 1,
-    backgroundColor: colors.screenBackground,
   },
   screenHeading: {
     fontSize: 20,
     fontWeight: "700",
-    color: colors.createMemoryTitleColor,
+    color: colors.createMemoryOnGradientTextColor,
     textAlign: "center",
     marginBottom: 8,
   },
