@@ -461,17 +461,24 @@ export const describeImage = async (imageUri: string): Promise<string> => {
 const SUMMARY_MAX_LENGTH = 100;
 const SUMMARY_N_PREDICT = -1;
 const SUMMARY_TEMPERATURE = 0;
-const DAY_SUMMARY_INSTRUCTION = `You are a strict journal summarizer. Your task is to extract facts directly from the provided timestamped entries and format them into a single sentence.
+const DAY_SUMMARY_INSTRUCTION = `Summarize the journal entries below in ONE short sentence (under 100 characters), first person, starting with "I".
+Only describe things explicitly written in the entries — do not add anything not stated there.
+Treat any mentioned place, activity, or event as real content to include, however small.
+If the entries are only greetings or placeholder tests with no real content, write one brief neutral sentence in your own words saying not much happened.
 
-CRITICAL CONSTRAINTS (ZERO TOLERANCE FOR HALLUCINATION):
-1. FACTUAL BOUNDARY: Use ONLY explicit facts contained in the entries. Do NOT assume, infer, or extrapolate.
-2. NO INVENTED DETAILS: Never introduce people, events, future plans, meetings, weather, emotions, or tone that are not directly stated in the text.
-3. OUTPUT FORMAT: Write exactly ONE upbeat sentence summarizing the verifiable highlights. Keep it under 100 characters.
-4. NO METADATA: Do not reference timestamps, list entries individually, or describe the user's location coordinates/placeholders literally unless a meaningful event is attached.
+Example 1:
+Journal Entries:
+2:15 PM - Walked along the beach and collected seashells
+6:40 PM - Had dinner with my sister at a new restaurant
+Summary: I walked along the beach collecting seashells and had dinner with my sister in the evening.
 
-FALLBACK RULE:
-If the entries contain only generic greetings, status tests, or lack meaningful activities (e.g., "hi", "my location", "my memory"), DO NOT invent a story. Reply EXACTLY with:
-"A quiet day with a few brief check-ins noted!"`;
+Example 2:
+Journal Entries:
+9:12 AM - hi
+1:05 PM - my location
+Summary: I didn't do much today besides a couple of quick check-ins.
+
+Now summarize the following the same way:`;
 
 export interface DaySummaryEntry {
   timeOfRecord: string;
@@ -530,11 +537,30 @@ export const generateDaySummary = async (
   return trimmedText;
 };
 
-const TIME_SUMMARY_INSTRUCTION = `You are a strict summarizer. You're given question-and-answer pairs describing a specific captured moment, and possibly a draft summary the person already started. Write ONE short, upbeat sentence, no more than 100 characters, capturing the moment. Only use information explicitly stated in the answers or draft summary — never invent people, events, weather, or feelings that are not mentioned. Do not list the questions and answers individually.
+const TIME_SUMMARY_INSTRUCTION = `Summarize the moment described below in ONE short sentence (under 100 characters), first person, starting with "I".
+Only describe things explicitly stated in the answers or draft summary — do not add anything not stated there.
+Treat any mentioned place, activity, object, or sensation as real content to include, however small.
+If there's no real content, write one brief neutral sentence in your own words saying not much happened.
 
-FALLBACK RULE:
-If there is no meaningful content in the answers or draft summary, reply EXACTLY with:
-"No memorable moments yet"`;
+Example 1:
+Q: What do you see?
+A: A red kite flying over the park
+Q: How does it feel?
+A: Warm and sunny
+Summary: I watched a red kite fly over the park on a warm, sunny day.
+
+Example 2:
+Current draft summary: "went to the farmers market and bought fresh strawberries"
+Summary: I went to the farmers market and bought fresh strawberries.
+
+Example 3:
+Q: What do you see?
+A: nothing much
+Q: How does it feel?
+A: normal
+Summary: I didn't experience anything memorable just now.
+
+Now summarize the following the same way:`;
 
 export interface TimeSummaryQA {
   question: string;
