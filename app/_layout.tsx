@@ -8,6 +8,7 @@ import { AuthContext, AuthProvider } from "../context/AuthContext";
 import { OptionsMenuProvider } from "../context/OptionsMenuContext";
 import { initializeDatabase } from "../services/database";
 import { initializeLogger } from "../services/logger";
+import { warmPlaceholderProfilePictureAsset } from "../services/profilePictureStorage";
 import LoadingIndicator from "@/components/LoadingIndicator";
 import { useBreakNotificationNavigation } from "@/hooks/notifications/useBreakNotificationNavigation";
 import { useSharedMediaNavigation } from "@/hooks/shareIntent/useSharedMediaNavigation";
@@ -16,6 +17,7 @@ import { useSharedMediaNavigation } from "@/hooks/shareIntent/useSharedMediaNavi
 async function initializeApp(setIsDbReady: (isReady: boolean) => void) {
   await initializeLogger();
   await initializeDatabase();
+  await warmPlaceholderProfilePictureAsset();
   setIsDbReady(true);
 }
 

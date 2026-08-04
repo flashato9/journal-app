@@ -15,6 +15,43 @@ import {
 
 export type { PreferredAuthMethod } from "@/constants/authMethod";
 
+type RegistrationOutcome = "created" | "already_exists";
+
+// Shared account-creation step for both a real form submission and the
+// reviewer-unlock shortcut, so the reviewer account goes through the exact
+// same SecureStore/DB path a normal registration does.
+async function registerAccount(
+  username: string,
+  password: string,
+  preferredAuthMethod: PreferredAuthMethod,
+  profileImageUri: string | null,
+): Promise<RegistrationOutcome> {
+  const key = `login.${username}`;
+
+  const existingPassword = await SecureStore.getItemAsync(key);
+  if (existingPassword) {
+    return "already_exists";
+  }
+
+  await SecureStore.setItemAsync(key, password);
+
+  try {
+    if (!UserTable.isUserExists(username)) {
+      const userId = UserTable.insertUserIntoDB(username);
+      UserTable.setUserPreferredLoginMethod(userId, preferredAuthMethod);
+
+      const profileImagePath = profileImageUri
+        ? await saveProfilePicture(profileImageUri)
+        : await savePlaceholderProfilePicture();
+      UserTable.setUserProfileImagePath(userId, profileImagePath);
+    }
+  } catch (dbError) {
+    console.error("Error creating user in database:", dbError);
+  }
+
+  return "created";
+}
+
 // Custom hook that encapsulates the registration flow (form state,
 // per-field validation, and SecureStore account creation). Reads the
 // router directly, so the screen only wires up UI.
@@ -34,7 +71,7 @@ export function useRegister() {
     validatePassword,
     isPasswordValid,
   } = usePasswordField();
-  const reviewerAccess = useReviewerAccess();
+  const reviewerAccess = useReviewerAccess(registerAccount);
   const [preferredAuthMethod, setPreferredAuthMethod] =
     useState<PreferredAuthMethod>("PASSWORD");
   const [profileImageUri, setProfileImageUri] = useState<string | null>(null);
@@ -128,11 +165,14 @@ export function useRegister() {
     }
 
     try {
-      const key = `login.${username}`;
+      const outcome = await registerAccount(
+        username,
+        password,
+        preferredAuthMethod,
+        profileImageUri,
+      );
 
-      // Check if username already exists
-      const existingPassword = await SecureStore.getItemAsync(key);
-      if (existingPassword) {
+      if (outcome === "already_exists") {
         Alert.alert(
           "Username Already Registered",
           "This username is already taken. Please try another one or go to login.",
@@ -140,27 +180,7 @@ export function useRegister() {
         return;
       }
 
-      // Store password in SecureStore with namespace login.<username>
-      await SecureStore.setItemAsync(key, password);
-
-      // Create the DB user row now so the preferred login method is
-      // available immediately (login otherwise has no way to know it
-      // until the DB row is created on first successful login).
-      try {
-        if (!UserTable.isUserExists(username)) {
-          const userId = UserTable.insertUserIntoDB(username);
-          UserTable.setUserPreferredLoginMethod(userId, preferredAuthMethod);
-
-          const profileImagePath = profileImageUri
-            ? await saveProfilePicture(profileImageUri)
-            : await savePlaceholderProfilePicture();
-          UserTable.setUserProfileImagePath(userId, profileImagePath);
-        }
-      } catch (dbError) {
-        console.error("Error creating user in database:", dbError);
-      }
-
-      console.log("Registration successful:", { username, storedIn: key });
+      console.log("Registration successful:", { username });
 
       router.replace("/(welcome)/login");
     } catch (error) {

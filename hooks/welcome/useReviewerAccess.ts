@@ -1,46 +1,31 @@
 import { useRouter } from "expo-router";
-import * as SecureStore from "expo-secure-store";
-import { useContext, useRef, useState } from "react";
+import { useRef, useState } from "react";
 import { Alert } from "react-native";
-import { AuthContext } from "@/context/AuthContext";
+import type { PreferredAuthMethod } from "@/constants/authMethod";
 import {
   getReviewerPassword,
   getReviewerUsername,
 } from "@/constants/reviewerAccess";
-import { completeUserSession } from "@/hooks/welcome/completeUserSession";
-import { UserTable } from "@/services/database";
-import { savePlaceholderProfilePicture } from "@/services/profilePictureStorage";
 
-const REVIEWER_UNLOCK_TAP_THRESHOLD = 10;
+const REVIEWER_UNLOCK_TAP_THRESHOLD = 5;
 const REVIEWER_UNLOCK_TAP_RESET_DELAY_MS = 10000;
 
-// Creates the reviewer's SecureStore credential and DB user row the first
-// time the reviewer account is used, mirroring useRegister's handleRegister.
-async function seedReviewerAccount(
+type RegistrationOutcome = "created" | "already_exists";
+type RegisterAccount = (
   username: string,
   password: string,
-): Promise<void> {
-  if (UserTable.isUserExists(username)) return;
+  preferredAuthMethod: PreferredAuthMethod,
+  profileImageUri: string | null,
+) => Promise<RegistrationOutcome>;
 
-  const key = `login.${username}`;
-  await SecureStore.setItemAsync(key, password);
-
-  const userId = UserTable.insertUserIntoDB(username);
-  UserTable.setUserPreferredLoginMethod(userId, "PASSWORD");
-
-  const profileImagePath = await savePlaceholderProfilePicture();
-  UserTable.setUserProfileImagePath(userId, profileImagePath);
-}
-
-// Hidden logic for the Register screen's 10-tap title counter: on the 10th
-// quick tap, seeds the hardcoded Play reviewer account (if not already
-// seeded) and logs straight into the app, skipping any manual entry for this
-// first run. Later app opens hit the normal Login screen and prompt for the
-// reviewer password like any other returning user.
-export function useReviewerAccess() {
+// Hidden logic for the Register screen's 5-tap title counter: on the 5th
+// quick tap, runs the same account-creation path a real registration would
+// (with the hardcoded Play reviewer credentials) and lands on the Login
+// screen, skipping manual form entry for this first run. If the reviewer
+// account already exists from a previous unlock, registration is skipped
+// silently and the reviewer is still sent to the Login screen.
+export function useReviewerAccess(registerAccount: RegisterAccount) {
   const router = useRouter();
-  const { setUsername: setAuthUsername, setLocationSettings } =
-    useContext(AuthContext);
   const [titleTapCount, setTitleTapCount] = useState(0);
   const titleTapResetTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(
     null,
@@ -50,13 +35,13 @@ export function useReviewerAccess() {
     try {
       const reviewerUsername = getReviewerUsername();
       const reviewerPassword = getReviewerPassword();
-      await seedReviewerAccount(reviewerUsername, reviewerPassword);
-      await completeUserSession(
+      await registerAccount(
         reviewerUsername,
-        setAuthUsername,
-        setLocationSettings,
-        router,
+        reviewerPassword,
+        "PASSWORD",
+        null,
       );
+      router.replace("/(welcome)/login");
     } catch (error) {
       console.error("Error during reviewer access unlock:", error);
       Alert.alert(
@@ -66,21 +51,13 @@ export function useReviewerAccess() {
     }
   };
 
-  const showPermissionsReminder = () => {
-    Alert.alert(
-      "Permissions Needed",
-      'Please allow notifications and set location tracking to "Always" when prompted, so every reviewer feature works correctly.',
-      [{ text: "OK", onPress: unlockReviewerAccess }],
-    );
-  };
-
   const confirmReviewerUnlock = () => {
     Alert.alert(
       "Reviewer Access Unlocked",
-      "You have tapped 10 times and unlocked the reviewer account. Would you like to proceed?",
+      `You have tapped ${REVIEWER_UNLOCK_TAP_THRESHOLD} times and unlocked the reviewer account. Would you like to proceed?`,
       [
         { text: "No", style: "cancel" },
-        { text: "Yes", onPress: showPermissionsReminder },
+        { text: "Yes", onPress: unlockReviewerAccess },
       ],
     );
   };
