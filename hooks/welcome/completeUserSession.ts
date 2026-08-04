@@ -27,6 +27,7 @@ async function loadLocationSettings(
     notificationThreshold: settings.notificationThreshold,
     restThreshold: settings.restThreshold,
     locationTrackingPollFrequency: settings.locationTrackingPollFrequency,
+    locationFetchTimeout: settings.locationFetchTimeout,
   };
   setLocationSettings(loadedSettings);
 }

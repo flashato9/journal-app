@@ -19,6 +19,8 @@ export default function LocationSettings() {
     setRestSeconds,
     pollFrequency,
     setPollFrequency,
+    locationFetchTimeout,
+    setLocationFetchTimeout,
     saved,
     loading,
     isSaving,
@@ -94,6 +96,21 @@ export default function LocationSettings() {
         <Text style={styles.description}>
           How often the header checks whether location tracking is currently
           active.
+        </Text>
+      </View>
+
+      <View style={styles.setting}>
+        <Text style={styles.label}>Location Fetch Timeout (seconds)</Text>
+        <TextInput
+          style={styles.input}
+          value={locationFetchTimeout}
+          onChangeText={setLocationFetchTimeout}
+          placeholder="Enter seconds"
+          keyboardType="number-pad"
+        />
+        <Text style={styles.description}>
+          How long to wait for a GPS fix when creating a memory before giving
+          up.
         </Text>
       </View>
 

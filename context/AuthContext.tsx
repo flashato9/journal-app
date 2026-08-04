@@ -5,6 +5,7 @@ export interface LocationSettings {
   notificationThreshold: number;
   restThreshold: number;
   locationTrackingPollFrequency: number;
+  locationFetchTimeout: number;
 }
 
 interface AuthContextType {

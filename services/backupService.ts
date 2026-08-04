@@ -82,6 +82,7 @@ interface BackupData {
     notificationThreshold: number;
     restThreshold: number;
     locationTrackingPollFrequency: number;
+    locationFetchTimeout: number;
   } | null;
   locations: {
     latitude: number;
@@ -279,6 +280,7 @@ export const buildExportZip = async (userId: number): Promise<string> => {
             restThreshold: settings.restThreshold,
             locationTrackingPollFrequency:
               settings.locationTrackingPollFrequency,
+            locationFetchTimeout: settings.locationFetchTimeout,
           }
         : null,
       locations: LocationTable.getAllLocationsByUserId(userId).map((row) => ({
@@ -476,6 +478,7 @@ export const applyImportZip = async (zipUri: string): Promise<void> => {
           s.notificationThreshold,
           s.restThreshold,
           s.locationTrackingPollFrequency,
+          s.locationFetchTimeout,
         );
       } else {
         LocationSettingsTable.createLocationSettings(
@@ -484,6 +487,7 @@ export const applyImportZip = async (zipUri: string): Promise<void> => {
           s.notificationThreshold,
           s.restThreshold,
           s.locationTrackingPollFrequency,
+          s.locationFetchTimeout,
         );
       }
     }

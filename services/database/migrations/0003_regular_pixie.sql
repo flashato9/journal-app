@@ -1,0 +1,1 @@
+ALTER TABLE `LocationSettings` ADD `locationFetchTimeout` integer DEFAULT 20 NOT NULL;

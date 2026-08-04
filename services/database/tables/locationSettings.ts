@@ -55,6 +55,7 @@ export function createLocationSettings(
   notificationThreshold: number = 1,
   restThreshold: number = 10,
   locationTrackingPollFrequency: number = 15,
+  locationFetchTimeout: number = 20,
 ): number {
   const now = new Date().toISOString();
   const settingsId = createLocationSettingsRow({
@@ -63,6 +64,7 @@ export function createLocationSettings(
     notificationThreshold,
     restThreshold,
     locationTrackingPollFrequency,
+    locationFetchTimeout,
     createdAt: now,
     lastUpdatedTime: now,
   });
@@ -75,6 +77,7 @@ export function updateLocationSettings(
   notificationThreshold: number,
   restThreshold: number,
   locationTrackingPollFrequency: number,
+  locationFetchTimeout: number,
 ): void {
   db.update(locationSettingsTable)
     .set({
@@ -82,6 +85,7 @@ export function updateLocationSettings(
       notificationThreshold,
       restThreshold,
       locationTrackingPollFrequency,
+      locationFetchTimeout,
       lastUpdatedTime: new Date().toISOString(),
     })
     .where(eq(locationSettingsTable.userId, userId))

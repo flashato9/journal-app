@@ -31,8 +31,6 @@ const DEFAULT_QUESTIONNAIRE: QuestionnaireItem[] = [
   { id: "8", question: "Why did you decide to come here?", answer: "" },
 ];
 
-const LOCATION_FETCH_TIMEOUT_MS = 15000;
-
 function createLocationTimeout(timeoutMs: number): Promise<never> {
   const timeoutPromise = new Promise<never>((_, reject) => {
     setTimeout(() => {
@@ -43,7 +41,10 @@ function createLocationTimeout(timeoutMs: number): Promise<never> {
 }
 
 // Requests foreground location permission and fills in the memory's location.
-async function fetchCurrentLocation(setMemoryState: SetMemoryState) {
+async function fetchCurrentLocation(
+  setMemoryState: SetMemoryState,
+  timeoutMs: number,
+) {
   try {
     const { status } = await Location.requestForegroundPermissionsAsync();
     if (status !== "granted") {
@@ -60,7 +61,7 @@ async function fetchCurrentLocation(setMemoryState: SetMemoryState) {
       Location.getCurrentPositionAsync({
         accuracy: Location.Accuracy.Balanced,
       }),
-      createLocationTimeout(LOCATION_FETCH_TIMEOUT_MS),
+      createLocationTimeout(timeoutMs),
     ]);
 
     const applyLocation = (prev: MemoryFormState) => {
@@ -86,13 +87,13 @@ async function fetchCurrentLocation(setMemoryState: SetMemoryState) {
 }
 
 // Resets location to Loading and re-attempts the GPS fetch.
-function retryLocation(setMemoryState: SetMemoryState) {
+function retryLocation(setMemoryState: SetMemoryState, timeoutMs: number) {
   const applyLoading = (prev: MemoryFormState) => {
     const next: MemoryFormState = { ...prev, location: "Loading" };
     return next;
   };
   setMemoryState(applyLoading);
-  fetchCurrentLocation(setMemoryState);
+  fetchCurrentLocation(setMemoryState, timeoutMs);
 }
 
 // Validates and persists the memory (TimeMemory, location, media, and QA), then navigates back.
@@ -180,7 +181,9 @@ async function saveMemory(
 // Owns the create-memory form state, location fetch, and save handler.
 export function useCreateMemory() {
   const router = useRouter();
-  const { username } = useContext(AuthContext);
+  const { username, locationSettings } = useContext(AuthContext);
+  const locationFetchTimeoutMs =
+    (locationSettings?.locationFetchTimeout ?? 20) * 1000;
   const { sharedMediaUri, sharedMediaType, sharedMediaAssetId } =
     useLocalSearchParams<{
       sharedMediaUri?: string;
@@ -208,12 +211,13 @@ export function useCreateMemory() {
     useState<MemoryFormState>(initialMemoryState);
 
   useEffect(() => {
-    fetchCurrentLocation(setMemoryState);
-  }, []);
+    fetchCurrentLocation(setMemoryState, locationFetchTimeoutMs);
+  }, [locationFetchTimeoutMs]);
 
   const handleSave = () =>
     saveMemory(username, memoryState, router, setIsSaving);
-  const handleRetryLocation = () => retryLocation(setMemoryState);
+  const handleRetryLocation = () =>
+    retryLocation(setMemoryState, locationFetchTimeoutMs);
 
   return {
     memoryState,

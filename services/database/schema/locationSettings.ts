@@ -14,6 +14,7 @@ export const locationSettingsTable = sqliteTable("LocationSettings", {
   locationTrackingPollFrequency: integer("locationTrackingPollFrequency")
     .notNull()
     .default(15),
+  locationFetchTimeout: integer("locationFetchTimeout").notNull().default(20),
   createdAt: text("createdAt")
     .notNull()
     .default(sql`CURRENT_TIMESTAMP`),

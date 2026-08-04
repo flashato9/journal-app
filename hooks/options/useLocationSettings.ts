@@ -16,6 +16,7 @@ export function useLocationSettings() {
   const [distanceThreshold, setDistanceThreshold] = useState("1");
   const [restSeconds, setRestSeconds] = useState("10");
   const [pollFrequency, setPollFrequency] = useState("15");
+  const [locationFetchTimeout, setLocationFetchTimeout] = useState("20");
   const [saved, setSaved] = useState(false);
   const [loading, setLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
@@ -51,6 +52,7 @@ export function useLocationSettings() {
           setDistanceThreshold(settings.notificationThreshold.toString());
           setRestSeconds(settings.restThreshold.toString());
           setPollFrequency(settings.locationTrackingPollFrequency.toString());
+          setLocationFetchTimeout(settings.locationFetchTimeout.toString());
         }
 
         setLoading(false);
@@ -83,6 +85,7 @@ export function useLocationSettings() {
       const distThreshold = parseFloat(distanceThreshold) || 1;
       const restThresh = parseInt(restSeconds) || 10;
       const pollFreq = parseInt(pollFrequency) || 15;
+      const fetchTimeout = parseInt(locationFetchTimeout) || 20;
 
       // Update database
       LocationSettingsTable.updateLocationSettings(
@@ -91,12 +94,14 @@ export function useLocationSettings() {
         distThreshold,
         restThresh,
         pollFreq,
+        fetchTimeout,
       );
       console.log("📍 Location settings saved to database:", {
         fetchFreq,
         distThreshold,
         restThresh,
         pollFreq,
+        fetchTimeout,
       });
 
       // Update AuthContext
@@ -105,6 +110,7 @@ export function useLocationSettings() {
         notificationThreshold: distThreshold,
         restThreshold: restThresh,
         locationTrackingPollFrequency: pollFreq,
+        locationFetchTimeout: fetchTimeout,
       });
 
       // Stop and restart location tracking with new settings
@@ -130,6 +136,8 @@ export function useLocationSettings() {
     setRestSeconds,
     pollFrequency,
     setPollFrequency,
+    locationFetchTimeout,
+    setLocationFetchTimeout,
     saved,
     loading,
     isSaving,
