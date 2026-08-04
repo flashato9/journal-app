@@ -20,3 +20,7 @@ A: Yes — new/unverified developer accounts must run a closed test with 12+ opt
 
 **Q: If I sign the Play Store release with a new keystore, does that make it "a different app" on my phone?**
 A: Not on the Play Store (first upload just establishes the key). Locally, yes — Android blocks installing an update signed with a different cert than what's already installed, so a sideloaded release build with a new key would need the old copy uninstalled first (wiping local data unless exported).
+
+### What does the FOREGROUND_SERVICE_MEDIA_PLAYBACK permission actually allow?
+
+It lets an app run a foreground service typed "mediaPlayback" so audio/video keeps playing with a persistent notification even after the user leaves the app; ordinary in-app playback while the screen is open needs no such permission.
