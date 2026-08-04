@@ -1,24 +1,30 @@
-import { Image, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { Image } from "expo-image";
 import Button from "@/components/Button";
 import PolaroidFrame from "@/components/PolaroidFrame";
 import { useChangeProfilePicture } from "@/hooks/options/useChangeProfilePicture";
 import { useUserSession } from "@/hooks/welcome/useUserSession";
 
 export default function ChangeProfilePicture() {
-  const { profileImagePath } = useUserSession();
+  const { username, profileImagePath } = useUserSession();
   const changeProfilePictureOptions = { currentImagePath: profileImagePath };
   const { displayImagePath, isSaving, canSave, pickImage, handleSave } =
     useChangeProfilePicture(changeProfilePictureOptions);
 
   const content = (
     <View style={styles.container}>
-      <View>
-        <PolaroidFrame onPress={pickImage} isTilted={false}>
+      <View style={styles.photoSection}>
+        <PolaroidFrame
+          onPress={pickImage}
+          isTilted={false}
+          caption={username}
+          placeholder="Username"
+        >
           {displayImagePath && (
             <Image
               source={{ uri: displayImagePath }}
               style={styles.photoImage}
-              resizeMode="cover"
+              contentFit="cover"
             />
           )}
         </PolaroidFrame>
@@ -46,6 +52,9 @@ const styles = StyleSheet.create({
   container: {
     alignItems: "center",
     gap: 16,
+  },
+  photoSection: {
+    alignItems: "center",
   },
   buttonWrapper: {
     width: "100%",
