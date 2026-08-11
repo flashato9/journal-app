@@ -88,6 +88,9 @@ specs for these; they're checked off because the code already exists and works).
     (`update_field`), constrained by a per-screen settable-fields registry
   - [ ] 13g. **Real backend** - replace the mock `companionApi` with a real
     network client/API
+  - [x] 13h. **Field-of-view narrowing** - per-screen, per-field toggle so the
+    user can hide fields from the companion's snapshot, beyond the permanent
+    password exclusion
 - [ ] 14. **Ask your journal** - Q&A screen where the user asks a question and
   the LLM answers using their memory entries as context (`askQuestion()`)
 - [ ] 15. **Auto photo captions** - caption a photo on add using `describeImage()`

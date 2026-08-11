@@ -1,4 +1,5 @@
 import { useEffect } from "react";
+import { CompanionFieldVisibilityTable, UserTable } from "@/services/database";
 import { CompanionPageSnapshot } from "@/services/companionApi";
 
 export function useCompanionPageSnapshot(
@@ -11,6 +12,23 @@ export function useCompanionPageSnapshot(
   const snapshotKey = JSON.stringify(snapshot);
 
   useEffect(() => {
-    console.log("[Companion:sees]", threadKey, snapshot);
+    // The device has one registered user, so this works even before login
+    // (Register, Login), unlike AuthContext.username which is only set
+    // once a session exists.
+    const userId = UserTable.getRegisteredUserId();
+    const hiddenFields = userId
+      ? CompanionFieldVisibilityTable.getHiddenFields(userId, threadKey)
+      : [];
+
+    const visibleSnapshot =
+      hiddenFields.length === 0
+        ? snapshot
+        : Object.fromEntries(
+            Object.entries(snapshot).filter(
+              ([key]) => !hiddenFields.includes(key),
+            ),
+          );
+
+    console.log("[Companion:sees]", threadKey, visibleSnapshot);
   }, [threadKey, snapshotKey]);
 }

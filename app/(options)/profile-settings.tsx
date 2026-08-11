@@ -13,6 +13,7 @@ import ChangeAuthMethod from "@/components/options/ChangeAuthMethod";
 import ChangePassword from "@/components/options/ChangePassword";
 import ChangeProfilePicture from "@/components/options/ChangeProfilePicture";
 import ChangeUsername from "@/components/options/ChangeUsername";
+import CompanionVisibilitySettings from "@/components/options/CompanionVisibilitySettings";
 import ExportImport from "@/components/options/ExportImport";
 import LocationSettings from "@/components/options/LocationSettings";
 import Header from "@/components/Header";
@@ -25,6 +26,8 @@ export default function ProfileSettingsScreen() {
   const [isAuthMethodOpen, setIsAuthMethodOpen] = useState(false);
   const [isLocationSettingsOpen, setIsLocationSettingsOpen] = useState(false);
   const [isBackupOpen, setIsBackupOpen] = useState(false);
+  const [isCompanionVisibilityOpen, setIsCompanionVisibilityOpen] =
+    useState(false);
 
   const handleDebugLogs = () => {
     router.push("/debug-logs");
@@ -82,6 +85,14 @@ export default function ProfileSettingsScreen() {
           </TouchableOpacity>
 
           {isLocationSettingsOpen && <LocationSettings />}
+
+          <TouchableOpacity
+            onPress={() => setIsCompanionVisibilityOpen((open) => !open)}
+          >
+            <Text style={styles.link}>Companion Visibility</Text>
+          </TouchableOpacity>
+
+          {isCompanionVisibilityOpen && <CompanionVisibilitySettings />}
 
           <TouchableOpacity onPress={handleDebugLogs}>
             <Text style={styles.link}>Debug Logs</Text>
