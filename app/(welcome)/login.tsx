@@ -16,13 +16,17 @@ import LoadingIndicator from "@/components/LoadingIndicator";
 import PolaroidFrame from "@/components/PolaroidFrame";
 import LoginPasswordInput from "@/components/welcome/LoginPasswordInput";
 import { getColors } from "@/constants/colors";
+import { useCompanionPageSnapshot } from "@/hooks/companion/useCompanionPageSnapshot";
+import { useCompanionThread } from "@/hooks/companion/useCompanionThread";
 import { useLogin } from "@/hooks/welcome/useLogin";
 import { useUserSession } from "@/hooks/welcome/useUserSession";
+import { CompanionPageSnapshot } from "@/services/companionApi";
 
 const colors = getColors();
 
 export default function LoginScreen() {
   const {
+    username: loginUsername,
     setUsername,
     password,
     handlePasswordChange,
@@ -33,6 +37,9 @@ export default function LoginScreen() {
     isBiometricLoginExhausted,
   } = useLogin();
   const { username, profileImagePath, preferredLoginMethod } = useUserSession();
+  useCompanionThread("login");
+  const companionSnapshot: CompanionPageSnapshot = { username: loginUsername };
+  useCompanionPageSnapshot("login", companionSnapshot);
 
   useEffect(() => {
     if (username) setUsername(username);

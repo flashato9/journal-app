@@ -6,7 +6,10 @@ import Button from "@/components/Button";
 import DayMemoriesHeader from "@/components/memories/DayMemoriesHeader";
 import TimeOfDayMemoryCard from "@/components/memories/TimeOfDayMemoryCard";
 import { getColors } from "@/constants/colors";
+import { useCompanionPageSnapshot } from "@/hooks/companion/useCompanionPageSnapshot";
+import { useCompanionThread } from "@/hooks/companion/useCompanionThread";
 import { useDayMemories } from "@/hooks/memories/useDayMemories";
+import { CompanionPageSnapshot } from "@/services/companionApi";
 
 const colors = getColors();
 
@@ -40,6 +43,14 @@ export default function DayMemoriesScreen() {
 
   const dayParam = getDayParam(day);
   const isDayPast = isDayInPast(dayParam);
+
+  useCompanionThread("daymemories");
+  const companionSnapshot: CompanionPageSnapshot = {
+    day: dayParam,
+    daySummary,
+    memoryCount: memories.length,
+  };
+  useCompanionPageSnapshot("daymemories", companionSnapshot);
 
   const content = (
     <SafeAreaView style={styles.container}>

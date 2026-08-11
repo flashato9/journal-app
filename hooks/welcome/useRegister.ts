@@ -4,10 +4,12 @@ import * as SecureStore from "expo-secure-store";
 import { useState } from "react";
 import { ActionSheetIOS, Alert, Platform } from "react-native";
 import type { PreferredAuthMethod } from "@/constants/authMethod";
+import { useCompanionPageSnapshot } from "@/hooks/companion/useCompanionPageSnapshot";
 import { usePasswordField } from "@/hooks/welcome/usePasswordField";
 import { useReviewerAccess } from "@/hooks/welcome/useReviewerAccess";
 import { useUsernameField } from "@/hooks/welcome/useUsernameField";
 import { UserTable } from "@/services/database";
+import { CompanionPageSnapshot } from "@/services/companionApi";
 import {
   saveProfilePicture,
   savePlaceholderProfilePicture,
@@ -76,6 +78,9 @@ export function useRegister() {
     useState<PreferredAuthMethod>("PASSWORD");
   const [profileImageUri, setProfileImageUri] = useState<string | null>(null);
   const [confirmPassword, setConfirmPassword] = useState("");
+
+  const companionSnapshot: CompanionPageSnapshot = { username, profileImageUri };
+  useCompanionPageSnapshot("register", companionSnapshot);
 
   const handleConfirmPasswordChange = (text: string) => {
     setConfirmPassword(text);
