@@ -2,6 +2,10 @@
 
 Since this file gets edited directly mid-session (including by you), re-read AGENTS.md before responding to any prompt so you're always acting on its current contents, not a stale copy from earlier in the conversation.
 
+# Learnings File
+
+Always read `learnings.md` before making any plan (EnterPlanMode). It records past debugging conclusions and architectural lessons from this codebase — check it before proposing an approach so you don't repeat a mistake already diagnosed there.
+
 # Expo HAS CHANGED
 
 Read the exact versioned docs at https://docs.expo.dev/versions/v54.0.0/ before writing any code.
@@ -46,6 +50,10 @@ Do not edit code files directly until the plan is approved. When asked to implem
 6. Each distinct task gets its own plan file. Do not append a new, unrelated task onto an existing plan file that already covers a different task — start a fresh one instead.
 7. Structure every plan in layers, from high level to low level: start with a short Context section (why), then a High-level approach (the change in plain language, no code), then progressively more detailed layers, ending with the exact low-level code diffs. Do not lead with the diffs — a reader should be able to stop after any earlier layer and still understand the change at that level of detail.
 8. After drafting a plan, before presenting it for approval, consider whether there are any open questions or judgment calls baked into it — then ask the user to confirm their preference on those, rather than silently deciding and presenting only the finished plan.
+
+# Search Before Escalating
+
+When you hit an issue serious enough that you're about to stop and ask me for clarification, direction, or approval, search online for known fixes first. Only come to me if the search doesn't turn up a sufficient fix, or the fix itself still requires a judgment call only I can make.
 
 # Code Style
 

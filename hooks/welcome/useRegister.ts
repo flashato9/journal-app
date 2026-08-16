@@ -5,6 +5,7 @@ import { useState } from "react";
 import { ActionSheetIOS, Alert, Platform } from "react-native";
 import type { PreferredAuthMethod } from "@/constants/authMethod";
 import { useCompanionPageSnapshot } from "@/hooks/companion/useCompanionPageSnapshot";
+import { useCompanionThread } from "@/hooks/companion/useCompanionThread";
 import { usePasswordField } from "@/hooks/welcome/usePasswordField";
 import { useReviewerAccess } from "@/hooks/welcome/useReviewerAccess";
 import { useUsernameField } from "@/hooks/welcome/useUsernameField";
@@ -79,7 +80,11 @@ export function useRegister() {
   const [profileImageUri, setProfileImageUri] = useState<string | null>(null);
   const [confirmPassword, setConfirmPassword] = useState("");
 
-  const companionSnapshot: CompanionPageSnapshot = { username, profileImageUri };
+  const companionSnapshot: CompanionPageSnapshot = {
+    username,
+    profileImageUri,
+  };
+  useCompanionThread("register");
   useCompanionPageSnapshot("register", companionSnapshot);
 
   const handleConfirmPasswordChange = (text: string) => {

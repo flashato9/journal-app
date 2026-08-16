@@ -8,6 +8,7 @@ export interface AppColors {
   error: string;
   disabled: string;
   focus: string;
+  companionHandleGlow: string;
   shadow: string;
   dayCardBackground: string;
   dayCardAccent: string;
@@ -51,6 +52,7 @@ export const getColors = (): AppColors => {
     error: "#ff3333",
     disabled: "#ccc",
     focus: "#999999",
+    companionHandleGlow: "rgba(0, 122, 255, 0.6)",
     shadow: "rgba(0, 0, 0, 0.15)",
     dayCardBackground: "#CFE9FB",
     dayCardAccent: "#4FA8E0",

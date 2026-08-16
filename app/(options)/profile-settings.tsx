@@ -17,6 +17,9 @@ import CompanionVisibilitySettings from "@/components/options/CompanionVisibilit
 import ExportImport from "@/components/options/ExportImport";
 import LocationSettings from "@/components/options/LocationSettings";
 import Header from "@/components/Header";
+import { useCompanionPageSnapshot } from "@/hooks/companion/useCompanionPageSnapshot";
+import { useCompanionThread } from "@/hooks/companion/useCompanionThread";
+import { CompanionPageSnapshot } from "@/services/companionApi";
 
 export default function ProfileSettingsScreen() {
   const router = useRouter();
@@ -28,6 +31,10 @@ export default function ProfileSettingsScreen() {
   const [isBackupOpen, setIsBackupOpen] = useState(false);
   const [isCompanionVisibilityOpen, setIsCompanionVisibilityOpen] =
     useState(false);
+
+  useCompanionThread("profile-settings");
+  const companionSnapshot: CompanionPageSnapshot = {};
+  useCompanionPageSnapshot("profile-settings", companionSnapshot);
 
   const handleDebugLogs = () => {
     router.push("/debug-logs");

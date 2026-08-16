@@ -1,8 +1,8 @@
 {
   "version": "6",
   "dialect": "sqlite",
-  "id": "78d3e41c-0eef-4f44-a890-0fbaac0a786a",
-  "prevId": "7f3c8c38-ba8e-4743-a0b8-f615338c78b9",
+  "id": "2b92e7b8-0ab0-497d-8a87-e0354320345a",
+  "prevId": "78d3e41c-0eef-4f44-a890-0fbaac0a786a",
   "tables": {
     "AIDaySummary": {
       "name": "AIDaySummary",
@@ -98,6 +98,122 @@
           "onUpdate": "no action"
         }
       },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {}
+    },
+    "AppSettings": {
+      "name": "AppSettings",
+      "columns": {
+        "settingId": {
+          "name": "settingId",
+          "type": "integer",
+          "primaryKey": true,
+          "notNull": true,
+          "autoincrement": true
+        },
+        "userId": {
+          "name": "userId",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "settingSchemaId": {
+          "name": "settingSchemaId",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "settingValue": {
+          "name": "settingValue",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "createdAt": {
+          "name": "createdAt",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "CURRENT_TIMESTAMP"
+        },
+        "updatedAt": {
+          "name": "updatedAt",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "CURRENT_TIMESTAMP"
+        }
+      },
+      "indexes": {
+        "AppSettings_userId_settingSchemaId_unique": {
+          "name": "AppSettings_userId_settingSchemaId_unique",
+          "columns": ["userId", "settingSchemaId"],
+          "isUnique": true
+        }
+      },
+      "foreignKeys": {
+        "AppSettings_userId_User_id_fk": {
+          "name": "AppSettings_userId_User_id_fk",
+          "tableFrom": "AppSettings",
+          "tableTo": "User",
+          "columnsFrom": ["userId"],
+          "columnsTo": ["id"],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "AppSettings_settingSchemaId_AppSettingSchema_settingSchemaId_fk": {
+          "name": "AppSettings_settingSchemaId_AppSettingSchema_settingSchemaId_fk",
+          "tableFrom": "AppSettings",
+          "tableTo": "AppSettingSchema",
+          "columnsFrom": ["settingSchemaId"],
+          "columnsTo": ["settingSchemaId"],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {}
+    },
+    "AppSettingSchema": {
+      "name": "AppSettingSchema",
+      "columns": {
+        "settingSchemaId": {
+          "name": "settingSchemaId",
+          "type": "integer",
+          "primaryKey": true,
+          "notNull": true,
+          "autoincrement": true
+        },
+        "settingSchemaName": {
+          "name": "settingSchemaName",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "settingSchemaDescription": {
+          "name": "settingSchemaDescription",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        }
+      },
+      "indexes": {
+        "AppSettingSchema_settingSchemaName_unique": {
+          "name": "AppSettingSchema_settingSchemaName_unique",
+          "columns": ["settingSchemaName"],
+          "isUnique": true
+        }
+      },
+      "foreignKeys": {},
       "compositePrimaryKeys": {},
       "uniqueConstraints": {},
       "checkConstraints": {}

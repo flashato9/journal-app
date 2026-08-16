@@ -11,7 +11,10 @@ import Button from "@/components/Button";
 import Dropdown from "@/components/Dropdown";
 import Header from "@/components/Header";
 import { getColors } from "@/constants/colors";
+import { useCompanionPageSnapshot } from "@/hooks/companion/useCompanionPageSnapshot";
+import { useCompanionThread } from "@/hooks/companion/useCompanionThread";
 import { useDebugLlm } from "@/hooks/options/useDebugLlm";
+import { CompanionPageSnapshot } from "@/services/companionApi";
 import { MODEL_PROFILES } from "@/services/llmService";
 
 const colors = getColors();
@@ -51,6 +54,14 @@ export default function DebugLlmScreen() {
 
   const isReady = activationStatus === "ready";
   const isDownloading = downloadState === "downloading";
+
+  useCompanionThread("debug-llm");
+  const companionSnapshot: CompanionPageSnapshot = {
+    selectedProfileId: selectedProfile.id,
+    downloadState,
+    activationStatus,
+  };
+  useCompanionPageSnapshot("debug-llm", companionSnapshot);
 
   return (
     <SafeAreaView style={styles.container} edges={["left", "right", "bottom"]}>

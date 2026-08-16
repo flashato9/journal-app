@@ -1,26 +1,36 @@
+# services/companionApi.ts
+
+Q: Why do I see "[Companion:popoverRender] Threads ->" logs without a preceding "[Companion:listThreads]" log?
+A: Both logs always fire together in code (listThreads() logs internally right before popoverRender logs "Threads ->"). Likely Android logcat is dropping repeated identical log lines when the thread data hasn't changed between renders.
+
+# components/CompanionChatPopover.tsx
+
+Q: Is it possible to run this app in debug mode?
+A: Yes — press `j` in the Metro terminal or use the Dev Menu's "Open JS Debugger" to attach Chrome DevTools to Hermes and set breakpoints.
+
 # General
 
-**Q: App Store Connect's "Sign in details" restriction question — how should I answer it for my app?**
-A: Answer "Yes" and check "account sign in details" (and "biometric authentication", since you offer fingerprint login). Your login is a fully local username/password system (SecureStore, no backend), so instead of demo credentials you can tell Apple reviewers to create their own free account via the Register screen, and note that biometric is an optional fallback — reviewers should use password login since Face ID/Touch ID won't be set up on review devices.
+Q: Why did the sidebar behave differently (populating new pages vs not) when the render counter was added vs commented out?
+A: The counter itself had no functional effect — the real cause is likely that editing services/companionApi.ts isn't a valid Fast Refresh boundary, so each edit force-reset module state (mockThreads) at a different point in the navigation sequence, not the counter logic.
 
-**Q: What does Play Console's "Save time by using AI to add translations..." message mean?**
-A: It's an option to let Google auto-generate store listing translations (title/short/full description) for each language, instead of you writing them by hand.
+Q: How do I use breakpoints with the JS debugger?
+A: In Chrome DevTools (opened via Metro's `j`), go to Sources, find the file, and click the line-number gutter to set a breakpoint. VS Code's React Native Tools extension can also set breakpoints directly in the editor.
 
-**Q: What is a Play Console "featured graphic" (1024x500)?**
-A: A wide banner image used when Google promotes your app outside your own listing page — homepage, category carousels, search banners, TV/Chromebook listings. Not the app icon or a screenshot.
+# components/CompanionChatPopover.tsx
 
-**Q: Do we need to do anything with the "app signing key" public certificate Play Console shows?**
-A: No, not for this app — it's only needed to register with APIs that verify signing certs (Maps, Firebase, Google Sign-In), and this app uses none of those.
+Q: Paused at line 129, running getCompanionAPI() in the debugger console returns nothing — why?
+A: Check casing — it's getCompanionApi (lowercase "pi"), not getCompanionAPI; a typo would throw ReferenceError, not silently return nothing. Also confirm the console's context dropdown is scoped to the paused call frame, not "top"/global, since the import is a module-local closure binding.
 
-**Q: For registering with an API provider, do you want the app signing key certificate or the upload key certificate?**
-A: The app signing key certificate — that's what's actually on production installs from the Play Store. The upload key is stripped off during Google's re-signing and never reaches user devices.
+Q: The Watch panel shows "getCompanionApi(): <not available>" — why?
+A: VS Code's Watch panel is read-only and generally can't invoke functions during Hermes/React Native debugging. Use the Debug Console tab instead, which supports calling functions while paused.
 
-**Q: Do I really need 12 opted-in testers before publishing to production?**
-A: Yes — new/unverified developer accounts must run a closed test with 12+ opted-in testers for 14 continuous days before Google grants production access.
+Q: Why does the sidebar folder only show the login thread after navigating to All Memories?
+A: Evidence points to a stale/duplicated companionApi.ts module from Fast Refresh (it exports functions, not components, so it can't hot-swap cleanly) — writes land in one mockThreads Map while reads come from another. Cold restart with `npx expo start -c` to confirm.
 
-**Q: If I sign the Play Store release with a new keystore, does that make it "a different app" on my phone?**
-A: Not on the Play Store (first upload just establishes the key). Locally, yes — Android blocks installing an update signed with a different cert than what's already installed, so a sideloaded release build with a new key would need the old copy uninstalled first (wiping local data unless exported).
+# companionApi.ts
 
-### What does the FOREGROUND_SERVICE_MEDIA_PLAYBACK permission actually allow?
+Q: Why does the listThreads call/log only fire the first time the companion chat popover renders, not on later renders?
+A: listThreads() only runs inside CompanionChatPopover past an early-return guard (isChatOpen && activeThread && status === "ready"). If a later render fails that guard (e.g. chat closed), the call is skipped even though other companion logs still fire.
 
-It lets an app run a foreground service typed "mediaPlayback" so audio/video keeps playing with a persistent notification even after the user leaves the app; ordinary in-app playback while the screen is open needs no such permission.
+Q: I assign to listThreadsCallCount with += inside the function - isn't that "accessing" it, so why does eslint still call it unused?
+A: eslint's no-unused-vars only counts a variable as used when its value flows somewhere else (returned, logged, passed on). A self-referencing write like x += 1 discards the result, so it doesn't count as a use even though it technically reads the old value.

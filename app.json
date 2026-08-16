@@ -61,10 +61,7 @@
         {
           "photosPermission": "Allow $(PRODUCT_NAME) to access your photos.",
           "savePhotosPermission": "Allow $(PRODUCT_NAME) to save photos.",
-          "granularPermissions": [
-            "photo",
-            "video"
-          ]
+          "granularPermissions": ["photo", "video"]
         }
       ],
       "expo-asset",
@@ -77,19 +74,14 @@
         {
           "icon": "./assets/images/notification-icon.png",
           "color": "#7A5236",
-          "sounds": [
-            "./assets/sounds/app_notification.mp3"
-          ]
+          "sounds": ["./assets/sounds/app_notification.mp3"]
         }
       ],
       "expo-video",
       [
         "expo-share-intent",
         {
-          "androidIntentFilters": [
-            "image/*",
-            "video/*"
-          ],
+          "androidIntentFilters": ["image/*", "video/*"],
           "iosActivationRules": {
             "NSExtensionActivationSupportsImageWithMaxCount": 1,
             "NSExtensionActivationSupportsMovieWithMaxCount": 1

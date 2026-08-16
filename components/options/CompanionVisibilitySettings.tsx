@@ -18,8 +18,8 @@ export default function CompanionVisibilitySettings() {
   const content = (
     <View style={styles.content}>
       <Text style={styles.description}>
-        Turn a field off to hide it from what the companion sees on that
-        screen. Passwords are never visible to it, on or off.
+        Turn a field off to hide it from what the companion sees on that screen.
+        Passwords are never visible to it, on or off.
       </Text>
       {COMPANION_NARROWABLE_FIELDS.map((field) => {
         const isVisible = !isFieldHidden(field.screenKey, field.fieldKey);

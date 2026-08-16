@@ -3,13 +3,18 @@ import { Stack } from "expo-router";
 import { ShareIntentProvider } from "expo-share-intent";
 import { useContext, useEffect, useState } from "react";
 import { StyleSheet, View } from "react-native";
+import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { KeyboardProvider } from "react-native-keyboard-controller";
 import { AuthContext, AuthProvider } from "../context/AuthContext";
 import { OptionsMenuProvider } from "../context/OptionsMenuContext";
 import { initializeDatabase } from "../services/database";
 import { initializeLogger } from "../services/logger";
 import { warmPlaceholderProfilePictureAsset } from "../services/profilePictureStorage";
+import CompanionChatPopover from "@/components/CompanionChatPopover";
+import CompanionIcon from "@/components/CompanionIcon";
+import CompanionPopup from "@/components/CompanionPopup";
 import LoadingIndicator from "@/components/LoadingIndicator";
+import { CompanionProvider } from "@/context/CompanionContext";
 import { useBreakNotificationNavigation } from "@/hooks/notifications/useBreakNotificationNavigation";
 import { useSharedMediaNavigation } from "@/hooks/shareIntent/useSharedMediaNavigation";
 
@@ -42,39 +47,51 @@ function RootLayoutContent() {
   }
 
   const content = (
-    <Stack
-      key={isLoggedIn ? "authenticated" : "unauthenticated"}
-      screenOptions={{ headerShown: false }}
-    >
-      {isLoggedIn ? (
-        <Stack.Screen name="(memories)" />
-      ) : (
-        <Stack.Screen name="(welcome)" />
-      )}
-      <Stack.Screen name="(options)" />
-    </Stack>
+    <>
+      <Stack
+        key={isLoggedIn ? "authenticated" : "unauthenticated"}
+        screenOptions={{ headerShown: false }}
+      >
+        {isLoggedIn ? (
+          <Stack.Screen name="(memories)" />
+        ) : (
+          <Stack.Screen name="(welcome)" />
+        )}
+        <Stack.Screen name="(options)" />
+      </Stack>
+      <CompanionIcon />
+      <CompanionPopup />
+      <CompanionChatPopover />
+    </>
   );
   return content;
 }
 
 export default function RootLayout() {
   const content = (
-    <KeyboardProvider>
-      <ShareIntentProvider>
-        <AuthProvider>
-          <OptionsMenuProvider>
-            <ActionSheetProvider>
-              <RootLayoutContent />
-            </ActionSheetProvider>
-          </OptionsMenuProvider>
-        </AuthProvider>
-      </ShareIntentProvider>
-    </KeyboardProvider>
+    <GestureHandlerRootView style={styles.root}>
+      <KeyboardProvider>
+        <ShareIntentProvider>
+          <AuthProvider>
+            <OptionsMenuProvider>
+              <ActionSheetProvider>
+                <CompanionProvider>
+                  <RootLayoutContent />
+                </CompanionProvider>
+              </ActionSheetProvider>
+            </OptionsMenuProvider>
+          </AuthProvider>
+        </ShareIntentProvider>
+      </KeyboardProvider>
+    </GestureHandlerRootView>
   );
   return content;
 }
 
 const styles = StyleSheet.create({
+  root: {
+    flex: 1,
+  },
   loadingContainer: {
     flex: 1,
     justifyContent: "center",

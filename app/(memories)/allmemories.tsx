@@ -4,14 +4,24 @@ import Header from "@/components/Header";
 import LoadingIndicator from "@/components/LoadingIndicator";
 import FullDayMemoryCard from "@/components/memories/FullDayMemoryCard";
 import { getColors } from "@/constants/colors";
+import { useCompanionPageSnapshot } from "@/hooks/companion/useCompanionPageSnapshot";
+import { useCompanionThread } from "@/hooks/companion/useCompanionThread";
 import { useLogoutOnBackPress } from "@/hooks/memories/useLogoutOnBackPress";
 import { useMemoriesList } from "@/hooks/memories/useMemoriesList";
+import { CompanionPageSnapshot } from "@/services/companionApi";
 
 const colors = getColors();
 
 export default function AllMemoriesScreen() {
   const { memories, isLoading } = useMemoriesList();
   useLogoutOnBackPress();
+
+  useCompanionThread("allmemories");
+  const companionSnapshot: CompanionPageSnapshot = {
+    memoryCount: memories.length,
+    isLoading,
+  };
+  useCompanionPageSnapshot("allmemories", companionSnapshot);
 
   const content = (
     <SafeAreaView style={styles.container} edges={["left", "right", "bottom"]}>

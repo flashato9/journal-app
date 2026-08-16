@@ -7,7 +7,10 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import Header from "@/components/Header";
+import { useCompanionPageSnapshot } from "@/hooks/companion/useCompanionPageSnapshot";
+import { useCompanionThread } from "@/hooks/companion/useCompanionThread";
 import { useDebugLogs } from "@/hooks/options/useDebugLogs";
+import { CompanionPageSnapshot } from "@/services/companionApi";
 
 export default function DebugLogsScreen() {
   const {
@@ -18,6 +21,10 @@ export default function DebugLogsScreen() {
     handleClearLogs,
     handleExportLogs,
   } = useDebugLogs();
+
+  useCompanionThread("debug-logs");
+  const companionSnapshot: CompanionPageSnapshot = {};
+  useCompanionPageSnapshot("debug-logs", companionSnapshot);
 
   return (
     <SafeAreaView style={styles.container} edges={["left", "right", "bottom"]}>

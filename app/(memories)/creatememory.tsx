@@ -11,7 +11,10 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import Header from "@/components/Header";
 import MemoryForm from "@/components/memories/MemoryForm";
 import { getColors } from "@/constants/colors";
+import { useCompanionPageSnapshot } from "@/hooks/companion/useCompanionPageSnapshot";
+import { useCompanionThread } from "@/hooks/companion/useCompanionThread";
 import { useCreateMemory } from "@/hooks/memories/useCreateMemory";
+import { CompanionPageSnapshot } from "@/services/companionApi";
 
 const colors = getColors();
 const BACKGROUND_GRADIENT_COLORS = [
@@ -27,6 +30,13 @@ export default function CreateMemoryScreen() {
     handleSave,
     handleRetryLocation,
   } = useCreateMemory();
+
+  useCompanionThread("creatememory");
+  const companionSnapshot: CompanionPageSnapshot = {
+    summary: memoryState.summary,
+    isSaving,
+  };
+  useCompanionPageSnapshot("creatememory", companionSnapshot);
 
   const headerTitle = format(
     new Date(memoryState.dateTimeOfCapture),

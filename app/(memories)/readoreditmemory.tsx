@@ -12,7 +12,10 @@ import Header from "@/components/Header";
 import LoadingIndicator from "@/components/LoadingIndicator";
 import MemoryForm from "@/components/memories/MemoryForm";
 import { getColors } from "@/constants/colors";
+import { useCompanionPageSnapshot } from "@/hooks/companion/useCompanionPageSnapshot";
+import { useCompanionThread } from "@/hooks/companion/useCompanionThread";
 import { useReadOrEditMemory } from "@/hooks/memories/useReadOrEditMemory";
+import { CompanionPageSnapshot } from "@/services/companionApi";
 
 const colors = getColors();
 const BACKGROUND_GRADIENT_COLORS = [
@@ -30,6 +33,13 @@ export default function ReadMemoryScreen() {
     handleEditMode,
     timeMemoryId,
   } = useReadOrEditMemory();
+
+  useCompanionThread("readoreditmemory");
+  const companionSnapshot: CompanionPageSnapshot = {
+    summary: memoryState.summary,
+    isEditable: memoryState.isEditable,
+  };
+  useCompanionPageSnapshot("readoreditmemory", companionSnapshot);
 
   if (isLoading) {
     const loadingContent = (

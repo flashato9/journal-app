@@ -59,3 +59,48 @@ Biometric login already exists in the welcome flow (`app/(welcome)/login.tsx`).
 ## Technical / Architecture (exploratory, not committed)
 
 - [ ] Replace scattered `isLoading` + `useEffect` data-loading patterns with `<Suspense>` + `use()` for _read_ states only (not action states like `isSaving`) — raised as an idea to consider, not yet prototyped or approved.
+
+## Housekeeping
+
+- [ ] Take time to solve some issues (2026-08-10 — no specifics recorded yet, revisit and break this out into concrete items).
+
+## Reference Notes
+
+### What is Zustand? What is Redux?
+
+**TLDR:** Both are state-management libraries for sharing state outside the component tree without prop-drilling. Zustand is minimal and hook-based, almost no boilerplate. Redux is more structured (actions/reducers/dispatch), more ceremony, but stronger conventions at large scale and time-travel debugging via Redux DevTools.
+
+**Redux:** you define **actions** (plain objects describing what happened), **reducers** (pure functions computing new state from the old state + an action), and a single store. Components read state via a selector hook and dispatch actions to change it. Modern Redux is almost always written with Redux Toolkit to cut the historical boilerplate down.
+
+```ts
+// Redux Toolkit sketch
+const counterSlice = createSlice({
+  name: "counter",
+  initialState: { value: 0 },
+  reducers: {
+    incremented: (state) => {
+      state.value += 1;
+    },
+  },
+});
+
+// in a component
+const count = useSelector((state) => state.counter.value);
+const dispatch = useDispatch();
+dispatch(counterSlice.actions.incremented());
+```
+
+**Zustand:** `create()` returns a hook backed by a plain store object — no actions, no reducers, no dispatch. You read and write state directly.
+
+```ts
+const useCounterStore = create((set) => ({
+  value: 0,
+  increment: () => set((state) => ({ value: state.value + 1 })),
+}));
+
+// in a component
+const value = useCounterStore((state) => state.value);
+const increment = useCounterStore((state) => state.increment);
+```
+
+**In this codebase:** neither is used — shared state (e.g. the companion feature's `CompanionContext`) is handled with plain React Context + `useState`, which is the built-in alternative to both for state that doesn't need Redux-scale structure or Zustand's external-store ergonomics.
