@@ -1,3 +1,4 @@
+import { useVideoPlayer, VideoView } from "expo-video";
 import { useEffect } from "react";
 import {
   Image,
@@ -9,8 +10,11 @@ import {
   Text,
   View,
 } from "react-native";
+import { GestureDetector } from "react-native-gesture-handler";
+import Animated from "react-native-reanimated";
 import { SafeAreaView } from "react-native-safe-area-context";
 import Button from "@/components/Button";
+import ChevronSwipeLogin from "@/components/welcome/ChevronSwipeLogin";
 import Header from "@/components/Header";
 import LoadingIndicator from "@/components/LoadingIndicator";
 import PolaroidFrame from "@/components/PolaroidFrame";
@@ -19,10 +23,17 @@ import { getColors } from "@/constants/colors";
 import { useCompanionPageSnapshot } from "@/hooks/companion/useCompanionPageSnapshot";
 import { useCompanionThread } from "@/hooks/companion/useCompanionThread";
 import { useLogin } from "@/hooks/welcome/useLogin";
+import { useSwipeUpGesture } from "@/hooks/welcome/useSwipeUpGesture";
+import { useVideoLoopLimit } from "@/hooks/welcome/useVideoLoopLimit";
 import { useUserSession } from "@/hooks/welcome/useUserSession";
 import { CompanionPageSnapshot } from "@/services/companionApi";
 
 const colors = getColors();
+
+// Spike: hardcoded bundled clip to preview a looping video background before building the picker.
+const loginBackgroundVideoSource = require("@/assets/videos/snow_flaling.mp4");
+const LOGIN_BACKGROUND_VIDEO_MAX_LOOPS = 15;
+const POLAROID_SIZE_PX = 240;
 
 export default function LoginScreen() {
   const {
@@ -37,6 +48,16 @@ export default function LoginScreen() {
     isBiometricLoginExhausted,
   } = useLogin();
   const { username, profileImagePath, preferredLoginMethod } = useUserSession();
+  const backgroundVideoPlayer = useVideoPlayer(
+    loginBackgroundVideoSource,
+    (player) => {
+      player.loop = true;
+      player.muted = true;
+      player.keepScreenOnWhilePlaying = false;
+      player.play();
+    },
+  );
+  useVideoLoopLimit(backgroundVideoPlayer, LOGIN_BACKGROUND_VIDEO_MAX_LOOPS);
   useCompanionThread("login");
   const companionSnapshot: CompanionPageSnapshot = { username: loginUsername };
   useCompanionPageSnapshot("login", companionSnapshot);
@@ -47,10 +68,22 @@ export default function LoginScreen() {
 
   const showBiometricLogin =
     preferredLoginMethod === "BIOMETRIC" && !isBiometricLoginExhausted;
+  const { gesture: swipeUpGesture, polaroidSwipeStyle } = useSwipeUpGesture(
+    loginWithBiometrics,
+    showBiometricLogin,
+  );
 
   const content = (
     <SafeAreaView style={styles.container} edges={["left", "right", "bottom"]}>
-      <Header title="" />
+      <VideoView
+        player={backgroundVideoPlayer}
+        style={StyleSheet.absoluteFill}
+        contentFit="cover"
+        nativeControls={false}
+        pointerEvents="none"
+      />
+
+      <Header title="" containerStyle={styles.transparentHeader} />
 
       <KeyboardAvoidingView
         behavior={Platform.OS === "ios" ? "padding" : "height"}
@@ -58,11 +91,11 @@ export default function LoginScreen() {
       >
         <Pressable style={styles.pressableFill} onPress={Keyboard.dismiss}>
           <View style={styles.content}>
-            <View style={styles.polaroidWrapper}>
+            <Animated.View style={[styles.polaroidWrapper, polaroidSwipeStyle]}>
               <PolaroidFrame
                 caption={username}
                 isTilted={false}
-                size={240}
+                size={POLAROID_SIZE_PX}
                 onPress={Keyboard.dismiss}
               >
                 {profileImagePath ? (
@@ -75,39 +108,44 @@ export default function LoginScreen() {
                   <LoadingIndicator message="Loading..." />
                 )}
               </PolaroidFrame>
-            </View>
+            </Animated.View>
 
-            {showBiometricLogin ? (
-              <View style={styles.buttonWrapper}>
-                <Button
-                  text="Login"
-                  onPress={loginWithBiometrics}
-                  backgroundColor={colors.loginButtonBackground}
-                  style={styles.loginButtonPill}
-                  shakeTrigger={shakeTrigger}
-                />
+            <GestureDetector gesture={swipeUpGesture}>
+              <View style={styles.belowPolaroidArea}>
+                {showBiometricLogin ? (
+                  <View style={styles.chevronLoginWrapper}>
+                    {/* <Button
+                      text="Login"
+                      onPress={loginWithBiometrics}
+                      backgroundColor={colors.loginButtonBackground}
+                      style={styles.loginButtonPill}
+                      shakeTrigger={shakeTrigger}
+                    /> */}
+                    <ChevronSwipeLogin failureTrigger={shakeTrigger} />
+                  </View>
+                ) : (
+                  <>
+                    <LoginPasswordInput
+                      value={password}
+                      onChangeText={handlePasswordChange}
+                    />
+                    <View style={styles.buttonWrapper}>
+                      <Button
+                        text="Login"
+                        onPress={handleLogin}
+                        backgroundColor={colors.loginButtonBackground}
+                        style={styles.loginButtonPill}
+                        shakeTrigger={shakeTrigger}
+                      />
+                    </View>
+                  </>
+                )}
+
+                {loginError ? (
+                  <Text style={styles.loginErrorText}>{loginError}</Text>
+                ) : null}
               </View>
-            ) : (
-              <>
-                <LoginPasswordInput
-                  value={password}
-                  onChangeText={handlePasswordChange}
-                />
-                <View style={styles.buttonWrapper}>
-                  <Button
-                    text="Login"
-                    onPress={handleLogin}
-                    backgroundColor={colors.loginButtonBackground}
-                    style={styles.loginButtonPill}
-                    shakeTrigger={shakeTrigger}
-                  />
-                </View>
-              </>
-            )}
-
-            {loginError ? (
-              <Text style={styles.loginErrorText}>{loginError}</Text>
-            ) : null}
+            </GestureDetector>
           </View>
         </Pressable>
       </KeyboardAvoidingView>
@@ -120,6 +158,10 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.screenBackground,
+  },
+  transparentHeader: {
+    backgroundColor: "transparent",
+    boxShadow: "none",
   },
   keyboardAvoidingView: {
     flex: 1,
@@ -145,6 +187,16 @@ const styles = StyleSheet.create({
   buttonWrapper: {
     width: "100%",
     marginTop: 12,
+  },
+  belowPolaroidArea: {
+    flex: 1,
+    width: "100%",
+    alignItems: "center",
+    gap: 16,
+  },
+  chevronLoginWrapper: {
+    alignItems: "center",
+    marginTop: 44,
   },
   loginButtonPill: {
     borderRadius: 999,
