@@ -3,6 +3,7 @@ import { useContext, useState } from "react";
 import { Alert } from "react-native";
 import { AuthContext } from "@/context/AuthContext";
 import { useUsernameField } from "@/hooks/welcome/useUsernameField";
+import { logError } from "@/services/appLogger";
 import { UserTable } from "@/services/database";
 
 // Custom hook that encapsulates the username change flow: reuses the same
@@ -21,9 +22,11 @@ export function useChangeUsername() {
   } = useUsernameField(currentUsername ?? "");
   const [isSaving, setIsSaving] = useState(false);
 
-  const handleSave = async () => {
-    if (!currentUsername || username === currentUsername) return;
-    if (!validateUsername()) return;
+  // Does the actual SecureStore/DB/AuthContext write for `nextUsername`.
+  // Takes the value directly so it never depends on `username` state
+  // having flushed — safe to call right after changing the field.
+  const persistUsername = async (nextUsername: string) => {
+    if (!currentUsername || nextUsername === currentUsername) return;
 
     setIsSaving(true);
     try {
@@ -32,7 +35,7 @@ export function useChangeUsername() {
 
       // Move the password to the new SecureStore key.
       const oldKey = `login.${currentUsername}`;
-      const newKey = `login.${username}`;
+      const newKey = `login.${nextUsername}`;
       const password = await SecureStore.getItemAsync(oldKey);
       if (password) {
         await SecureStore.setItemAsync(newKey, password);
@@ -42,17 +45,22 @@ export function useChangeUsername() {
       // Keep the location-tracking background task's username in sync.
       const storedCurrent = await SecureStore.getItemAsync("currentUsername");
       if (storedCurrent === currentUsername) {
-        await SecureStore.setItemAsync("currentUsername", username);
+        await SecureStore.setItemAsync("currentUsername", nextUsername);
       }
 
-      UserTable.updateUsername(userId, username);
-      setAuthUsername(username);
+      UserTable.updateUsername(userId, nextUsername);
+      setAuthUsername(nextUsername);
     } catch (error) {
-      console.error("Error changing username:", error);
+      logError("Error changing username:", error);
       Alert.alert("Error", "Failed to update username. Please try again.");
     } finally {
       setIsSaving(false);
     }
+  };
+
+  const handleSave = async () => {
+    if (!validateUsername()) return;
+    await persistUsername(username);
   };
 
   return {

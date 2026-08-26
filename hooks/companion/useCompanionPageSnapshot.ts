@@ -1,5 +1,6 @@
 import { useContext, useEffect } from "react";
 import { CompanionContext, CompanionStatus } from "@/context/CompanionContext";
+import { logTrace } from "@/services/appLogger";
 import { CompanionFieldVisibilityTable, UserTable } from "@/services/database";
 import {
   CompanionMessage,
@@ -14,6 +15,7 @@ const inFlightRemarkThreadKeys = new Set<string>();
 async function triggerCompanionRemark(
   threadKey: string,
   visibleSnapshot: CompanionPageSnapshot,
+  resourceId: string,
   status: CompanionStatus,
   reportCompanionMessage: (
     threadKey: string,
@@ -28,7 +30,11 @@ async function triggerCompanionRemark(
   }
   inFlightRemarkThreadKeys.add(threadKey);
   const companionApi = getCompanionApi();
-  const message = await companionApi.generateRemark(threadKey, visibleSnapshot);
+  const message = await companionApi.generateRemark(
+    threadKey,
+    visibleSnapshot,
+    resourceId,
+  );
   inFlightRemarkThreadKeys.delete(threadKey);
   reportCompanionMessage(threadKey, message);
 }
@@ -36,6 +42,7 @@ async function triggerCompanionRemark(
 function scheduleCompanionRemark(
   threadKey: string,
   visibleSnapshot: CompanionPageSnapshot,
+  resourceId: string,
   status: CompanionStatus,
   reportCompanionMessage: (
     threadKey: string,
@@ -46,6 +53,7 @@ function scheduleCompanionRemark(
     triggerCompanionRemark(
       threadKey,
       visibleSnapshot,
+      resourceId,
       status,
       reportCompanionMessage,
     );
@@ -82,11 +90,19 @@ export function useCompanionPageSnapshot(
   const snapshotKey = JSON.stringify(snapshot);
 
   useEffect(() => {
+    if (status !== "ready") {
+      return;
+    }
+    const resourceId = UserTable.getOrCreateCompanionResourceId();
+    if (!resourceId) {
+      return;
+    }
     const visibleSnapshot = computeVisibleSnapshot(threadKey, snapshot);
-    console.log("[Companion:sees]", threadKey, visibleSnapshot);
+    logTrace("[Companion:sees]", threadKey, visibleSnapshot);
     const cancelSettleTimeout = scheduleCompanionRemark(
       threadKey,
       visibleSnapshot,
+      resourceId,
       status,
       reportCompanionMessage,
     );

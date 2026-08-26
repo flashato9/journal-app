@@ -1,5 +1,6 @@
 import { useCallback, useState } from "react";
 import { Alert } from "react-native";
+import { logError } from "@/services/appLogger";
 import { AIDaySummaryTable, TimeMemoryTable } from "@/services/database";
 import {
   activateModel,
@@ -92,7 +93,7 @@ export function useAIDaySummary() {
             'The text model isn\'t downloaded yet. Go to Profile Settings > Debug LLM, pick "Gemma 3 (Text)", and download it.',
           );
         } else {
-          console.error("AI day summary generation failed:", error);
+          logError("AI day summary generation failed:", error);
           Alert.alert(
             "Error",
             "Something went wrong generating the summary. Please try again.",

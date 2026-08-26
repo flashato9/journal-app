@@ -42,14 +42,15 @@ When I propose a visual/design idea that isn't yet a concrete spec (a new look, 
 
 Do not edit code files directly until the plan is approved. When asked to implement a change:
 
-1. Present a plan first (use plan mode) and wait for the user to thoroughly review and explicitly approve it.
-2. While the plan is pending approval, write the exact code changes (before/after snippets or diffs) into the plan file — do not touch the actual source files yet.
-3. Only once the user has explicitly and thoroughly approved the plan, you may edit the actual source files yourself to implement it.
+1. **Two-phase planning.** First present a high-level plan as short single-sentence steps (no code) and wait for the user to review and iterate on it until satisfied.
+2. Only when the user explicitly asks for it, expand the approved high-level plan into a fully detailed plan with exact code changes (before/after snippets or diffs) written into the plan file — do not touch the actual source files yet.
+3. Only once the user has explicitly and thoroughly approved that detailed plan, you may edit the actual source files yourself to implement it.
 4. Always wrap code snippets in fenced code blocks with the correct language tag (e.g. `ts, `tsx, ```json) so they render with syntax highlighting/colors — never as plain, untagged text.
 5. This workflow applies to code files only. You can create and directly modify any `.md` file — including this one (AGENTS.md) — without presenting a plan first.
 6. Each distinct task gets its own plan file. Do not append a new, unrelated task onto an existing plan file that already covers a different task — start a fresh one instead.
-7. Structure every plan in layers, from high level to low level: start with a short Context section (why), then a High-level approach (the change in plain language, no code), then progressively more detailed layers, ending with the exact low-level code diffs. Do not lead with the diffs — a reader should be able to stop after any earlier layer and still understand the change at that level of detail.
-8. After drafting a plan, before presenting it for approval, consider whether there are any open questions or judgment calls baked into it — then ask the user to confirm their preference on those, rather than silently deciding and presenting only the finished plan.
+7. Structure the detailed plan in layers, from high level to low level: start with a short Context section (why), then a High-level approach (the change in plain language, no code), then progressively more detailed layers, ending with the exact low-level code diffs. Do not lead with the diffs — a reader should be able to stop after any earlier layer and still understand the change at that level of detail.
+8. Before presenting either the high-level or the detailed plan, consider whether there are any open questions or judgment calls baked into it — then ask the user to confirm their preference on those, rather than silently deciding and presenting only the finished plan.
+9. Once the detailed plan is approved (and after implementation), save/mirror it as `.md/plan-<task-name>.md` — not just the external Claude plan file.
 
 # Search Before Escalating
 
@@ -67,6 +68,7 @@ Apply these rules to all plans (and any code you write):
 6. Comments are only allowed as a single line directly above a function/method definition. No comments anywhere else — not on variables, not inline inside a function body, not above types/imports/etc.
 7. No inline styles. Define styles in a `const styles = StyleSheet.create({...})` object (at the bottom of the file) and reference them via `styles.xxx` in JSX.
 8. Never pass an anonymous object literal directly as a function argument (e.g. `useState({...})`). Assign it to a named variable first, then pass that variable, e.g. `const initialState = {...}; useState(initialState);`.
+9. Function, variable, and file names must be self-descriptive enough that a reader never needs a comment to understand what they do or hold. This is the reason comments are restricted so heavily (rule 6) — descriptive naming is the primary tool for readability here, not comments.
 
 # When to Extract a Hook
 
@@ -79,6 +81,12 @@ Not every `useEffect`/`useFocusEffect`/`useCallback` needs its own hook file. Ex
 If none of these apply — the effect is a couple of lines, directly tied to this component's own state, and not conceptually reusable — leave it inline. Don't extract just because an effect exists; extract when pulling it out actually makes the component's job (rendering) easier to see at a glance.
 
 **Screens are an unconditional exception to this list.** Every screen (the top-level component behind a route, i.e. anything in `app/`) gets its own hook holding all of its state and logic — e.g. `useCreateMemory`, `useDayMemories`, `useReadOrEditMemory`, `useMemoriesList` — regardless of whether the three conditions above are met. This keeps the screen component itself limited to deciding what to render, and is a consistently followed pattern in this codebase.
+
+# Feature Log
+
+When I ask for a new feature and you finish implementing it, briefly log it in `features.md` (repo root) — just the query I asked to generate it, verbatim, one entry per feature.
+
+Only the original ask for a genuinely new capability gets its own entry. Follow-up tweaks, resizes, bug fixes, or behavior corrections to something already logged do not get separate entries.
 
 # Where should you write Long Explanations?
 

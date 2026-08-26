@@ -1,10 +1,11 @@
 import { StyleSheet, Text } from "react-native";
 import { CompanionMood } from "@/services/companionApi";
 
-export type CompanionExpressionState = CompanionMood | "sleeping";
+export type CompanionExpressionState = CompanionMood | "sleeping" | "offline";
 
 const EXPRESSION_EMOJI: Record<CompanionExpressionState, string> = {
   sleeping: "😴",
+  offline: "🌴",
   neutral: "🙂",
   positive: "😁",
   sad: "😢",

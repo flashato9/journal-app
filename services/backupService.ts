@@ -18,6 +18,7 @@ import {
   saveImagePersistently,
   saveVideoPersistently,
 } from "@/services/mediaStorage";
+import { logInfo, logWarn } from "@/services/appLogger";
 import { saveProfilePicture } from "@/services/profilePictureStorage";
 
 // Bump only on a breaking change to the archive layout. Import refuses
@@ -145,7 +146,7 @@ const makeStagingDir = async (name: string): Promise<Directory> => {
   try {
     if (dir.exists) dir.delete();
   } catch (error) {
-    console.warn(`Failed to clear stale staging dir ${name}:`, error);
+    logWarn(`Failed to clear stale staging dir ${name}:`, error);
   }
   await dir.create({ intermediates: true });
   return dir;
@@ -156,7 +157,7 @@ const cleanUp = (dir: Directory) => {
     if (dir.exists) dir.delete();
   } catch (error) {
     // Non-fatal: cache gets reclaimed by the OS anyway.
-    console.warn(`Failed to clean up ${dir.uri}:`, error);
+    logWarn(`Failed to clean up ${dir.uri}:`, error);
   }
 };
 
@@ -319,11 +320,11 @@ export const buildExportZip = async (userId: number): Promise<string> => {
     try {
       if (zipTarget.exists) zipTarget.delete();
     } catch (error) {
-      console.warn("Failed to clear previous export zip:", error);
+      logWarn("Failed to clear previous export zip:", error);
     }
 
     const zipPath = await zip(toPath(stagingDir.uri), toPath(zipTarget.uri));
-    console.log(
+    logInfo(
       `Export complete: ${mediaCounter} media staged, ${skippedMedia} skipped, zip at ${zipPath}`,
     );
 
@@ -348,7 +349,7 @@ const restoreMedia = async (
 ): Promise<{ uri: string; mediaLibraryAssetId: string | null } | null> => {
   const source = new File(extractedDir, entry.zipPath);
   if (!source.exists) {
-    console.warn(`Backup references missing media: ${entry.zipPath}`);
+    logWarn(`Backup references missing media: ${entry.zipPath}`);
     return null;
   }
 
@@ -359,7 +360,7 @@ const restoreMedia = async (
       return await saveAudioPersistently(source.uri);
     return await saveImagePersistently(source.uri);
   } catch (error) {
-    console.warn(`Failed to restore media ${entry.zipPath}:`, error);
+    logWarn(`Failed to restore media ${entry.zipPath}:`, error);
     return null;
   }
 };
@@ -397,7 +398,7 @@ const replaceTimeMemoryChildren = async (
   await Promise.all(
     oldMedia.map((item) =>
       deleteMedia(item.mediaUri, item.mediaType).catch((error) => {
-        console.warn(`Failed to delete media file ${item.mediaUri}:`, error);
+        logWarn(`Failed to delete media file ${item.mediaUri}:`, error);
       }),
     ),
   );
@@ -463,7 +464,7 @@ export const applyImportZip = async (zipUri: string): Promise<void> => {
             await saveProfilePicture(source.uri),
           );
         } catch (error) {
-          console.warn("Failed to restore profile picture:", error);
+          logWarn("Failed to restore profile picture:", error);
         }
       }
     }
@@ -604,7 +605,7 @@ export const applyImportZip = async (zipUri: string): Promise<void> => {
       }
     }
 
-    console.log(
+    logInfo(
       `Import complete: ${inserted} added, ${replaced} updated, ${skipped} left as-is`,
     );
   } finally {

@@ -1,5 +1,6 @@
 import { useCallback, useState } from "react";
 import { Alert } from "react-native";
+import { logError } from "@/services/appLogger";
 import { AITimeSummaryTable } from "@/services/database";
 import {
   activateModel,
@@ -90,7 +91,7 @@ export function useAITimeSummary() {
             'The text model isn\'t downloaded yet. Go to Profile Settings > Debug LLM, pick "Gemma 3 (Text)", and download it.',
           );
         } else {
-          console.error("AI time summary generation failed:", error);
+          logError("AI time summary generation failed:", error);
           Alert.alert(
             "Error",
             "Something went wrong generating the summary. Please try again.",

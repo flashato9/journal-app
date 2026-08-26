@@ -1,6 +1,7 @@
 import * as ImagePicker from "expo-image-picker";
 import { useEffect, useState } from "react";
 import { ActionSheetIOS, Alert, Platform } from "react-native";
+import { logError } from "@/services/appLogger";
 import {
   activateModel,
   askQuestion,
@@ -93,7 +94,7 @@ export function useDebugLlm() {
     } catch (error) {
       setDownloadState(await getDownloadState(selectedProfile));
       if (error instanceof DownloadPausedError) return;
-      console.error("Error downloading model:", error);
+      logError("Error downloading model:", error);
       Alert.alert("Error", "Failed to download the model. Please try again.");
     }
   };
@@ -150,7 +151,7 @@ export function useDebugLlm() {
       const summary = checks.map(describeFile).join("\n");
       Alert.alert("Download Check", `No —\n${summary}`);
     } catch (error) {
-      console.error("Error checking model files:", error);
+      logError("Error checking model files:", error);
       Alert.alert(
         "Error",
         "Failed to check the model files. Please try again.",
@@ -166,7 +167,7 @@ export function useDebugLlm() {
       await activateModel(selectedProfile);
       setActivationStatus("ready");
     } catch (error) {
-      console.error("Error activating LLM:", error);
+      logError("Error activating LLM:", error);
       Alert.alert("Error", "Failed to activate the model. Please try again.");
       setActivationStatus("error");
     }
@@ -184,7 +185,7 @@ export function useDebugLlm() {
     try {
       setAnswer(await askQuestion(question));
     } catch (error) {
-      console.error("Error asking question:", error);
+      logError("Error asking question:", error);
       Alert.alert("Error", "Failed to get a response. Please try again.");
     } finally {
       setIsAsking(false);
@@ -253,7 +254,7 @@ export function useDebugLlm() {
     try {
       setImageDescription(await describeImage(imageUri));
     } catch (error) {
-      console.error("Error describing image:", error);
+      logError("Error describing image:", error);
       Alert.alert("Error", "Failed to describe the image. Please try again.");
     } finally {
       setIsDescribing(false);

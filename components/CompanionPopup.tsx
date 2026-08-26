@@ -1,6 +1,11 @@
 import { useContext } from "react";
 import { StyleSheet, Text } from "react-native";
-import Animated, { FadeIn, FadeOut } from "react-native-reanimated";
+import { useReanimatedKeyboardAnimation } from "react-native-keyboard-controller";
+import Animated, {
+  FadeIn,
+  FadeOut,
+  useAnimatedStyle,
+} from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { getColors } from "@/constants/colors";
 import { CompanionContext } from "@/context/CompanionContext";
@@ -14,6 +19,10 @@ const POPUP_MAX_WIDTH = 220;
 export default function CompanionPopup() {
   const { latestMessage, isChatOpen } = useContext(CompanionContext);
   const insets = useSafeAreaInsets();
+  const { height: keyboardHeight } = useReanimatedKeyboardAnimation();
+  const keyboardAnimatedStyle = useAnimatedStyle(() => ({
+    transform: [{ translateY: keyboardHeight.value }],
+  }));
 
   if (!latestMessage || isChatOpen) {
     return null;
@@ -23,7 +32,11 @@ export default function CompanionPopup() {
     bottom: insets.bottom + ICON_MARGIN + ICON_SIZE + POPUP_GAP,
     right: insets.right + ICON_MARGIN,
   };
-  const containerStyle = [styles.container, positionStyle];
+  const containerStyle = [
+    styles.container,
+    positionStyle,
+    keyboardAnimatedStyle,
+  ];
 
   const content = (
     <Animated.View entering={FadeIn} exiting={FadeOut} style={containerStyle}>

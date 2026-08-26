@@ -12,12 +12,13 @@ import { OptionsMenuContext } from "@/context/OptionsMenuContext";
 export default function OptionsMenu() {
   const { menuVisible, setMenuVisible } = useContext(OptionsMenuContext);
 
-  const handleExitApp = () => {
-    setMenuVisible(false);
-    BackHandler.exitApp();
-  };
+  // const handleExitApp = () => {
+  //   setMenuVisible(false);
+  //   BackHandler.exitApp();
+  // };
 
-  const menuOptions = [{ label: "Exit App", onPress: handleExitApp }];
+  const menuOptions: { label: string; onPress: () => void }[] = [];
+  // { label: "Exit App", onPress: handleExitApp },
 
   const content = (
     <Modal

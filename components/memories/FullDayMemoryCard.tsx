@@ -31,7 +31,7 @@ export default function FullDayMemoryCard({ memory }: FullDayMemoryCardProps) {
     router.push(destination);
   }, [router, memory.id, memory.day]);
 
-  const { arrowStyle, handlePress } = useArrowSlideNavigate(
+  const { arrowStyle, handleLongPress, handlePressOut } = useArrowSlideNavigate(
     navigateToDayMemories,
   );
 
@@ -41,7 +41,8 @@ export default function FullDayMemoryCard({ memory }: FullDayMemoryCardProps) {
 
   const content = (
     <TouchableOpacity
-      onPress={handlePress}
+      onLongPress={handleLongPress}
+      onPressOut={handlePressOut}
       style={styles.card}
       activeOpacity={0.7}
     >

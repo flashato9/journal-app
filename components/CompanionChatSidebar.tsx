@@ -3,6 +3,7 @@ import { useState } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import CompanionFace from "@/components/CompanionFace";
 import { getColors } from "@/constants/colors";
+import { logTrace } from "@/services/appLogger";
 import { CompanionThread } from "@/services/companionApi";
 
 const colors = getColors();
@@ -43,8 +44,8 @@ export default function CompanionChatSidebar({
   onSelectThread,
 }: CompanionChatSidebarProps) {
   const [isFolderOpen, setIsFolderOpen] = useState(false);
-  console.log("[Companion:sidebarRender] Threads ->", threads);
-  console.log(
+  logTrace("[Companion:sidebarRender] Threads ->", threads);
+  logTrace(
     "[Companion:sidebarProps]",
     threads.map((thread) => thread.threadKey),
     "active:",
@@ -67,7 +68,7 @@ export default function CompanionChatSidebar({
   const content = (
     <View style={styles.container}>
       <View style={styles.iconRow}>
-        <CompanionFace expression="neutral" />
+        {/* <CompanionFace expression="neutral" /> */}
       </View>
       <Pressable onPress={onToggleFolder} style={styles.folderRow}>
         <MaterialIcons name={folderChevronName} size={16} color={colors.text} />

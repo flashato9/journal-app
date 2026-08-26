@@ -8,7 +8,6 @@ import { KeyboardProvider } from "react-native-keyboard-controller";
 import { AuthContext, AuthProvider } from "../context/AuthContext";
 import { OptionsMenuProvider } from "../context/OptionsMenuContext";
 import { initializeDatabase } from "../services/database";
-import { initializeLogger } from "../services/logger";
 import { warmPlaceholderProfilePictureAsset } from "../services/profilePictureStorage";
 import CompanionChatPopover from "@/components/CompanionChatPopover";
 import CompanionIcon from "@/components/CompanionIcon";
@@ -18,9 +17,7 @@ import { CompanionProvider } from "@/context/CompanionContext";
 import { useBreakNotificationNavigation } from "@/hooks/notifications/useBreakNotificationNavigation";
 import { useSharedMediaNavigation } from "@/hooks/shareIntent/useSharedMediaNavigation";
 
-// Starts the logger first so it can capture logs from database init.
 async function initializeApp(setIsDbReady: (isReady: boolean) => void) {
-  await initializeLogger();
   await initializeDatabase();
   await warmPlaceholderProfilePictureAsset();
   setIsDbReady(true);
@@ -59,7 +56,7 @@ function RootLayoutContent() {
         )}
         <Stack.Screen name="(options)" />
       </Stack>
-      <CompanionIcon />
+      {/* <CompanionIcon /> */}
       <CompanionPopup />
       <CompanionChatPopover />
     </>

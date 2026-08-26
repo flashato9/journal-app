@@ -1,5 +1,6 @@
 export { db, deleteDatabase, initializeDatabase } from "./database/database";
 export * as UserTable from "./database/tables/user";
+export * as PageThreadTable from "./database/tables/pageThread";
 export * as AppSettingSchemaTable from "./database/tables/appSettingSchema";
 export * as AppSettingsTable from "./database/tables/appSettings";
 export * as CompanionFieldVisibilityTable from "./database/tables/companionFieldVisibility";

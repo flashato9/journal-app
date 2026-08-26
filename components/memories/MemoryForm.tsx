@@ -15,6 +15,7 @@ import Animated from "react-native-reanimated";
 import { getColors } from "@/constants/colors";
 import { useAITimeSummary } from "@/hooks/memories/useAITimeSummary";
 import { useSpin } from "@/hooks/ui/useSpin";
+import { logInfo } from "@/services/appLogger";
 import UploadMedia, {
   MediaItem,
 } from "@/components/memories/MediaGallery/UploadMedia";
@@ -101,13 +102,13 @@ export default function MemoryForm({
       questionnaire: storage.questionnaire,
       summary: storage.summary,
     };
-    console.log("handleGenerateSummary inputs:", inputs);
+    logInfo("handleGenerateSummary inputs:", inputs);
     const generatedSummary = await generateSummary(
       timeMemoryId,
       storage.questionnaire,
       storage.summary,
     );
-    console.log("handleGenerateSummary output:", generatedSummary);
+    logInfo("handleGenerateSummary output:", generatedSummary);
     if (generatedSummary !== null) {
       handleSummaryChange(generatedSummary);
     }
@@ -205,7 +206,7 @@ export default function MemoryForm({
                 maxLength={SUMMARY_MAX_LENGTH}
               />
             </View>
-            {storage.isEditable && (
+            {/* {storage.isEditable && (
               <TouchableOpacity
                 onPress={handleGenerateSummary}
                 disabled={isGeneratingSummary}
@@ -227,7 +228,7 @@ export default function MemoryForm({
                   />
                 )}
               </TouchableOpacity>
-            )}
+            )} */}
           </View>
           <Text style={styles.charCounter}>
             {storage.summary.length} / {SUMMARY_MAX_LENGTH} characters

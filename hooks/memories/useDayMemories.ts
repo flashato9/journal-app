@@ -2,6 +2,7 @@ import { useFocusEffect } from "@react-navigation/native";
 import { useLocalSearchParams } from "expo-router";
 import { useCallback, useState } from "react";
 import { Alert } from "react-native";
+import { logError, logInfo } from "@/services/appLogger";
 import { DayMemoryTable, TimeMemoryTable } from "@/services/database";
 import { TimeOfDayMemory } from "@/components/memories/TimeOfDayMemoryCard";
 
@@ -40,7 +41,7 @@ function fetchDayMemories(
 
     setMemories(memorySummaries);
   } catch (error) {
-    console.error("Error fetching time memories:", error);
+    logError("Error fetching time memories:", error);
     setMemories([]);
   } finally {
     setIsLoading(false);
@@ -60,9 +61,9 @@ function saveDaySummary(
 
     DayMemoryTable.updateDayMemory(dayMemoryId, newSummary);
     setDaySummary(newSummary);
-    console.log("Summary updated successfully");
+    logInfo("Summary updated successfully");
   } catch (error) {
-    console.error("Error saving summary:", error);
+    logError("Error saving summary:", error);
     Alert.alert(
       "Error",
       error instanceof Error ? error.message : "Failed to save summary",

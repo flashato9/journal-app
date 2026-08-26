@@ -1,11 +1,15 @@
+import { useRouter } from "expo-router";
 import { useContext, useEffect } from "react";
-import { Alert, Pressable, StyleSheet } from "react-native";
+import { Alert, StyleSheet } from "react-native";
+import { Gesture, GestureDetector } from "react-native-gesture-handler";
+import { useReanimatedKeyboardAnimation } from "react-native-keyboard-controller";
 import Animated, {
   useAnimatedStyle,
   useSharedValue,
   withTiming,
 } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { scheduleOnRN } from "react-native-worklets";
 import CompanionFace, {
   CompanionExpressionState,
 } from "@/components/CompanionFace";
@@ -16,6 +20,8 @@ import {
   CompanionMood,
   getCompanionApi,
 } from "@/services/companionApi";
+import { logInfo } from "@/services/appLogger";
+import { UserTable } from "@/services/database";
 
 const colors = getColors();
 const ICON_SIZE = 56;
@@ -28,32 +34,49 @@ function computeCompanionExpression(
   status: CompanionStatus,
   latestMessage: CompanionMessage | null,
 ): CompanionExpressionState {
-  if (status !== "ready") {
+  if (status === "connecting") {
     return "sleeping";
+  }
+  if (status === "offline") {
+    return "offline";
   }
   return latestMessage?.mood ?? "neutral";
 }
 
-interface SleepyLine {
+interface StatusLine {
   mood: CompanionMood;
   text: string;
 }
 
-const SLEEPY_LINES: SleepyLine[] = [
+const SLEEPY_LINES: StatusLine[] = [
   { mood: "sad", text: "I'm getting up, give me a second..." },
   { mood: "snarky", text: "Still booting. Rude of you to expect otherwise." },
   { mood: "neutral", text: "Not awake yet — try again in a bit." },
 ];
 
+const OFFLINE_LINES: StatusLine[] = [
+  { mood: "snarky", text: "I'm on vacation, leave me alone." },
+  { mood: "snarky", text: "Out of office. Try again never." },
+  { mood: "sad", text: "Can't reach home base right now." },
+];
+
 let sleepyLineIndex = 0;
 
-function pickSleepyLine(): SleepyLine {
+function pickSleepyLine(): StatusLine {
   const line = SLEEPY_LINES[sleepyLineIndex % SLEEPY_LINES.length];
   sleepyLineIndex += 1;
   return line;
 }
 
-async function handleCompanionIconPress(
+let offlineLineIndex = 0;
+
+function pickOfflineLine(): StatusLine {
+  const line = OFFLINE_LINES[offlineLineIndex % OFFLINE_LINES.length];
+  offlineLineIndex += 1;
+  return line;
+}
+
+async function handleSingleTap(
   status: CompanionStatus,
   activeThreadKey: string | null,
   isChatOpen: boolean,
@@ -64,7 +87,7 @@ async function handleCompanionIconPress(
     setIsChatOpen(false);
     return;
   }
-  if (status !== "ready") {
+  if (status === "connecting") {
     const sleepyLine = pickSleepyLine();
     const message: CompanionMessage = {
       role: "companion",
@@ -76,13 +99,45 @@ async function handleCompanionIconPress(
     Alert.alert("Companion", "Connecting to the companion...");
     return;
   }
+  if (status === "offline") {
+    const offlineLine = pickOfflineLine();
+    const message: CompanionMessage = {
+      role: "companion",
+      mood: offlineLine.mood,
+      text: offlineLine.text,
+      createdAt: Date.now(),
+    };
+    showTransientMessage(message);
+    return;
+  }
   if (!activeThreadKey) {
     return;
   }
+  const resourceId = UserTable.getOrCreateCompanionResourceId();
+  if (!resourceId) {
+    return;
+  }
   const companionApi = getCompanionApi();
-  const thread = await companionApi.getOrCreateThread(activeThreadKey);
-  console.log("[Companion] chat opened", thread.threadKey);
+  const thread = await companionApi.getOrCreateThread(
+    activeThreadKey,
+    resourceId,
+  );
+  logInfo("[Companion] chat opened", thread.threadKey);
   setIsChatOpen(true);
+}
+
+function handleTripleTap(
+  status: CompanionStatus,
+  retryConnection: () => void,
+  navigateToAgentChat: () => void,
+): void {
+  if (status === "offline") {
+    retryConnection();
+    return;
+  }
+  if (status === "ready") {
+    navigateToAgentChat();
+  }
 }
 
 export default function CompanionIcon() {
@@ -93,12 +148,18 @@ export default function CompanionIcon() {
     isChatOpen,
     setIsChatOpen,
     showTransientMessage,
+    retryConnection,
   } = useContext(CompanionContext);
   const activeThreadKey = activeThread?.threadKey ?? null;
   const insets = useSafeAreaInsets();
+  const router = useRouter();
   const isReady = status === "ready";
   const expression = computeCompanionExpression(status, latestMessage);
   const opacity = useSharedValue(SLEEPING_OPACITY);
+  const { height: keyboardHeight } = useReanimatedKeyboardAnimation();
+  const keyboardAnimatedStyle = useAnimatedStyle(() => ({
+    transform: [{ translateY: keyboardHeight.value }],
+  }));
 
   useEffect(() => {
     const targetOpacity = isReady ? READY_OPACITY : SLEEPING_OPACITY;
@@ -116,11 +177,11 @@ export default function CompanionIcon() {
     bottom: insets.bottom + ICON_MARGIN,
     right: insets.right + ICON_MARGIN,
   };
-  const pressableStyle = [styles.pressable, positionStyle];
+  const outerStyle = [styles.positioned, positionStyle, keyboardAnimatedStyle];
   const containerStyle = [styles.container, animatedStyle];
 
-  function onPress(): void {
-    handleCompanionIconPress(
+  function onSingleTap(): void {
+    handleSingleTap(
       status,
       activeThreadKey,
       isChatOpen,
@@ -129,18 +190,38 @@ export default function CompanionIcon() {
     );
   }
 
+  function navigateToAgentChat(): void {
+    router.push("/agent-chat");
+  }
+
+  function onTripleTap(): void {
+    handleTripleTap(status, retryConnection, navigateToAgentChat);
+  }
+
+  const singleTapGesture = Gesture.Tap().onEnd(() => {
+    scheduleOnRN(onSingleTap);
+  });
+  const tripleTapGesture = Gesture.Tap()
+    .numberOfTaps(3)
+    .onEnd(() => {
+      scheduleOnRN(onTripleTap);
+    });
+  const tapGesture = Gesture.Exclusive(tripleTapGesture, singleTapGesture);
+
   const content = (
-    <Pressable onPress={onPress} style={pressableStyle}>
-      <Animated.View style={containerStyle}>
-        <CompanionFace expression={expression} />
-      </Animated.View>
-    </Pressable>
+    <Animated.View style={outerStyle}>
+      <GestureDetector gesture={tapGesture}>
+        <Animated.View style={containerStyle}>
+          <CompanionFace expression={expression} />
+        </Animated.View>
+      </GestureDetector>
+    </Animated.View>
   );
   return content;
 }
 
 const styles = StyleSheet.create({
-  pressable: {
+  positioned: {
     position: "absolute",
     zIndex: 1000,
   },

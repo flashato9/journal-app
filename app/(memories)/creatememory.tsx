@@ -34,6 +34,7 @@ export default function CreateMemoryScreen() {
   useCompanionThread("creatememory");
   const companionSnapshot: CompanionPageSnapshot = {
     summary: memoryState.summary,
+    questionnaire: memoryState.questionnaire,
     isSaving,
   };
   useCompanionPageSnapshot("creatememory", companionSnapshot);

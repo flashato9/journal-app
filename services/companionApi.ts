@@ -1,3 +1,13 @@
+import { logInfo } from "@/services/appLogger";
+import {
+  realConnect,
+  isCompanionReady,
+  realGetOrCreateThread,
+  realGenerateRemark,
+  realListThreads,
+  realSendUserMessage,
+} from "@/services/realCompanionApi";
+
 export interface CompanionThread {
   threadKey: string;
   createdAt: number;
@@ -18,16 +28,20 @@ export interface CompanionMessage {
 export interface CompanionApi {
   connect: () => Promise<void>;
   isReady: () => boolean;
-  getOrCreateThread: (threadKey: string) => Promise<CompanionThread>;
+  getOrCreateThread: (
+    threadKey: string,
+    resourceId: string,
+  ) => Promise<CompanionThread>;
   generateRemark: (
     threadKey: string,
     pageState: CompanionPageSnapshot,
+    resourceId: string,
   ) => Promise<CompanionMessage>;
   sendUserMessage: (
     threadKey: string,
     text: string,
+    resourceId: string,
   ) => Promise<CompanionMessage>;
-  peekThread: (threadKey: string) => CompanionThread | null;
   listThreads: () => Promise<CompanionThread[]>;
 }
 
@@ -61,7 +75,7 @@ async function mockGetOrCreateThread(
   await delay(MOCK_THREAD_DELAY_MS);
   const existingThread = mockThreads.get(threadKey);
   if (existingThread) {
-    console.log(`[Companion] thread reused for "${threadKey}"`);
+    logInfo(`[Companion] thread reused for "${threadKey}"`);
     return existingThread;
   }
   const newThread: CompanionThread = {
@@ -70,7 +84,7 @@ async function mockGetOrCreateThread(
     messages: [],
   };
   mockThreads.set(threadKey, newThread);
-  console.log(`[Companion] thread created for "${threadKey}"`);
+  logInfo(`[Companion] thread created for "${threadKey}"`);
   return newThread;
 }
 
@@ -97,6 +111,7 @@ function pickCannedRemark(): CannedRemark {
 async function mockGenerateRemark(
   threadKey: string,
   pageState: CompanionPageSnapshot,
+  _resourceId?: string,
 ): Promise<CompanionMessage> {
   await delay(MOCK_REMARK_DELAY_MS);
   const thread = await mockGetOrCreateThread(threadKey);
@@ -112,13 +127,14 @@ async function mockGenerateRemark(
     messages: [...thread.messages, message],
   };
   mockThreads.set(threadKey, updatedThread);
-  console.log("[Companion:remark]", threadKey, pageState, message);
+  logInfo("[Companion:remark]", threadKey, pageState, message);
   return message;
 }
 
 async function mockSendUserMessage(
   threadKey: string,
   text: string,
+  _resourceId?: string,
 ): Promise<CompanionMessage> {
   const thread = await mockGetOrCreateThread(threadKey);
   const message: CompanionMessage = {
@@ -132,13 +148,8 @@ async function mockSendUserMessage(
     messages: [...thread.messages, message],
   };
   mockThreads.set(threadKey, updatedThread);
-  console.log("[Companion:userMessage]", threadKey, message);
+  logInfo("[Companion:userMessage]", threadKey, message);
   return message;
-}
-
-function mockPeekThread(threadKey: string): CompanionThread | null {
-  const thread = mockThreads.get(threadKey) ?? null;
-  return thread;
 }
 
 function getThreadLastActivity(thread: CompanionThread): number {
@@ -149,7 +160,7 @@ function getThreadLastActivity(thread: CompanionThread): number {
 
 async function mockListThreads(): Promise<CompanionThread[]> {
   const threads = Array.from(mockThreads.values());
-  console.log("[Companion:listThreads]", threads);
+  logInfo("[Companion:listThreads]", threads);
   const sortedThreads = [...threads].sort(
     (a, b) => getThreadLastActivity(b) - getThreadLastActivity(a),
   );
@@ -162,10 +173,26 @@ const mockCompanionApi: CompanionApi = {
   getOrCreateThread: mockGetOrCreateThread,
   generateRemark: mockGenerateRemark,
   sendUserMessage: mockSendUserMessage,
-  peekThread: mockPeekThread,
   listThreads: mockListThreads,
 };
 
+const realCompanionApi: CompanionApi = {
+  connect: realConnect,
+  isReady: isCompanionReady,
+  getOrCreateThread: realGetOrCreateThread,
+  generateRemark: realGenerateRemark,
+  sendUserMessage: realSendUserMessage,
+  listThreads: realListThreads,
+};
+
+function isMockModeEnabled(): boolean {
+  const isEnabled = process.env.EXPO_PUBLIC_MOCK_AI_AGENT === "true";
+  return isEnabled;
+}
+
 export const getCompanionApi = (): CompanionApi => {
-  return mockCompanionApi;
+  if (isMockModeEnabled()) {
+    return mockCompanionApi;
+  }
+  return realCompanionApi;
 };

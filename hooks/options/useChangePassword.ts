@@ -3,6 +3,7 @@ import { useContext, useState } from "react";
 import { Alert } from "react-native";
 import { AuthContext } from "@/context/AuthContext";
 import { usePasswordField } from "@/hooks/welcome/usePasswordField";
+import { logError } from "@/services/appLogger";
 
 // Custom hook that encapsulates the password change flow: the current
 // password is just compared against SecureStore (no format validation),
@@ -42,7 +43,7 @@ export function useChangePassword() {
       setCurrentPassword("");
       resetPassword();
     } catch (error) {
-      console.error("Error changing password:", error);
+      logError("Error changing password:", error);
       Alert.alert("Error", "Failed to update password. Please try again.");
     } finally {
       setIsSaving(false);

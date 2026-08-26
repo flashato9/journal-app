@@ -7,6 +7,7 @@ import {
   getAppDirectory,
   StorageMode,
 } from "@/services/filesystem";
+import { logError, logInfo, logWarn } from "@/services/appLogger";
 import type { MediaType } from "@/types/media";
 
 export type { MediaType };
@@ -35,7 +36,7 @@ export const saveImagePersistently = async (
       }
 
       const asset = await MediaLibrary.createAssetAsync(temporaryUri);
-      console.log("Image saved to photo library:", asset.uri);
+      logInfo("Image saved to photo library:", asset.uri);
       return { uri: asset.uri, mediaLibraryAssetId: asset.id };
     } else {
       // Development: Save to app local file system
@@ -49,11 +50,11 @@ export const saveImagePersistently = async (
       const targetFile = new File(targetUri);
       await file.copy(targetFile);
 
-      console.log("Image saved to local app storage:", targetUri);
+      logInfo("Image saved to local app storage:", targetUri);
       return { uri: targetUri, mediaLibraryAssetId: null };
     }
   } catch (error) {
-    console.error("Error saving image:", error);
+    logError("Error saving image:", error);
     throw error;
   }
 };
@@ -75,7 +76,7 @@ export const saveVideoPersistently = async (
       }
 
       const asset = await MediaLibrary.createAssetAsync(temporaryUri);
-      console.log("Video saved to photo library:", asset.uri);
+      logInfo("Video saved to photo library:", asset.uri);
       return { uri: asset.uri, mediaLibraryAssetId: asset.id };
     } else {
       // Development: Save to app local file system
@@ -89,11 +90,11 @@ export const saveVideoPersistently = async (
       const targetFile = new File(targetUri);
       await file.copy(targetFile);
 
-      console.log("Video saved to local app storage:", targetUri);
+      logInfo("Video saved to local app storage:", targetUri);
       return { uri: targetUri, mediaLibraryAssetId: null };
     }
   } catch (error) {
-    console.error("Error saving video:", error);
+    logError("Error saving video:", error);
     throw error;
   }
 };
@@ -115,11 +116,11 @@ export const saveAudioPersistently = async (
     const targetFile = new File(targetUri);
     await file.copy(targetFile);
 
-    console.log("Audio saved to local app storage:", targetUri);
+    logInfo("Audio saved to local app storage:", targetUri);
     // Always app-private, so there's never a media-library asset id.
     return { uri: targetUri, mediaLibraryAssetId: null };
   } catch (error) {
-    console.error("Error saving audio:", error);
+    logError("Error saving audio:", error);
     throw error;
   }
 };
@@ -140,11 +141,11 @@ export const resolveReadableMediaUri = async (
     try {
       const info = await MediaLibrary.getAssetInfoAsync(mediaLibraryAssetId);
       if (info?.localUri) return info.localUri;
-      console.warn(
+      logWarn(
         `Asset ${mediaLibraryAssetId} has no localUri; falling back to stored uri`,
       );
     } catch (error) {
-      console.warn(
+      logWarn(
         `Failed to resolve media library asset ${mediaLibraryAssetId}:`,
         error,
       );
@@ -154,9 +155,7 @@ export const resolveReadableMediaUri = async (
   // No asset id (or resolving it failed): the stored uri is only usable if it's
   // an actual file path. A `ph://` reference here can't be read, so bail.
   if (mediaUri.startsWith("ph://")) {
-    console.warn(
-      `Cannot read iOS gallery media without an asset id: ${mediaUri}`,
-    );
+    logWarn(`Cannot read iOS gallery media without an asset id: ${mediaUri}`);
     return null;
   }
   return mediaUri;
@@ -177,12 +176,12 @@ export const readMediaBytes = async (
   try {
     const file = new File(readableUri);
     if (!file.exists) {
-      console.warn(`Media file missing on disk, skipping: ${readableUri}`);
+      logWarn(`Media file missing on disk, skipping: ${readableUri}`);
       return null;
     }
     return await file.bytes();
   } catch (error) {
-    console.warn(`Failed to read media bytes for ${readableUri}:`, error);
+    logWarn(`Failed to read media bytes for ${readableUri}:`, error);
     return null;
   }
 };
@@ -197,15 +196,15 @@ export const deleteMedia = async (
     if (type !== "audio" && getActiveStorageMode() === StorageMode.Gallery) {
       // Production: Delete from photo library
       await MediaLibrary.deleteAssetsAsync([uri]);
-      console.log("Media deleted from photo library:", uri);
+      logInfo("Media deleted from photo library:", uri);
     } else {
       // Development, or any sound recording: Delete from local app storage
       const file = new File(uri);
       await file.delete();
-      console.log("Media deleted from local app storage:", uri);
+      logInfo("Media deleted from local app storage:", uri);
     }
   } catch (error) {
-    console.error("Error deleting media:", error);
+    logError("Error deleting media:", error);
     throw error;
   }
 };

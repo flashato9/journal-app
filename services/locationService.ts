@@ -4,6 +4,7 @@ import * as SecureStore from "expo-secure-store";
 import * as TaskManager from "expo-task-manager";
 import { getDistance } from "geolib";
 import { Alert, Platform } from "react-native";
+import { logError, logInfo, logTrace, logWarn } from "@/services/appLogger";
 import {
   LocationTable,
   LocationSettingsTable,
@@ -66,7 +67,7 @@ const stage1DistanceFilter = (
   currentLon: number,
 ): boolean => {
   if (!previousLocation) {
-    console.log(`📍 First location recorded`);
+    logTrace(`📍 First location recorded`);
     return true; // No previous location, proceed to recording
   }
 
@@ -79,7 +80,7 @@ const stage1DistanceFilter = (
   );
 
   if (distanceFrom1mFilter <= 1) {
-    console.log(
+    logTrace(
       `⏭️  Distance ${distanceFrom1mFilter.toFixed(2)}m <= 1m, skipping record`,
     );
     return false; // Skip recording
@@ -105,7 +106,7 @@ const stage2NotificationThresholdCheck = (
     // No previous memory to measure against — treat that as being
     // unboundedly far from "the last memory," so the check passes through
     // to the rest-period stage instead of blocking forever.
-    console.log(
+    logTrace(
       `⚠️  No previous memory with location — treating distance as unbounded, checking rest period`,
     );
     return {
@@ -124,7 +125,7 @@ const stage2NotificationThresholdCheck = (
   );
 
   if (distanceFromMemory <= notificationThreshold) {
-    console.log(
+    logTrace(
       `⏭️  Distance ${distanceFromMemory.toFixed(2)}m <= threshold ${notificationThreshold}m, no notification`,
     );
     return {
@@ -134,7 +135,7 @@ const stage2NotificationThresholdCheck = (
     };
   }
 
-  console.log(
+  logTrace(
     `⚠️  Distance ${distanceFromMemory.toFixed(2)}m > threshold ${notificationThreshold}m, checking rest period`,
   );
   return {
@@ -207,7 +208,7 @@ const updateLiveStatusNotification = async (status: string): Promise<void> => {
       trigger: { channelId: STATUS_NOTIFICATION_CHANNEL_ID },
     });
   } catch (err) {
-    console.warn("⚠️  Could not update live status notification:", err);
+    logWarn("⚠️  Could not update live status notification:", err);
   }
 };
 
@@ -224,7 +225,7 @@ const stage3RestPeriodAndNotify = async (
   // querying the DB here would return the just-inserted row and the rest
   // gap would always be ~0s
   if (!previousLocation) {
-    console.log(`⏭️  No location to check rest period`);
+    logTrace(`⏭️  No location to check rest period`);
     return;
   }
 
@@ -233,13 +234,13 @@ const stage3RestPeriodAndNotify = async (
   const timeSinceLastLocation = (currentTime - lastLocationTime) / 1000; // seconds
 
   if (timeSinceLastLocation <= restThreshold) {
-    console.log(
+    logTrace(
       `⏭️  Only ${timeSinceLastLocation.toFixed(1)}s passed < ${restThreshold}s rest period`,
     );
     return;
   }
 
-  console.log(
+  logTrace(
     `✓ ${timeSinceLastLocation.toFixed(1)}s > ${restThreshold}s rest period, ready to notify`,
   );
 
@@ -260,7 +261,7 @@ const stage3RestPeriodAndNotify = async (
 
     if (timeSinceNotification < 300) {
       // 300 seconds = 5 minutes
-      console.log(
+      logTrace(
         `🔄 Duplicate notification skipped (${timeSinceNotification.toFixed(0)}s < 5min)`,
       );
       return;
@@ -268,7 +269,7 @@ const stage3RestPeriodAndNotify = async (
   }
 
   // Send notification
-  console.log(`📬 Sending notification: ${notificationMessage}`);
+  logInfo(`📬 Sending notification: ${notificationMessage}`);
   NotificationTable.insertNotification(userId, notificationMessage);
 
   if (isSendNotificationsEnabled()) {
@@ -285,7 +286,7 @@ const stage3RestPeriodAndNotify = async (
         trigger: null,
       });
     } catch (notifError) {
-      console.warn(
+      logWarn(
         "⚠️  Could not send notification from background task:",
         notifError,
       );
@@ -303,18 +304,18 @@ TaskManager.defineTask(LOCATION_TASK_NAME, async ({ data, error }) => {
   const invocationId = taskInvocationCount;
   const timestamp = new Date().toISOString();
 
-  console.log(`\n${"=".repeat(70)}`);
-  console.log(`🔵 BACKGROUND TASK INVOCATION #${invocationId} at ${timestamp}`);
-  console.log(`${"=".repeat(70)}`);
+  logTrace(`\n${"=".repeat(70)}`);
+  logTrace(`🔵 BACKGROUND TASK INVOCATION #${invocationId} at ${timestamp}`);
+  logTrace(`${"=".repeat(70)}`);
 
   try {
     if (error) {
-      console.error(`❌ [#${invocationId}] Location tracking error:`, error);
+      logError(`❌ [#${invocationId}] Location tracking error:`, error);
       return;
     }
 
     if (!data) {
-      console.warn(`⚠️  [#${invocationId}] No data passed to location task`);
+      logWarn(`⚠️  [#${invocationId}] No data passed to location task`);
       return;
     }
 
@@ -323,15 +324,13 @@ TaskManager.defineTask(LOCATION_TASK_NAME, async ({ data, error }) => {
     };
 
     if (!locations || locations.length === 0) {
-      console.warn(`⚠️  [#${invocationId}] No location data in task`);
+      logWarn(`⚠️  [#${invocationId}] No location data in task`);
       return;
     }
 
-    console.log(
-      `✅ [#${invocationId}] Received ${locations.length} location(s)`,
-    );
+    logTrace(`✅ [#${invocationId}] Received ${locations.length} location(s)`);
     const location = locations[0];
-    console.log(
+    logTrace(
       `📍 [#${invocationId}] Location: lat=${location.coords.latitude.toFixed(4)}, lon=${location.coords.longitude.toFixed(4)}`,
     );
 
@@ -339,31 +338,31 @@ TaskManager.defineTask(LOCATION_TASK_NAME, async ({ data, error }) => {
     try {
       userId = await getUserIdFromStorage();
     } catch (err) {
-      console.error("❌ Failed to get user ID:", err);
+      logError("❌ Failed to get user ID:", err);
       return;
     }
 
     if (!userId) {
-      console.error("❌ No user ID found - cannot process location");
+      logError("❌ No user ID found - cannot process location");
       return;
     }
 
-    console.log(`👤 User ID: ${userId}`);
+    logTrace(`👤 User ID: ${userId}`);
 
     let settings: any = null;
     try {
       settings = LocationSettingsTable.getLocationSettingsByUserId(userId);
     } catch (err) {
-      console.error("❌ Failed to fetch location settings:", err);
+      logError("❌ Failed to fetch location settings:", err);
       return;
     }
 
     if (!settings) {
-      console.error("❌ No location settings found for user - cannot process");
+      logError("❌ No location settings found for user - cannot process");
       return;
     }
 
-    console.log(
+    logTrace(
       `⚙️  Settings - fetchFreq: ${settings.fetchFrequency}s, notifThresh: ${settings.notificationThreshold}m, restThresh: ${settings.restThreshold}s`,
     );
 
@@ -377,7 +376,7 @@ TaskManager.defineTask(LOCATION_TASK_NAME, async ({ data, error }) => {
     try {
       previousLocation = LocationTable.getLatestLocation(userId);
     } catch (err) {
-      console.error("❌ Failed to fetch previous location:", err);
+      logError("❌ Failed to fetch previous location:", err);
       return;
     }
 
@@ -393,7 +392,7 @@ TaskManager.defineTask(LOCATION_TASK_NAME, async ({ data, error }) => {
         currentLon,
       );
     } catch (err) {
-      console.error("❌ Error in stage 1 filter:", err);
+      logError("❌ Error in stage 1 filter:", err);
       return;
     }
 
@@ -405,15 +404,15 @@ TaskManager.defineTask(LOCATION_TASK_NAME, async ({ data, error }) => {
           currentLon,
           currentAlt,
         );
-        console.log(
+        logTrace(
           `✅ Location recorded: ${currentLat.toFixed(4)}, ${currentLon.toFixed(4)}`,
         );
       } catch (err) {
-        console.error("❌ Failed to insert location:", err);
+        logError("❌ Failed to insert location:", err);
         return;
       }
     } else {
-      console.log("⏭️  Stage 1 filter blocked recording - location too close");
+      logTrace("⏭️  Stage 1 filter blocked recording - location too close");
     }
 
     // Stage 2: Notification Threshold Check
@@ -426,7 +425,7 @@ TaskManager.defineTask(LOCATION_TASK_NAME, async ({ data, error }) => {
         settings.notificationThreshold,
       );
     } catch (err) {
-      console.error("❌ Error in stage 2 check:", err);
+      logError("❌ Error in stage 2 check:", err);
       return;
     }
 
@@ -445,9 +444,7 @@ TaskManager.defineTask(LOCATION_TASK_NAME, async ({ data, error }) => {
     );
 
     if (!shouldProceed) {
-      console.log(
-        "⏭️  Stage 2 check blocked - not enough distance from memory",
-      );
+      logTrace("⏭️  Stage 2 check blocked - not enough distance from memory");
       return;
     }
 
@@ -461,20 +458,20 @@ TaskManager.defineTask(LOCATION_TASK_NAME, async ({ data, error }) => {
         previousLocation,
       );
     } catch (err) {
-      console.error(`❌ [#${invocationId}] Error in stage 3:`, err);
+      logError(`❌ [#${invocationId}] Error in stage 3:`, err);
     }
 
-    console.log(`\n✅ [#${invocationId}] Task completed successfully`);
-    console.log(`${"=".repeat(70)}\n`);
+    logTrace(`\n✅ [#${invocationId}] Task completed successfully`);
+    logTrace(`${"=".repeat(70)}\n`);
   } catch (error) {
-    console.error(
+    logError(
       `❌ [#${invocationId}] CRITICAL: Unhandled error in location task:`,
       error,
     );
     if (error instanceof Error) {
-      console.error(`❌ [#${invocationId}] Error stack:`, error.stack);
+      logError(`❌ [#${invocationId}] Error stack:`, error.stack);
     }
-    console.log(`${"=".repeat(70)}\n`);
+    logTrace(`${"=".repeat(70)}\n`);
   }
 });
 
@@ -509,12 +506,12 @@ export const startLocationTracking = async () => {
     // Check if already tracking
     const alreadyTracking =
       await TaskManager.isTaskRegisteredAsync(LOCATION_TASK_NAME);
-    console.log(
+    logInfo(
       `🔍 Task registration check: ${alreadyTracking ? "ALREADY ACTIVE" : "NOT ACTIVE"}`,
     );
 
     if (alreadyTracking) {
-      console.log("⚠️  Location tracking already active, stopping first...");
+      logInfo("⚠️  Location tracking already active, stopping first...");
       await stopLocationTracking();
       // Add small delay to ensure clean restart
       await new Promise((resolve) => setTimeout(resolve, 500));
@@ -543,7 +540,7 @@ export const startLocationTracking = async () => {
         }
         await Notifications.requestPermissionsAsync();
       } catch (notifError) {
-        console.warn(
+        logWarn(
           "⚠️  Notification permission request failed (non-blocking):",
           notifError,
         );
@@ -560,18 +557,18 @@ export const startLocationTracking = async () => {
 
     // Request both foreground and background location permissions
     const fgStatus = await Location.requestForegroundPermissionsAsync();
-    console.log(`📍 Foreground location permission: ${fgStatus.status}`);
+    logInfo(`📍 Foreground location permission: ${fgStatus.status}`);
     if (fgStatus.status !== "granted") {
       throw new Error("Foreground location permission not granted");
     }
 
     const bgStatus = await Location.requestBackgroundPermissionsAsync();
-    console.log(`📍 Background location permission: ${bgStatus.status}`);
+    logInfo(`📍 Background location permission: ${bgStatus.status}`);
     if (bgStatus.status !== "granted") {
       throw new Error("Background location permission not granted");
     }
 
-    console.log(`✅ All location permissions granted`);
+    logInfo(`✅ All location permissions granted`);
 
     // Read fetch frequency from database (in seconds, convert to ms)
     const userId = await getUserIdFromStorage();
@@ -583,7 +580,7 @@ export const startLocationTracking = async () => {
     const fetchFrequencySeconds = settings ? settings.fetchFrequency : 10;
     const fetchFrequencyMs = fetchFrequencySeconds * 1000;
 
-    console.log(
+    logInfo(
       `▶️  Starting location tracking: fetchFrequency=${fetchFrequencySeconds}s (${fetchFrequencyMs}ms)`,
     );
 
@@ -615,7 +612,7 @@ export const startLocationTracking = async () => {
       },
     });
 
-    console.log(`✅ Location.startLocationUpdatesAsync() completed`);
+    logInfo(`✅ Location.startLocationUpdatesAsync() completed`);
 
     // Post the live-status notification immediately instead of waiting for
     // the first background task cycle (which can be up to fetchFrequency
@@ -626,33 +623,33 @@ export const startLocationTracking = async () => {
 
     const isNowTracking =
       await TaskManager.isTaskRegisteredAsync(LOCATION_TASK_NAME);
-    console.log(
+    logInfo(
       `✅ Location tracking status verified: ${isNowTracking ? "✓ ACTIVE" : "✗ NOT ACTIVE"}`,
     );
 
     if (!isNowTracking) {
-      console.error("❌ WARNING: Tracking was not registered after start!");
+      logError("❌ WARNING: Tracking was not registered after start!");
     }
   } catch (error) {
-    console.error("❌ Error starting location tracking:", error);
+    logError("❌ Error starting location tracking:", error);
     throw error;
   }
 };
 
 export const stopLocationTracking = async () => {
   try {
-    console.log(`⏸️  Attempting to stop location tracking...`);
+    logInfo(`⏸️  Attempting to stop location tracking...`);
     const isTracking =
       await TaskManager.isTaskRegisteredAsync(LOCATION_TASK_NAME);
     if (isTracking) {
-      console.log(`📍 Task is registered, stopping...`);
+      logInfo(`📍 Task is registered, stopping...`);
       await Location.stopLocationUpdatesAsync(LOCATION_TASK_NAME);
-      console.log("🛑 Location tracking stopped");
+      logInfo("🛑 Location tracking stopped");
     } else {
-      console.log("⚠️  Location tracking was not active");
+      logInfo("⚠️  Location tracking was not active");
     }
   } catch (error) {
-    console.error("❌ Error stopping location tracking:", error);
+    logError("❌ Error stopping location tracking:", error);
     throw error;
   }
 };
@@ -663,7 +660,7 @@ export const isLocationTrackingActive = async (): Promise<boolean> => {
       await TaskManager.isTaskRegisteredAsync(LOCATION_TASK_NAME);
     return isTracking;
   } catch (error) {
-    console.error("Error checking location tracking status:", error);
+    logError("Error checking location tracking status:", error);
     return false;
   }
 };
@@ -675,7 +672,7 @@ const getUserIdFromStorage = async (): Promise<number | null> => {
     // Retrieve username from SecureStore (stored on successful login)
     const username = await SecureStore.getItemAsync("currentUsername");
     if (!username) {
-      console.warn("No username found in SecureStore");
+      logWarn("No username found in SecureStore");
       return null;
     }
 
@@ -683,7 +680,7 @@ const getUserIdFromStorage = async (): Promise<number | null> => {
     const userId = UserTable.getUserIdByUsername(username);
     return userId;
   } catch (error) {
-    console.error("Error getting user ID from storage:", error);
+    logError("Error getting user ID from storage:", error);
     return null;
   }
 };

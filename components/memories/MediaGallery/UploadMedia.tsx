@@ -10,6 +10,7 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
+import { logError, logInfo } from "@/services/appLogger";
 import {
   MediaType,
   saveAudioPersistently,
@@ -173,7 +174,7 @@ export default function UploadMedia({
             setIsRecording(true);
           }
         } catch (error) {
-          console.error("Error with media picker:", error);
+          logError("Error with media picker:", error);
           Alert.alert("Error", "Failed to upload media");
         }
       },
@@ -204,7 +205,7 @@ export default function UploadMedia({
         },
       ]);
     } catch (error) {
-      console.error("Error saving audio:", error);
+      logError("Error saving audio:", error);
       Alert.alert("Error", "Failed to save recording");
     } finally {
       setTimeout(() => setIsLoading(false), 300);
@@ -258,7 +259,7 @@ export default function UploadMedia({
             ]);
             setImageAssetIds(newAssetIds);
           } catch (error) {
-            console.error("Error saving image:", error);
+            logError("Error saving image:", error);
             Alert.alert("Error", "Failed to save image");
             setTimeout(() => setIsLoading(false), 300);
             return;
@@ -312,7 +313,7 @@ export default function UploadMedia({
             },
           ]);
         } catch (error) {
-          console.error("Error saving video:", error);
+          logError("Error saving video:", error);
           Alert.alert("Error", "Failed to save video");
           setTimeout(() => setIsLoading(false), 300);
           return;
@@ -349,14 +350,14 @@ export default function UploadMedia({
         setIsLoading(true);
 
         // Debug: log all selected assets and their IDs
-        console.log("Selected assets:");
+        logInfo("Selected assets:");
         result.assets.forEach((asset, idx) => {
-          console.log(
+          logInfo(
             `  Asset ${idx}: assetId="${asset.assetId}", fileSize=${asset.fileSize}, dimensions=${asset.width}x${asset.height}, uri="${asset.uri}"`,
           );
         });
 
-        console.log("Existing imageIds:", Array.from(imageAssetIds));
+        logInfo("Existing imageIds:", Array.from(imageAssetIds));
 
         // Filter out duplicates using composite key: fileSize + width + height
         // This works even on Android where assetId is null
@@ -365,8 +366,8 @@ export default function UploadMedia({
           // Create composite ID from stable image properties
           const id =
             asset.assetId || `${asset.fileSize}-${asset.width}-${asset.height}`;
-          console.log(`  Composite ID: "${id}"`);
-          console.log(`  Exists in set: ${newAssetIds.has(id)}`);
+          logInfo(`  Composite ID: "${id}"`);
+          logInfo(`  Exists in set: ${newAssetIds.has(id)}`);
           if (newAssetIds.has(id)) {
             return false;
           }
@@ -374,7 +375,7 @@ export default function UploadMedia({
           return true;
         });
 
-        console.log("Unique assets after filtering:", uniqueAssets.length);
+        logInfo("Unique assets after filtering:", uniqueAssets.length);
 
         // Save images/videos persistently
         try {
@@ -400,7 +401,7 @@ export default function UploadMedia({
           setImageAssetIds(newAssetIds);
           setTimeout(() => setIsLoading(false), 300);
         } catch (error) {
-          console.error("Error saving media:", error);
+          logError("Error saving media:", error);
           Alert.alert("Error", "Failed to save media");
           setTimeout(() => setIsLoading(false), 300);
         }

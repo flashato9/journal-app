@@ -14,8 +14,10 @@ export enum AppPrivateDirectoryPaths {
   ProfilePictures = "images/profile_pictures",
   // Staging area for profile pictures not yet committed (services/profilePictureStorage.ts)
   Temp = "images/temp",
-  // App debug logs written during the session (services/logger.ts)
+  // App debug logs written during the session (services/appLogger.ts)
   AppLogs = "app-logs",
+  // Rotated-out debug log files, archived once the active log grows too large (services/appLogger.ts)
+  AppLogsArchive = "app-logs/archive",
   // Downloaded GGUF model files, cached across app sessions (services/llmService.ts)
   Models = "models",
 }

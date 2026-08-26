@@ -9,6 +9,7 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
+import { logInfo } from "@/services/appLogger";
 
 const TOOLTIP_GAP = 12;
 const TOOLTIP_AUTO_DISMISS_MS = 5000;
@@ -50,7 +51,7 @@ export default function Tooltip({ text, children }: TooltipProps) {
     const layout = { x: pageX, y: pageY, width, height };
     setTriggerLayout(layout);
     setIsVisible(true);
-    console.log("Tooltip text:", text);
+    logInfo("Tooltip text:", text);
   };
 
   const handleTriggerPress = () => {

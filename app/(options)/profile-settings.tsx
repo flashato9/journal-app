@@ -13,6 +13,7 @@ import ChangeAuthMethod from "@/components/options/ChangeAuthMethod";
 import ChangePassword from "@/components/options/ChangePassword";
 import ChangeProfilePicture from "@/components/options/ChangeProfilePicture";
 import ChangeUsername from "@/components/options/ChangeUsername";
+import CompanionSettings from "@/components/options/CompanionSettings";
 import CompanionVisibilitySettings from "@/components/options/CompanionVisibilitySettings";
 import ExportImport from "@/components/options/ExportImport";
 import LocationSettings from "@/components/options/LocationSettings";
@@ -31,6 +32,7 @@ export default function ProfileSettingsScreen() {
   const [isBackupOpen, setIsBackupOpen] = useState(false);
   const [isCompanionVisibilityOpen, setIsCompanionVisibilityOpen] =
     useState(false);
+  const [isCompanionSettingsOpen, setIsCompanionSettingsOpen] = useState(false);
 
   useCompanionThread("profile-settings");
   const companionSnapshot: CompanionPageSnapshot = {};
@@ -40,9 +42,9 @@ export default function ProfileSettingsScreen() {
     router.push("/debug-logs");
   };
 
-  const handleDebugLlm = () => {
-    router.push("/debug-llm");
-  };
+  // const handleDebugLlm = () => {
+  //   router.push("/debug-llm");
+  // };
 
   return (
     <SafeAreaView style={styles.container} edges={["left", "right", "bottom"]}>
@@ -101,13 +103,21 @@ export default function ProfileSettingsScreen() {
 
           {isCompanionVisibilityOpen && <CompanionVisibilitySettings />}
 
+          <TouchableOpacity
+            onPress={() => setIsCompanionSettingsOpen((open) => !open)}
+          >
+            <Text style={styles.link}>Companion Settings</Text>
+          </TouchableOpacity>
+
+          {isCompanionSettingsOpen && <CompanionSettings />}
+
           <TouchableOpacity onPress={handleDebugLogs}>
             <Text style={styles.link}>Debug Logs</Text>
           </TouchableOpacity>
 
-          <TouchableOpacity onPress={handleDebugLlm}>
+          {/* <TouchableOpacity onPress={handleDebugLlm}>
             <Text style={styles.link}>Debug LLM</Text>
-          </TouchableOpacity>
+          </TouchableOpacity> */}
 
           <TouchableOpacity onPress={() => setIsBackupOpen((open) => !open)}>
             <Text style={styles.link}>Backup &amp; Restore</Text>

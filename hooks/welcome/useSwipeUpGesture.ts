@@ -10,8 +10,9 @@ import { runOnJS } from "react-native-worklets";
 const SWIPE_SNAP_DISTANCE_PX = 75;
 const SWIPE_UP_TRIGGER_DELAY_MS = 500;
 const plopSpringConfig = {
-  damping: 10,
-  stiffness: 150,
+  damping: 5,
+  stiffness: 37.5,
+  overshootClamping: true,
   reduceMotion: ReduceMotion.Never,
 };
 

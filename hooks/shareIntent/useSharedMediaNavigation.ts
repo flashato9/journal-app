@@ -2,6 +2,7 @@ import { useRouter } from "expo-router";
 import { ShareIntentFile, useShareIntentContext } from "expo-share-intent";
 import { useContext, useEffect } from "react";
 import { AuthContext } from "@/context/AuthContext";
+import { logError } from "@/services/appLogger";
 import {
   saveImagePersistently,
   saveVideoPersistently,
@@ -33,7 +34,7 @@ async function navigateToCreateMemoryWithSharedFile(
       params,
     });
   } catch (err) {
-    console.error("Error handling shared media:", err);
+    logError("Error handling shared media:", err);
   } finally {
     resetShareIntent();
   }

@@ -60,13 +60,14 @@ export default function TimeOfDayMemoryCard({
     router.push(destination);
   }, [router, memory.summary, memory.timeOfRecord, memory.id]);
 
-  const { arrowStyle, handlePress } = useArrowSlideNavigate(
+  const { arrowStyle, handleLongPress, handlePressOut } = useArrowSlideNavigate(
     navigateToMemoryDetail,
   );
 
   const content = (
     <TouchableOpacity
-      onPress={handlePress}
+      onLongPress={handleLongPress}
+      onPressOut={handlePressOut}
       style={styles.card}
       activeOpacity={0.7}
     >

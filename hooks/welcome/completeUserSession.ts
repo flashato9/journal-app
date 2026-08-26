@@ -2,6 +2,7 @@ import { useRouter } from "expo-router";
 import * as SecureStore from "expo-secure-store";
 import { Alert } from "react-native";
 import type { LocationSettings } from "@/context/AuthContext";
+import { logError } from "@/services/appLogger";
 import { LocationSettingsTable, UserTable } from "@/services/database";
 import { startLocationTracking } from "@/services/locationService";
 
@@ -49,7 +50,7 @@ export async function completeUserSession(
         UserTable.insertUserIntoDB(username);
       }
     } catch (dbError) {
-      console.error("Error creating user in database:", dbError);
+      logError("Error creating user in database:", dbError);
     }
 
     const userId = UserTable.getUserIdByUsername(username);
@@ -62,13 +63,13 @@ export async function completeUserSession(
     try {
       await startLocationTracking();
     } catch (locationError) {
-      console.error("Error starting location tracking:", locationError);
+      logError("Error starting location tracking:", locationError);
     }
 
     setAuthUsername(username);
     router.push("/(memories)/allmemories");
   } catch (error) {
-    console.error("Error completing user session:", error);
+    logError("Error completing user session:", error);
     Alert.alert("Login Failed", "An error occurred. Please try again.");
   }
 }

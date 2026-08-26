@@ -5,6 +5,7 @@ import { useContext, useState } from "react";
 import { Alert } from "react-native";
 import { AuthContext } from "@/context/AuthContext";
 import { completeUserSession } from "@/hooks/welcome/completeUserSession";
+import { logError, logInfo, logWarn } from "@/services/appLogger";
 
 // Custom hook that encapsulates the login flow (form state, validation,
 // auth check, DB sync, location settings load, and location tracking
@@ -44,15 +45,12 @@ export function useLogin() {
 
       if (!storedCredential || storedCredential !== credential) {
         const failureContext = { username };
-        console.warn(
-          "Login failed: invalid username or password",
-          failureContext,
-        );
+        logWarn("Login failed: invalid username or password", failureContext);
         showLoginFailure("Invalid username or password.");
         return;
       }
 
-      console.log("Login successful:", { username });
+      logInfo("Login successful:", { username });
       await completeUserSession(
         username,
         setAuthUsername,
@@ -60,7 +58,7 @@ export function useLogin() {
         router,
       );
     } catch (error) {
-      console.error("Error during login:", error);
+      logError("Error during login:", error);
       Alert.alert("Login Failed", "An error occurred. Please try again.");
     }
   };
@@ -85,7 +83,7 @@ export function useLogin() {
           const storedToken = await SecureStore.getItemAsync(key);
 
           if (!storedToken) {
-            console.warn("Login failed: no fingerprint registration");
+            logWarn("Login failed: no fingerprint registration");
             showLoginFailure(
               "Fingerprint registration not found for this user.",
             );
@@ -96,10 +94,7 @@ export function useLogin() {
           return;
         }
       } catch (error) {
-        console.error(
-          `Error during biometric login attempt ${attempt}:`,
-          error,
-        );
+        logError(`Error during biometric login attempt ${attempt}:`, error);
         showLoginFailure("Biometric login failed. Please try again.");
       }
     }

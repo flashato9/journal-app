@@ -71,16 +71,16 @@ export default function DayMemoriesHeader({
 
   useRefreshLocationTrackingOnFocus(refreshLocationTrackingStatus);
 
-  const handleExitApp = () => {
-    Alert.alert("Exit app?", "Are you sure you want to exit?", [
-      { text: "Cancel", style: "cancel" },
-      {
-        text: "Exit",
-        onPress: () => BackHandler.exitApp(),
-        style: "destructive",
-      },
-    ]);
-  };
+  // const handleExitApp = () => {
+  //   Alert.alert("Exit app?", "Are you sure you want to exit?", [
+  //     { text: "Cancel", style: "cancel" },
+  //     {
+  //       text: "Exit",
+  //       onPress: () => BackHandler.exitApp(),
+  //       style: "destructive",
+  //     },
+  //   ]);
+  // };
 
   const handleProfilePress = () => {
     router.push("/profile-settings");
@@ -151,13 +151,13 @@ export default function DayMemoriesHeader({
               )}
             </TouchableOpacity>
           )}
-          <TouchableOpacity onPress={handleExitApp} style={styles.actionChip}>
+          {/* <TouchableOpacity onPress={handleExitApp} style={styles.actionChip}>
             <MaterialCommunityIcons
               name="exit-to-app"
               size={22}
               color={colors.dayMemoriesIconColor}
             />
-          </TouchableOpacity>
+          </TouchableOpacity> */}
         </View>
       </View>
     </View>

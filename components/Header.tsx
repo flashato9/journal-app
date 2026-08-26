@@ -45,16 +45,16 @@ export default function Header({
 
   useRefreshLocationTrackingOnFocus(refreshLocationTrackingStatus);
 
-  const handleExitApp = () => {
-    Alert.alert("Exit app?", "Are you sure you want to exit?", [
-      { text: "Cancel", style: "cancel" },
-      {
-        text: "Exit",
-        onPress: () => BackHandler.exitApp(),
-        style: "destructive",
-      },
-    ]);
-  };
+  // const handleExitApp = () => {
+  //   Alert.alert("Exit app?", "Are you sure you want to exit?", [
+  //     { text: "Cancel", style: "cancel" },
+  //     {
+  //       text: "Exit",
+  //       onPress: () => BackHandler.exitApp(),
+  //       style: "destructive",
+  //     },
+  //   ]);
+  // };
 
   const handleProfilePress = () => {
     router.push("/profile-settings");
@@ -109,14 +109,14 @@ export default function Header({
             )}
           </TouchableOpacity>
         )}
-        <TouchableOpacity onPress={handleExitApp} style={styles.iconCircle}>
+        {/* <TouchableOpacity onPress={handleExitApp} style={styles.iconCircle}>
           <MaterialCommunityIcons
             name="exit-to-app"
             size={22}
             color={colors.headerIconColor}
             style={styles.iconGlyphShadow}
           />
-        </TouchableOpacity>
+        </TouchableOpacity> */}
       </View>
     </View>
   );
@@ -142,7 +142,7 @@ const styles = StyleSheet.create({
   },
   titlePill: {
     backgroundColor: colors.headerChipBackground,
-    borderRadius: 999,
+    borderRadius: 16,
     paddingHorizontal: 16,
     paddingVertical: 8,
   },

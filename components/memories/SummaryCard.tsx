@@ -100,7 +100,7 @@ export default function SummaryCard({
           {initialText || "No summary provided"}
         </Text>
       )}
-      {isEditingMode && (
+      {/* {isEditingMode && (
         <TouchableOpacity
           onPress={handleGenerate}
           disabled={isGenerating}
@@ -122,7 +122,7 @@ export default function SummaryCard({
             />
           )}
         </TouchableOpacity>
-      )}
+      )} */}
       <TouchableOpacity
         onPress={isEditingMode ? handleSave : handleEdit}
         style={styles.summaryButton}
@@ -159,7 +159,7 @@ const styles = StyleSheet.create({
     position: "absolute",
     top: 0,
     left: 0,
-    right: 72,
+    right: 36,
     bottom: SUMMARY_COUNTER_HEIGHT,
     borderWidth: 1,
     borderColor: colors.border,

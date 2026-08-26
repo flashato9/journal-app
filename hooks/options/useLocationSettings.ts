@@ -1,5 +1,6 @@
 import { useContext, useEffect, useState } from "react";
 import { AuthContext } from "@/context/AuthContext";
+import { logError, logInfo, logWarn } from "@/services/appLogger";
 import { LocationSettingsTable, UserTable } from "@/services/database";
 import {
   startLocationTracking,
@@ -25,14 +26,14 @@ export function useLocationSettings() {
     const loadSettings = async () => {
       try {
         if (!username) {
-          console.warn("No username provided");
+          logWarn("No username provided");
           setLoading(false);
           return;
         }
 
         const userId = UserTable.getUserIdByUsername(username);
         if (!userId) {
-          console.warn("Could not find user ID");
+          logWarn("Could not find user ID");
           setLoading(false);
           return;
         }
@@ -42,7 +43,7 @@ export function useLocationSettings() {
 
         // If settings don't exist, create dummy settings
         if (!settings) {
-          console.log("Creating default location settings");
+          logInfo("Creating default location settings");
           LocationSettingsTable.createLocationSettings(userId, 10, 1, 10);
           settings = LocationSettingsTable.getLocationSettingsByUserId(userId);
         }
@@ -57,7 +58,7 @@ export function useLocationSettings() {
 
         setLoading(false);
       } catch (error) {
-        console.error("Error loading location settings:", error);
+        logError("Error loading location settings:", error);
         setLoading(false);
       }
     };
@@ -69,14 +70,14 @@ export function useLocationSettings() {
     setIsSaving(true);
     try {
       if (!username) {
-        console.warn("No username provided");
+        logWarn("No username provided");
         setIsSaving(false);
         return;
       }
 
       const userId = UserTable.getUserIdByUsername(username);
       if (!userId) {
-        console.warn("Could not find user ID");
+        logWarn("Could not find user ID");
         setIsSaving(false);
         return;
       }
@@ -96,7 +97,7 @@ export function useLocationSettings() {
         pollFreq,
         fetchTimeout,
       );
-      console.log("📍 Location settings saved to database:", {
+      logInfo("📍 Location settings saved to database:", {
         fetchFreq,
         distThreshold,
         restThresh,
@@ -116,12 +117,12 @@ export function useLocationSettings() {
       // Stop and restart location tracking with new settings
       await stopLocationTracking();
       await startLocationTracking();
-      console.log("✅ Location tracking restarted with new settings");
+      logInfo("✅ Location tracking restarted with new settings");
 
       setSaved(true);
       setTimeout(() => setSaved(false), 2000);
     } catch (error) {
-      console.error("Error saving location settings:", error);
+      logError("Error saving location settings:", error);
     } finally {
       setIsSaving(false);
     }

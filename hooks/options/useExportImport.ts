@@ -3,6 +3,7 @@ import * as Sharing from "expo-sharing";
 import { useContext, useState } from "react";
 import { Alert } from "react-native";
 import { AuthContext } from "@/context/AuthContext";
+import { logError } from "@/services/appLogger";
 import { applyImportZip, buildExportZip } from "@/services/backupService";
 import { UserTable } from "@/services/database";
 
@@ -42,7 +43,7 @@ export function useExportImport() {
         UTI: "public.zip-archive",
       });
     } catch (error) {
-      console.error("Error exporting backup:", error);
+      logError("Error exporting backup:", error);
       Alert.alert(
         "Export failed",
         error instanceof Error ? error.message : "Could not create the backup",
@@ -61,7 +62,7 @@ export function useExportImport() {
         "Your data has been restored. Reopen your memories to see it.",
       );
     } catch (error) {
-      console.error("Error importing backup:", error);
+      logError("Error importing backup:", error);
       Alert.alert(
         "Import failed",
         error instanceof Error ? error.message : "Could not read that backup",
@@ -94,7 +95,7 @@ export function useExportImport() {
         ],
       );
     } catch (error) {
-      console.error("Error picking backup file:", error);
+      logError("Error picking backup file:", error);
       Alert.alert("Error", "Could not open the file picker");
     }
   };

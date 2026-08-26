@@ -6,6 +6,7 @@ import { useContext, useEffect, useState } from "react";
 import type { Dispatch, SetStateAction } from "react";
 import { Alert } from "react-native";
 import { AuthContext } from "@/context/AuthContext";
+import { logError, logWarn } from "@/services/appLogger";
 import {
   DayMemoryTable,
   LocationTable,
@@ -48,7 +49,7 @@ async function fetchCurrentLocation(
   try {
     const { status } = await Location.requestForegroundPermissionsAsync();
     if (status !== "granted") {
-      console.warn("Location permission not granted");
+      logWarn("Location permission not granted");
       const applyUnretrievable = (prev: MemoryFormState) => {
         const next: MemoryFormState = { ...prev, location: "Unretrievable" };
         return next;
@@ -77,7 +78,7 @@ async function fetchCurrentLocation(
     };
     setMemoryState(applyLocation);
   } catch (error) {
-    console.error("Error getting location:", error);
+    logError("Error getting location:", error);
     const applyUnretrievable = (prev: MemoryFormState) => {
       const next: MemoryFormState = { ...prev, location: "Unretrievable" };
       return next;
@@ -106,7 +107,7 @@ async function saveMemory(
   setIsSaving(true);
   try {
     if (!username) {
-      console.warn("Username is not set in AuthContext - user session ended");
+      logWarn("Username is not set in AuthContext - user session ended");
       Alert.alert("Error", "User session has ended. Please log back in.");
       return;
     }
@@ -161,14 +162,14 @@ async function saveMemory(
       );
     }
 
-    Alert.alert("Success", "Memory saved successfully");
+    // Alert.alert("Success", "Memory saved successfully");
     const destination: Parameters<typeof router.replace>[0] = {
       pathname: "/(memories)/daymemories",
       params: { id: dayMemory.id.toString(), day: today },
     };
     router.replace(destination);
   } catch (error) {
-    console.error("Error saving memory:", error);
+    logError("Error saving memory:", error);
     Alert.alert(
       "Error",
       error instanceof Error ? error.message : "Failed to save memory",

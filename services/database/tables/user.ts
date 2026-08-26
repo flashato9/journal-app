@@ -1,4 +1,5 @@
 import { eq } from "drizzle-orm";
+import * as Crypto from "expo-crypto";
 import { db } from "../database";
 import { userTable, type NewUserRow, type UserRow } from "../schema/user";
 
@@ -32,7 +33,8 @@ export function isUserExists(username: string): boolean {
 }
 
 export function insertUserIntoDB(username: string): number {
-  const userId = createUserRow({ username });
+  const companionResourceId = Crypto.randomUUID();
+  const userId = createUserRow({ username, companionResourceId });
   return userId;
 }
 
@@ -83,6 +85,28 @@ export function getRegisteredUserId(): number | null {
   const result = db.select({ id: userTable.id }).from(userTable).limit(1).get();
   const userId = result?.id ?? null;
   return userId;
+}
+
+export function getOrCreateCompanionResourceId(): string | null {
+  const userId = getRegisteredUserId();
+  if (!userId) {
+    return null;
+  }
+  const result = db
+    .select({ companionResourceId: userTable.companionResourceId })
+    .from(userTable)
+    .where(eq(userTable.id, userId))
+    .get();
+  const existingResourceId = result?.companionResourceId ?? null;
+  if (existingResourceId) {
+    return existingResourceId;
+  }
+  const newResourceId = Crypto.randomUUID();
+  db.update(userTable)
+    .set({ companionResourceId: newResourceId })
+    .where(eq(userTable.id, userId))
+    .run();
+  return newResourceId;
 }
 
 export function getUserProfile(id: number): {

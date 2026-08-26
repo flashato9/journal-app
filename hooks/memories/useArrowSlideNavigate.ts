@@ -15,42 +15,58 @@ const arrowSlideTimingConfig = {
   reduceMotion: ReduceMotion.Never,
 };
 
-// Slides a card's arrow icon across, then calls navigate once the slide finishes; resets to rest position on focus.
+// Slides a card's arrow icon across on hold or tap, navigating only once the touch is released; resets to rest position on focus.
 export function useArrowSlideNavigate(navigate: () => void) {
   const arrowOffset = useSharedValue(-ARROW_LEFT_OFFSET_PX);
   const isNavigatingRef = useRef(false);
+  const isHoldingRef = useRef(false);
 
   useFocusEffect(
     useCallback(() => {
       arrowOffset.value = -ARROW_LEFT_OFFSET_PX;
+      isHoldingRef.current = false;
+      isNavigatingRef.current = false;
     }, [arrowOffset]),
   );
 
-  const handleSlideComplete = useCallback(
-    (finished?: boolean) => {
-      isNavigatingRef.current = false;
-      if (finished) {
-        navigate();
-      }
-    },
-    [navigate],
-  );
-
-  const handlePress = useCallback(() => {
+  const navigateOnce = useCallback(() => {
     if (isNavigatingRef.current) {
       return;
     }
     isNavigatingRef.current = true;
+    navigate();
+  }, [navigate]);
+
+  const handleTapSlideComplete = useCallback(
+    (finished?: boolean) => {
+      if (finished) {
+        navigateOnce();
+      }
+    },
+    [navigateOnce],
+  );
+
+  const handleLongPress = useCallback(() => {
+    isHoldingRef.current = true;
+    arrowOffset.value = withTiming(0, arrowSlideTimingConfig);
+  }, [arrowOffset]);
+
+  const handlePressOut = useCallback(() => {
+    if (isHoldingRef.current) {
+      isHoldingRef.current = false;
+      navigateOnce();
+      return;
+    }
     arrowOffset.value = withTiming(0, arrowSlideTimingConfig, (finished) => {
-      runOnJS(handleSlideComplete)(finished);
+      runOnJS(handleTapSlideComplete)(finished);
     });
-  }, [arrowOffset, handleSlideComplete]);
+  }, [arrowOffset, handleTapSlideComplete, navigateOnce]);
 
   const arrowStyle = useAnimatedStyle(() => {
     const animatedStyle = { transform: [{ translateX: arrowOffset.value }] };
     return animatedStyle;
   });
 
-  const result = { arrowStyle, handlePress };
+  const result = { arrowStyle, handleLongPress, handlePressOut };
   return result;
 }

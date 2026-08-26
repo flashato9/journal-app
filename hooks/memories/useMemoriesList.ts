@@ -2,6 +2,7 @@ import { useFocusEffect } from "@react-navigation/native";
 import { format } from "date-fns/format";
 import { useCallback, useContext, useState } from "react";
 import { AuthContext } from "@/context/AuthContext";
+import { logError } from "@/services/appLogger";
 import {
   DayMemoryTable,
   TimeMemoryTable,
@@ -62,7 +63,7 @@ function fetchMemories(
 
     setMemories(memorySummaries);
   } catch (error) {
-    console.error("Error fetching memories:", error);
+    logError("Error fetching memories:", error);
     setMemories([]);
   } finally {
     setIsLoading(false);

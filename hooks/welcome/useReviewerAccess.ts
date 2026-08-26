@@ -6,6 +6,7 @@ import {
   getReviewerPassword,
   getReviewerUsername,
 } from "@/constants/reviewerAccess";
+import { logError } from "@/services/appLogger";
 
 const REVIEWER_UNLOCK_TAP_THRESHOLD = 5;
 const REVIEWER_UNLOCK_TAP_RESET_DELAY_MS = 10000;
@@ -43,7 +44,7 @@ export function useReviewerAccess(registerAccount: RegisterAccount) {
       );
       router.replace("/(welcome)/login");
     } catch (error) {
-      console.error("Error during reviewer access unlock:", error);
+      logError("Error during reviewer access unlock:", error);
       Alert.alert(
         "Reviewer Login Failed",
         "An error occurred. Please try again.",

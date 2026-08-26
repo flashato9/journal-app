@@ -1,30 +1,17 @@
 import { useFocusEffect } from "@react-navigation/native";
 import { useRouter } from "expo-router";
-import * as SecureStore from "expo-secure-store";
 import { useCallback, useContext } from "react";
 import { Alert, BackHandler } from "react-native";
 import { AuthContext } from "@/context/AuthContext";
-import { stopLocationTracking } from "@/services/locationService";
 
 type AppRouter = ReturnType<typeof useRouter>;
 
-// Stops location tracking, clears the session, and returns to the login screen.
-async function logout(
+// Location tracking intentionally keeps running after logout so movement
+// keeps being recorded until the user turns it off in settings.
+function logout(
   setUsername: (username: string | null) => void,
   router: AppRouter,
 ) {
-  try {
-    await stopLocationTracking();
-  } catch (error) {
-    console.error("Error stopping location tracking:", error);
-  }
-
-  try {
-    await SecureStore.deleteItemAsync("currentUsername");
-  } catch (error) {
-    console.error("Error clearing username from SecureStore:", error);
-  }
-
   setUsername(null);
   router.replace("/(welcome)/login");
 }

@@ -1,13 +1,14 @@
 import { useEffect, useState } from "react";
 import { CompanionThread, getCompanionApi } from "@/services/companionApi";
+import { logTrace } from "@/services/appLogger";
 
 async function loadThreadList(
   setThreads: (threads: CompanionThread[]) => void,
 ): Promise<void> {
   const companionApi = getCompanionApi();
-  console.log("CompanionChatPopover - about to run listThreads");
+  logTrace("CompanionChatPopover - about to run listThreads");
   const threads = await companionApi.listThreads();
-  console.log("CompanionChatPopover - after running listThreads");
+  logTrace("CompanionChatPopover - after running listThreads");
   setThreads(threads);
 }
 

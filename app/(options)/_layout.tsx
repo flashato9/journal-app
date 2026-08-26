@@ -6,6 +6,7 @@ export default function OptionsLayout() {
       <Stack.Screen name="debug-logs" />
       <Stack.Screen name="profile-settings" />
       <Stack.Screen name="debug-llm" />
+      <Stack.Screen name="agent-chat" />
     </Stack>
   );
 }

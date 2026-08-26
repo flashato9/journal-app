@@ -3,6 +3,7 @@ import { parseISO } from "date-fns/parseISO";
 import { fetch } from "expo/fetch";
 import { File } from "expo-file-system";
 import { initLlama, LlamaContext } from "llama.rn";
+import { logInfo } from "@/services/appLogger";
 import {
   AppPrivateDirectoryPaths,
   ensureDirectoryExists,
@@ -523,7 +524,7 @@ export const generateDaySummary = async (
   const userContent = `Journal Entries:\n${entriesText}${existingSummaryBlock}`;
 
   const rawPrompt = `<start_of_turn>user\n${DAY_SUMMARY_INSTRUCTION}\n\n${userContent}<end_of_turn>\n<start_of_turn>model\n`;
-  console.log("generateDaySummary prompt:", rawPrompt);
+  logInfo("generateDaySummary prompt:", rawPrompt);
 
   const result = await llamaContext.completion({
     prompt: rawPrompt,
@@ -531,7 +532,7 @@ export const generateDaySummary = async (
     temperature: SUMMARY_TEMPERATURE,
   });
 
-  console.log("generateDaySummary raw response:", result.text);
+  logInfo("generateDaySummary raw response:", result.text);
 
   const trimmedText = truncateToLimit(result.text.trim(), SUMMARY_MAX_LENGTH);
   return trimmedText;
@@ -592,7 +593,7 @@ export const generateTimeSummary = async (
   const userContent = `${qaText}${currentSummaryBlock}`;
 
   const rawPrompt = `<start_of_turn>user\n${TIME_SUMMARY_INSTRUCTION}\n\n${userContent}<end_of_turn>\n<start_of_turn>model\n`;
-  console.log("generateTimeSummary prompt:", rawPrompt);
+  logInfo("generateTimeSummary prompt:", rawPrompt);
 
   const result = await llamaContext.completion({
     prompt: rawPrompt,
@@ -600,7 +601,7 @@ export const generateTimeSummary = async (
     temperature: SUMMARY_TEMPERATURE,
   });
 
-  console.log("generateTimeSummary raw response:", result.text);
+  logInfo("generateTimeSummary raw response:", result.text);
 
   const trimmedText = truncateToLimit(result.text.trim(), SUMMARY_MAX_LENGTH);
   return trimmedText;

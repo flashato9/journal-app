@@ -3,10 +3,18 @@ import { getCompanionApi } from "../services/companionApi.ts";
 async function main(): Promise<void> {
   const companionApi = getCompanionApi();
 
-  const firstVisit = await companionApi.getOrCreateThread("register");
-  const secondVisit = await companionApi.getOrCreateThread("register");
+  const testResourceId = "test-resource";
+  const firstVisit = await companionApi.getOrCreateThread(
+    "register",
+    testResourceId,
+  );
+  const secondVisit = await companionApi.getOrCreateThread(
+    "register",
+    testResourceId,
+  );
   const otherPage = await companionApi.getOrCreateThread(
     "day-summary:2026-08-10",
+    testResourceId,
   );
 
   const reusedSameThread = firstVisit.createdAt === secondVisit.createdAt;

@@ -1,6 +1,7 @@
 import * as ImagePicker from "expo-image-picker";
 import { useEffect, useState } from "react";
 import { ActionSheetIOS, Alert, Platform } from "react-native";
+import { logError } from "@/services/appLogger";
 import { UserTable } from "@/services/database";
 import {
   deleteProfilePictureFile,
@@ -28,7 +29,7 @@ export function useChangeProfilePicture({
     return () => {
       if (tempImageUri) {
         deleteProfilePictureFile(tempImageUri).catch((error) =>
-          console.error("Error deleting temp profile picture:", error),
+          logError("Error deleting temp profile picture:", error),
         );
       }
     };
@@ -119,7 +120,7 @@ export function useChangeProfilePicture({
       setTempImageUri(null);
       setSavedImagePath(newImagePath);
     } catch (error) {
-      console.error("Error saving profile picture:", error);
+      logError("Error saving profile picture:", error);
       Alert.alert("Error", "Failed to save profile picture. Please try again.");
     } finally {
       setIsSaving(false);

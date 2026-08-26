@@ -1,36 +1,18 @@
-# services/companionApi.ts
+# login.tsx
 
-Q: Why do I see "[Companion:popoverRender] Threads ->" logs without a preceding "[Companion:listThreads]" log?
-A: Both logs always fire together in code (listThreads() logs internally right before popoverRender logs "Threads ->"). Likely Android logcat is dropping repeated identical log lines when the thread data hasn't changed between renders.
+Q: If the app is removed from the recent-apps/background list, does location tracking keep running?
+A: Depends on OS. Android: swiping from Recents doesn't stop it, since the foreground-service notification keeps the task alive (aggressive OEM battery managers may still kill it). iOS: force-quitting via the App Switcher does stop it, with no auto-relaunch, since the app uses continuous background updates rather than the "significant location change" API.
 
-# components/CompanionChatPopover.tsx
+Q: Does SecureStore data (e.g. currentUsername) get wiped after some time?
+A: No, neither platform expires it by time. Android deletes it only on app uninstall; iOS Keychain data can even survive uninstall/reinstall (undocumented, not guaranteed).
 
-Q: Is it possible to run this app in debug mode?
-A: Yes — press `j` in the Metro terminal or use the Dev Menu's "Open JS Debugger" to attach Chrome DevTools to Hermes and set breakpoints.
+# logger.ts
 
-# General
+Q: Why do we have logger.ts, and what does it do that appLogger.ts doesn't?
+A: logger.ts is the old hand-rolled file-persistence logger (powers the Debug Logs screen); appLogger.ts is the new react-native-logs wrapper. Since we removed logger.ts's console hook, nothing currently writes to its file — pending the fileAsyncTransport task to fix.
 
-Q: Why did the sidebar behave differently (populating new pages vs not) when the render counter was added vs commented out?
-A: The counter itself had no functional effect — the real cause is likely that editing services/companionApi.ts isn't a valid Fast Refresh boundary, so each edit force-reset module state (mockThreads) at a different point in the navigation sequence, not the counter logic.
+Q: What is https://github.com/getsentry/sentry-react-native?
+A: The official Sentry SDK for React Native — crash/error tracking and performance monitoring. It appeared in react-native-logs' README as an optional transport; not used in this app.
 
-Q: How do I use breakpoints with the JS debugger?
-A: In Chrome DevTools (opened via Metro's `j`), go to Sources, find the file, and click the line-number gutter to set a breakpoint. VS Code's React Native Tools extension can also set breakpoints directly in the editor.
-
-# components/CompanionChatPopover.tsx
-
-Q: Paused at line 129, running getCompanionAPI() in the debugger console returns nothing — why?
-A: Check casing — it's getCompanionApi (lowercase "pi"), not getCompanionAPI; a typo would throw ReferenceError, not silently return nothing. Also confirm the console's context dropdown is scoped to the paused call frame, not "top"/global, since the import is a module-local closure binding.
-
-Q: The Watch panel shows "getCompanionApi(): <not available>" — why?
-A: VS Code's Watch panel is read-only and generally can't invoke functions during Hermes/React Native debugging. Use the Debug Console tab instead, which supports calling functions while paused.
-
-Q: Why does the sidebar folder only show the login thread after navigating to All Memories?
-A: Evidence points to a stale/duplicated companionApi.ts module from Fast Refresh (it exports functions, not components, so it can't hot-swap cleanly) — writes land in one mockThreads Map while reads come from another. Cold restart with `npx expo start -c` to confirm.
-
-# companionApi.ts
-
-Q: Why does the listThreads call/log only fire the first time the companion chat popover renders, not on later renders?
-A: listThreads() only runs inside CompanionChatPopover past an early-return guard (isChatOpen && activeThread && status === "ready"). If a later render fails that guard (e.g. chat closed), the call is skipped even though other companion logs still fire.
-
-Q: I assign to listThreadsCallCount with += inside the function - isn't that "accessing" it, so why does eslint still call it unused?
-A: eslint's no-unused-vars only counts a variable as used when its value flows somewhere else (returned, logged, passed on). A self-referencing write like x += 1 discards the result, so it doesn't count as a use even though it technically reads the old value.
+Q: Is Sentry a paid log management service?
+A: Both — a free single-user Developer tier exists, then paid plans starting at Team ($26/mo) and Business ($80/mo), plus custom Enterprise pricing.

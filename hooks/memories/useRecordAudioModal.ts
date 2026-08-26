@@ -8,6 +8,7 @@ import {
   useAudioRecorderState,
   type AudioRecorder,
 } from "expo-audio";
+import { logError, logWarn } from "@/services/appLogger";
 
 interface UseRecordAudioModalOptions {
   visible: boolean;
@@ -22,7 +23,7 @@ async function discardRecording(recorder: AudioRecorder) {
       await recorder.stop();
     }
   } catch (error) {
-    console.warn("Failed to stop recorder while discarding:", error);
+    logWarn("Failed to stop recorder while discarding:", error);
   }
 }
 
@@ -57,7 +58,7 @@ async function prepareRecorder(
     }
   } catch (error) {
     if (isCancelled()) return;
-    console.error("Error preparing recorder:", error);
+    logError("Error preparing recorder:", error);
     Alert.alert("Error", "Failed to start the recorder");
     onClose();
   } finally {
@@ -78,7 +79,7 @@ async function stopAndDeliverRecording(
     }
     onRecorded(uri);
   } catch (error) {
-    console.error("Error stopping recording:", error);
+    logError("Error stopping recording:", error);
     Alert.alert("Error", "Failed to save recording");
     onClose();
   }
@@ -114,7 +115,7 @@ export function useRecordAudioModal({
     try {
       recorder.record();
     } catch (error) {
-      console.error("Error starting recording:", error);
+      logError("Error starting recording:", error);
       Alert.alert("Error", "Failed to start recording");
     }
   };

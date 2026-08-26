@@ -18,11 +18,13 @@ import { useCompanionThreadList } from "@/hooks/companion/useCompanionThreadList
 import { useCompanionWindowLayout } from "@/hooks/companion/useCompanionWindowLayout";
 import { useCompanionWindowResize } from "@/hooks/companion/useCompanionWindowResize";
 import { useKeyboardHeight } from "@/hooks/ui/useKeyboardHeight";
+import { logError, logInfo, logTrace } from "@/services/appLogger";
 import {
   CompanionMessage,
   CompanionThread,
   getCompanionApi,
 } from "@/services/companionApi";
+import { UserTable } from "@/services/database";
 
 const colors = getColors();
 const ICON_SIZE = 56;
@@ -71,19 +73,39 @@ async function sendUserMessage(
 ): Promise<void> {
   const trimmedText = text.trim();
   if (!trimmedText) {
+    logInfo("[Companion:userMessage] empty text, not sending");
     return;
   }
-  const companionApi = getCompanionApi();
-  await companionApi.sendUserMessage(threadKey, trimmedText);
-  refreshActiveThread(threadKey);
+  const resourceId = UserTable.getOrCreateCompanionResourceId();
+  if (!resourceId) {
+    logInfo("[Companion:userMessage] no resourceId, not sending");
+    return;
+  }
+  logInfo("[Companion:userMessage] sending", threadKey, trimmedText);
+  try {
+    const companionApi = getCompanionApi();
+    const reply = await companionApi.sendUserMessage(
+      threadKey,
+      trimmedText,
+      resourceId,
+    );
+    logInfo("[Companion:userMessage] reply received", reply);
+    refreshActiveThread(threadKey);
+  } catch (error) {
+    logError("[Companion:userMessage] send failed", error);
+  }
 }
 
 async function loadSelectedThread(
   threadKey: string,
   reportActiveThread: (thread: CompanionThread) => void,
 ): Promise<void> {
+  const resourceId = UserTable.getOrCreateCompanionResourceId();
+  if (!resourceId) {
+    return;
+  }
   const companionApi = getCompanionApi();
-  const thread = await companionApi.getOrCreateThread(threadKey);
+  const thread = await companionApi.getOrCreateThread(threadKey, resourceId);
   reportActiveThread(thread);
 }
 
@@ -96,7 +118,7 @@ export default function CompanionChatPopover() {
     reportActiveThread,
     threadListVersion,
   } = useContext(CompanionContext);
-  console.log("[Companion:popoverRender]", {
+  logTrace("[Companion:popoverRender]", {
     isChatOpen,
     activeThreadKey: activeThread?.threadKey ?? null,
     status,
@@ -141,7 +163,7 @@ export default function CompanionChatPopover() {
 
   const threadKey = activeThread.threadKey;
   // popoverThreadsLogCount += 1;
-  console.log("[Companion:popoverRender] Threads ->", threads);
+  logTrace("[Companion:popoverRender] Threads ->", threads);
   function onSend(): void {
     const textToSend = inputText;
     setInputText("");

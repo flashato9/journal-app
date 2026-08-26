@@ -9,6 +9,7 @@ import {
   TimeMemoryMediaTable,
   TimeMemoryQATable,
 } from "@/services/database";
+import { logError, logWarn } from "@/services/appLogger";
 import { deleteMedia } from "@/services/mediaStorage";
 import {
   LocationState,
@@ -86,7 +87,7 @@ async function loadMemory(
     };
     setMemoryState(loadedMemoryState);
   } catch (error) {
-    console.error("Error loading memory:", error);
+    logError("Error loading memory:", error);
     Alert.alert(
       "Error",
       error instanceof Error ? error.message : "Failed to load memory",
@@ -133,7 +134,7 @@ async function saveMemory(
     await Promise.all(
       removedMedia.map((item) =>
         deleteMedia(item.mediaUri, item.mediaType).catch((error) => {
-          console.warn(`Failed to delete media file ${item.mediaUri}:`, error);
+          logWarn(`Failed to delete media file ${item.mediaUri}:`, error);
         }),
       ),
     );
@@ -185,9 +186,9 @@ async function saveMemory(
     };
     setMemoryState(exitEditMode);
 
-    Alert.alert("Success", "Memory updated successfully");
+    // Alert.alert("Success", "Memory updated successfully");
   } catch (error) {
-    console.error("Error saving memory:", error);
+    logError("Error saving memory:", error);
     Alert.alert(
       "Error",
       error instanceof Error ? error.message : "Failed to save memory",

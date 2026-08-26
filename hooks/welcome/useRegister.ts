@@ -10,6 +10,7 @@ import { usePasswordField } from "@/hooks/welcome/usePasswordField";
 import { useReviewerAccess } from "@/hooks/welcome/useReviewerAccess";
 import { useUsernameField } from "@/hooks/welcome/useUsernameField";
 import { UserTable } from "@/services/database";
+import { logError, logInfo } from "@/services/appLogger";
 import { CompanionPageSnapshot } from "@/services/companionApi";
 import {
   saveProfilePicture,
@@ -49,7 +50,7 @@ async function registerAccount(
       UserTable.setUserProfileImagePath(userId, profileImagePath);
     }
   } catch (dbError) {
-    console.error("Error creating user in database:", dbError);
+    logError("Error creating user in database:", dbError);
   }
 
   return "created";
@@ -190,11 +191,11 @@ export function useRegister() {
         return;
       }
 
-      console.log("Registration successful:", { username });
+      logInfo("Registration successful:", { username });
 
       router.replace("/(welcome)/login");
     } catch (error) {
-      console.error("Error during registration:", error);
+      logError("Error during registration:", error);
       Alert.alert(
         "Registration Failed",
         "An error occurred during registration. Please try again.",

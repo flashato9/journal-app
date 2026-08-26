@@ -5,7 +5,8 @@ import {
   NativeSyntheticEvent,
   ScrollView,
 } from "react-native";
-import { clearLogs, readLogs } from "@/services/logger";
+import { logInfo } from "@/services/appLogger";
+import { clearLogs, readLogs } from "@/services/appLogger";
 
 // How close to the bottom (in px) still counts as "at the bottom".
 const BOTTOM_THRESHOLD = 40;
@@ -30,13 +31,13 @@ export function useDebugLogs() {
   const loadLogs = async (isManual: boolean = false) => {
     if (isManual) {
       lastInteractionRef.current = Date.now();
-      console.log("📋 Loading debug logs...");
+      logInfo("📋 Loading debug logs...");
     }
     try {
       const logContent = await readLogs();
       setLogs(logContent || "No logs yet");
       if (isManual) {
-        console.log("✅ Debug logs loaded successfully");
+        logInfo("✅ Debug logs loaded successfully");
       }
       if (isAtBottomRef.current) {
         setTimeout(
@@ -45,7 +46,7 @@ export function useDebugLogs() {
         );
       }
     } catch (error) {
-      console.log("❌ Error loading debug logs:", error);
+      logInfo("❌ Error loading debug logs:", error);
       setLogs(`Error reading logs: ${error}`);
     }
   };
@@ -83,17 +84,17 @@ export function useDebugLogs() {
   const handleExportLogs = async () => {
     lastInteractionRef.current = Date.now();
     try {
-      console.log("📤 Exporting logs...");
+      logInfo("📤 Exporting logs...");
       const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
       const exportFile = new File(
         Paths.document,
         `app-logs-export-${timestamp}.txt`,
       );
       await exportFile.write(logs);
-      console.log("✅ Logs exported successfully to:", exportFile.uri);
+      logInfo("✅ Logs exported successfully to:", exportFile.uri);
       setLogs(`✅ Logs exported\n\n${logs}`);
     } catch (error) {
-      console.log("❌ Error exporting logs:", error);
+      logInfo("❌ Error exporting logs:", error);
       setLogs(`❌ Error exporting logs: ${error}`);
     }
   };
