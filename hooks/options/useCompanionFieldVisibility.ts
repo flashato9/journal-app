@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { COMPANION_NARROWABLE_FIELDS } from "@/constants/companionFields";
-import { CompanionFieldVisibilityTable, UserTable } from "@/services/database";
+import { UserTable } from "@/services/database";
+import * as CompanionFieldVisibilityStore from "@/services/companionFieldVisibilityStore";
 
 function fieldId(screenKey: string, fieldKey: string): string {
   return `${screenKey}.${fieldKey}`;
@@ -25,10 +26,11 @@ export function useCompanionFieldVisibility() {
     ];
     const hidden = new Set<string>();
     for (const screenKey of screenKeys) {
-      const hiddenFields = CompanionFieldVisibilityTable.getHiddenFields(
-        userId,
-        screenKey,
-      );
+      const hiddenFields =
+        CompanionFieldVisibilityStore.getHiddenFieldKeysForScreen(
+          userId,
+          screenKey,
+        );
       for (const fieldKey of hiddenFields) {
         hidden.add(fieldId(screenKey, fieldKey));
       }
@@ -48,7 +50,7 @@ export function useCompanionFieldVisibility() {
       const userId = UserTable.getRegisteredUserId();
       if (!userId) return;
 
-      CompanionFieldVisibilityTable.setFieldHidden(
+      CompanionFieldVisibilityStore.setFieldHidden(
         userId,
         screenKey,
         fieldKey,

@@ -1,6 +1,7 @@
 import { useFocusEffect } from "@react-navigation/native";
 import { useCallback, useState } from "react";
 import { UserTable } from "@/services/database";
+import * as PreferredLoginMethodStore from "@/services/preferredLoginMethodStore";
 
 // Loads the profile (username + profile image + preferred login method) of
 // the user registered on this device, for screens that show it before login
@@ -24,7 +25,9 @@ export function useUserSession() {
 
       setUsername(profile.username);
       setProfileImagePath(profile.profileImagePath);
-      setPreferredLoginMethod(profile.preferredLoginMethod);
+      setPreferredLoginMethod(
+        PreferredLoginMethodStore.getPreferredLoginMethod(userId),
+      );
     }, []),
   );
 

@@ -38,16 +38,6 @@ export function insertUserIntoDB(username: string): number {
   return userId;
 }
 
-export function setUserPreferredLoginMethod(
-  userId: number,
-  preferredLoginMethod: string,
-): void {
-  db.update(userTable)
-    .set({ preferredLoginMethod })
-    .where(eq(userTable.id, userId))
-    .run();
-}
-
 export function setUserProfileImagePath(
   userId: number,
   profileImagePath: string,
@@ -112,13 +102,11 @@ export function getOrCreateCompanionResourceId(): string | null {
 export function getUserProfile(id: number): {
   username: string;
   profileImagePath: string | null;
-  preferredLoginMethod: string | null;
 } | null {
   const result = db
     .select({
       username: userTable.username,
       profileImagePath: userTable.profileImagePath,
-      preferredLoginMethod: userTable.preferredLoginMethod,
     })
     .from(userTable)
     .where(eq(userTable.id, id))

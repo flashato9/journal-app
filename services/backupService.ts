@@ -3,13 +3,14 @@ import { unzip, zip } from "react-native-zip-archive";
 import {
   DayMemoryTable,
   LocationTable,
-  LocationSettingsTable,
   NotificationTable,
   TimeMemoryTable,
   TimeMemoryMediaTable,
   TimeMemoryQATable,
   UserTable,
 } from "@/services/database";
+import * as LocationSettingsStore from "@/services/locationSettingsStore";
+import * as PreferredLoginMethodStore from "@/services/preferredLoginMethodStore";
 import {
   deleteMedia,
   MediaType,
@@ -266,24 +267,22 @@ export const buildExportZip = async (userId: number): Promise<string> => {
       });
     }
 
-    const settings = LocationSettingsTable.getLocationSettingsByUserId(userId);
+    const settings = LocationSettingsStore.getLocationSettings(userId);
 
     const data: BackupData = {
       user: {
         username: profile.username,
         profileImagePath: profileImageZipPath,
-        preferredLoginMethod: profile.preferredLoginMethod,
+        preferredLoginMethod:
+          PreferredLoginMethodStore.getPreferredLoginMethod(userId),
       },
-      locationSettings: settings
-        ? {
-            fetchFrequency: settings.fetchFrequency,
-            notificationThreshold: settings.notificationThreshold,
-            restThreshold: settings.restThreshold,
-            locationTrackingPollFrequency:
-              settings.locationTrackingPollFrequency,
-            locationFetchTimeout: settings.locationFetchTimeout,
-          }
-        : null,
+      locationSettings: {
+        fetchFrequency: settings.fetchFrequency,
+        notificationThreshold: settings.notificationThreshold,
+        restThreshold: settings.restThreshold,
+        locationTrackingPollFrequency: settings.locationTrackingPollFrequency,
+        locationFetchTimeout: settings.locationFetchTimeout,
+      },
       locations: LocationTable.getAllLocationsByUserId(userId).map((row) => ({
         latitude: row.latitude,
         longitude: row.longitude,
@@ -450,7 +449,7 @@ export const applyImportZip = async (zipUri: string): Promise<void> => {
 
     // --- User profile ---
     if (data.user.preferredLoginMethod) {
-      UserTable.setUserPreferredLoginMethod(
+      PreferredLoginMethodStore.setPreferredLoginMethod(
         userId,
         data.user.preferredLoginMethod,
       );
@@ -469,28 +468,8 @@ export const applyImportZip = async (zipUri: string): Promise<void> => {
       }
     }
 
-    // --- Location settings ---
     if (data.locationSettings) {
-      const s = data.locationSettings;
-      if (LocationSettingsTable.getLocationSettingsByUserId(userId)) {
-        LocationSettingsTable.updateLocationSettings(
-          userId,
-          s.fetchFrequency,
-          s.notificationThreshold,
-          s.restThreshold,
-          s.locationTrackingPollFrequency,
-          s.locationFetchTimeout,
-        );
-      } else {
-        LocationSettingsTable.createLocationSettings(
-          userId,
-          s.fetchFrequency,
-          s.notificationThreshold,
-          s.restThreshold,
-          s.locationTrackingPollFrequency,
-          s.locationFetchTimeout,
-        );
-      }
+      LocationSettingsStore.saveLocationSettings(userId, data.locationSettings);
     }
 
     // --- Breadcrumbs & notifications (deduped on their timestamps) ---

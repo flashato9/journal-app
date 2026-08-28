@@ -10,6 +10,7 @@ import { usePasswordField } from "@/hooks/welcome/usePasswordField";
 import { useReviewerAccess } from "@/hooks/welcome/useReviewerAccess";
 import { useUsernameField } from "@/hooks/welcome/useUsernameField";
 import { UserTable } from "@/services/database";
+import * as PreferredLoginMethodStore from "@/services/preferredLoginMethodStore";
 import { logError, logInfo } from "@/services/appLogger";
 import { CompanionPageSnapshot } from "@/services/companionApi";
 import {
@@ -42,7 +43,10 @@ async function registerAccount(
   try {
     if (!UserTable.isUserExists(username)) {
       const userId = UserTable.insertUserIntoDB(username);
-      UserTable.setUserPreferredLoginMethod(userId, preferredAuthMethod);
+      PreferredLoginMethodStore.setPreferredLoginMethod(
+        userId,
+        preferredAuthMethod,
+      );
 
       const profileImagePath = profileImageUri
         ? await saveProfilePicture(profileImageUri)

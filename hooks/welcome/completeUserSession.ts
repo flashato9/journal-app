@@ -3,40 +3,27 @@ import * as SecureStore from "expo-secure-store";
 import { Alert } from "react-native";
 import type { LocationSettings } from "@/context/AuthContext";
 import { logError } from "@/services/appLogger";
-import { LocationSettingsTable, UserTable } from "@/services/database";
+import { UserTable } from "@/services/database";
+import * as LocationSettingsStore from "@/services/locationSettingsStore";
 import { startLocationTracking } from "@/services/locationService";
 
 type AppRouter = ReturnType<typeof useRouter>;
 type SetAuthUsername = (username: string | null) => void;
 type SetLocationSettings = (settings: LocationSettings | null) => void;
 
-// Loads this user's LocationSettings row (creating dummy defaults if
-// missing) and pushes it into AuthContext.
-async function loadLocationSettings(
+// Loads this user's location settings and pushes them into AuthContext.
+function loadLocationSettings(
   userId: number,
   setLocationSettings: SetLocationSettings,
-): Promise<void> {
-  let settings = LocationSettingsTable.getLocationSettingsByUserId(userId);
-  if (!settings) {
-    LocationSettingsTable.createLocationSettings(userId, 10, 1, 10);
-    settings = LocationSettingsTable.getLocationSettingsByUserId(userId);
-  }
-  if (!settings) return;
-
-  const loadedSettings = {
-    fetchFrequency: settings.fetchFrequency,
-    notificationThreshold: settings.notificationThreshold,
-    restThreshold: settings.restThreshold,
-    locationTrackingPollFrequency: settings.locationTrackingPollFrequency,
-    locationFetchTimeout: settings.locationFetchTimeout,
-  };
-  setLocationSettings(loadedSettings);
+): void {
+  const settings = LocationSettingsStore.getLocationSettings(userId);
+  setLocationSettings(settings);
 }
 
 // Finishes logging a user in after their credentials have already been
 // verified (normal password/biometric login, or a matched reviewer-access
-// submission): ensures the DB user row exists, loads/creates
-// LocationSettings, persists the current username, starts location
+// submission): ensures the DB user row exists, loads location settings,
+// persists the current username, starts location
 // tracking, updates AuthContext, and navigates to the memories list.
 export async function completeUserSession(
   username: string,
@@ -55,7 +42,7 @@ export async function completeUserSession(
 
     const userId = UserTable.getUserIdByUsername(username);
     if (userId) {
-      await loadLocationSettings(userId, setLocationSettings);
+      loadLocationSettings(userId, setLocationSettings);
     }
 
     await SecureStore.setItemAsync("currentUsername", username);

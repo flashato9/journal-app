@@ -1,7 +1,8 @@
 import { useContext, useEffect } from "react";
 import { CompanionContext, CompanionStatus } from "@/context/CompanionContext";
 import { logTrace } from "@/services/appLogger";
-import { CompanionFieldVisibilityTable, UserTable } from "@/services/database";
+import { UserTable } from "@/services/database";
+import * as CompanionFieldVisibilityStore from "@/services/companionFieldVisibilityStore";
 import {
   CompanionMessage,
   CompanionPageSnapshot,
@@ -68,7 +69,10 @@ function computeVisibleSnapshot(
 ): CompanionPageSnapshot {
   const userId = UserTable.getRegisteredUserId();
   const hiddenFields = userId
-    ? CompanionFieldVisibilityTable.getHiddenFields(userId, threadKey)
+    ? CompanionFieldVisibilityStore.getHiddenFieldKeysForScreen(
+        userId,
+        threadKey,
+      )
     : [];
 
   const visibleSnapshot =

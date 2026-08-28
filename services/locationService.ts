@@ -7,11 +7,11 @@ import { Alert, Platform } from "react-native";
 import { logError, logInfo, logTrace, logWarn } from "@/services/appLogger";
 import {
   LocationTable,
-  LocationSettingsTable,
   NotificationTable,
   TimeMemoryTable,
   UserTable,
 } from "./database";
+import * as LocationSettingsStore from "./locationSettingsStore";
 
 // Local notifications are unavailable only in Expo Go (SDK 53+); dev and
 // production builds support them. Background location requires a dev build
@@ -349,9 +349,9 @@ TaskManager.defineTask(LOCATION_TASK_NAME, async ({ data, error }) => {
 
     logTrace(`👤 User ID: ${userId}`);
 
-    let settings: any = null;
+    let settings: LocationSettingsStore.LocationSettingsValues | null = null;
     try {
-      settings = LocationSettingsTable.getLocationSettingsByUserId(userId);
+      settings = LocationSettingsStore.getLocationSettings(userId);
     } catch (err) {
       logError("❌ Failed to fetch location settings:", err);
       return;
@@ -576,8 +576,8 @@ export const startLocationTracking = async () => {
       throw new Error("Could not determine user ID for location tracking");
     }
 
-    const settings = LocationSettingsTable.getLocationSettingsByUserId(userId);
-    const fetchFrequencySeconds = settings ? settings.fetchFrequency : 10;
+    const settings = LocationSettingsStore.getLocationSettings(userId);
+    const fetchFrequencySeconds = settings.fetchFrequency;
     const fetchFrequencyMs = fetchFrequencySeconds * 1000;
 
     logInfo(

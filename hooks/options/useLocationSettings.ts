@@ -1,15 +1,14 @@
 import { useContext, useEffect, useState } from "react";
 import { AuthContext } from "@/context/AuthContext";
 import { logError, logInfo, logWarn } from "@/services/appLogger";
-import { LocationSettingsTable, UserTable } from "@/services/database";
+import { UserTable } from "@/services/database";
+import * as LocationSettingsStore from "@/services/locationSettingsStore";
 import {
   startLocationTracking,
   stopLocationTracking,
 } from "@/services/locationService";
 
-// Custom hook that owns the location settings section: loading the
-// current user's settings (creating defaults if none exist), form
-// state, and saving (DB update, AuthContext sync, tracking restart).
+// Owns the location settings section: loading, form state, and saving.
 export function useLocationSettings() {
   const { username, setLocationSettings } = useContext(AuthContext);
 
@@ -38,23 +37,12 @@ export function useLocationSettings() {
           return;
         }
 
-        let settings =
-          LocationSettingsTable.getLocationSettingsByUserId(userId);
-
-        // If settings don't exist, create dummy settings
-        if (!settings) {
-          logInfo("Creating default location settings");
-          LocationSettingsTable.createLocationSettings(userId, 10, 1, 10);
-          settings = LocationSettingsTable.getLocationSettingsByUserId(userId);
-        }
-
-        if (settings) {
-          setFetchFrequency(settings.fetchFrequency.toString());
-          setDistanceThreshold(settings.notificationThreshold.toString());
-          setRestSeconds(settings.restThreshold.toString());
-          setPollFrequency(settings.locationTrackingPollFrequency.toString());
-          setLocationFetchTimeout(settings.locationFetchTimeout.toString());
-        }
+        const settings = LocationSettingsStore.getLocationSettings(userId);
+        setFetchFrequency(settings.fetchFrequency.toString());
+        setDistanceThreshold(settings.notificationThreshold.toString());
+        setRestSeconds(settings.restThreshold.toString());
+        setPollFrequency(settings.locationTrackingPollFrequency.toString());
+        setLocationFetchTimeout(settings.locationFetchTimeout.toString());
 
         setLoading(false);
       } catch (error) {
@@ -82,39 +70,19 @@ export function useLocationSettings() {
         return;
       }
 
-      const fetchFreq = parseInt(fetchFrequency) || 10;
-      const distThreshold = parseFloat(distanceThreshold) || 1;
-      const restThresh = parseInt(restSeconds) || 10;
-      const pollFreq = parseInt(pollFrequency) || 15;
-      const fetchTimeout = parseInt(locationFetchTimeout) || 20;
+      const updatedSettings = {
+        fetchFrequency: parseInt(fetchFrequency) || 10,
+        notificationThreshold: parseFloat(distanceThreshold) || 1,
+        restThreshold: parseInt(restSeconds) || 10,
+        locationTrackingPollFrequency: parseInt(pollFrequency) || 15,
+        locationFetchTimeout: parseInt(locationFetchTimeout) || 20,
+      };
 
-      // Update database
-      LocationSettingsTable.updateLocationSettings(
-        userId,
-        fetchFreq,
-        distThreshold,
-        restThresh,
-        pollFreq,
-        fetchTimeout,
-      );
-      logInfo("📍 Location settings saved to database:", {
-        fetchFreq,
-        distThreshold,
-        restThresh,
-        pollFreq,
-        fetchTimeout,
-      });
+      LocationSettingsStore.saveLocationSettings(userId, updatedSettings);
+      logInfo("📍 Location settings saved to database:", updatedSettings);
 
-      // Update AuthContext
-      setLocationSettings({
-        fetchFrequency: fetchFreq,
-        notificationThreshold: distThreshold,
-        restThreshold: restThresh,
-        locationTrackingPollFrequency: pollFreq,
-        locationFetchTimeout: fetchTimeout,
-      });
+      setLocationSettings(updatedSettings);
 
-      // Stop and restart location tracking with new settings
       await stopLocationTracking();
       await startLocationTracking();
       logInfo("✅ Location tracking restarted with new settings");
